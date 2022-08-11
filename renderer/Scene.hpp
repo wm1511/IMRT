@@ -12,28 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "renderer/Renderer.hpp"
-#include "wrapper/App.hpp"
+#pragma once
+#include "Intersection.hpp"
 
-int main()
+#include <vector>
+
+struct SceneInfo
 {
-	AppInfo appInfo;
-	appInfo.name = "Immediate Mode Ray Tracer";
-	appInfo.fontSize = 22.0f;
-	appInfo.width = 1920;
-	appInfo.height = 1080;
+	uint32_t samplesPerPixel = 8;
+};
 
-	try
-	{
-		const auto app = new App(appInfo);
-		app->setInterface<Renderer>();
-		app->run();
-		delete app;
-	}
-	catch (const std::exception& e)
-	{
-		fprintf(stderr, e.what());
-		return EXIT_FAILURE;
-	}
-	return EXIT_SUCCESS;
-}
+class Scene
+{
+public:
+	[[nodiscard]] Intersection intersect(const Ray& ray) const;
+
+	[[nodiscard]] static Scene makeCornellBox();
+	[[nodiscard]] SceneInfo getInfo() const;
+
+private:
+	Scene() = default;
+	void add(std::shared_ptr<Object> object, const std::shared_ptr<Material>& material);
+
+	std::vector<std::shared_ptr<Object>> mObjects;
+	SceneInfo mSceneInfo;
+
+};

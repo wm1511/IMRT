@@ -12,28 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "renderer/Renderer.hpp"
-#include "wrapper/App.hpp"
+#pragma once
+#include "Ray.hpp"
 
-int main()
+class Material
 {
-	AppInfo appInfo;
-	appInfo.name = "Immediate Mode Ray Tracer";
-	appInfo.fontSize = 22.0f;
-	appInfo.width = 1920;
-	appInfo.height = 1080;
+public:
+	virtual ~Material() = default;
 
-	try
+	explicit Material(const glm::vec3 color) : mColor(color)
 	{
-		const auto app = new App(appInfo);
-		app->setInterface<Renderer>();
-		app->run();
-		delete app;
 	}
-	catch (const std::exception& e)
+
+	explicit Material(const glm::vec3 color, const float emission) : mColor(color), mEmission(emission)
 	{
-		fprintf(stderr, e.what());
-		return EXIT_FAILURE;
 	}
-	return EXIT_SUCCESS;
-}
+
+	virtual void emit(Ray& ray, glm::vec3& colorChange, glm::vec3 normal) = 0;
+
+	[[nodiscard]] float getEmission() const { return mEmission; }
+	[[nodiscard]] glm::vec3 getColor() const { return mColor; }
+
+protected:
+	glm::vec3 mColor{0.0f};
+	float mEmission = 0.0f;
+
+};

@@ -12,28 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "renderer/Renderer.hpp"
-#include "wrapper/App.hpp"
+#pragma once
+#include "Object.hpp"
 
-int main()
+class Sphere final : public Object
 {
-	AppInfo appInfo;
-	appInfo.name = "Immediate Mode Ray Tracer";
-	appInfo.fontSize = 22.0f;
-	appInfo.width = 1920;
-	appInfo.height = 1080;
+public:
+	Sphere(glm::vec3 center, float radius);
 
-	try
-	{
-		const auto app = new App(appInfo);
-		app->setInterface<Renderer>();
-		app->run();
-		delete app;
-	}
-	catch (const std::exception& e)
-	{
-		fprintf(stderr, e.what());
-		return EXIT_FAILURE;
-	}
-	return EXIT_SUCCESS;
-}
+	[[nodiscard]] float intersect(const Ray& ray) const override;
+	[[nodiscard]] glm::vec3 normal(const glm::vec3& point) const override;
+
+private:
+	glm::vec3 mCenter;
+	float mRadius;
+
+};

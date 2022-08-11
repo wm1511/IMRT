@@ -12,28 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "renderer/Renderer.hpp"
-#include "wrapper/App.hpp"
+#pragma once
+#include "Material.hpp"
+#include "Ray.hpp"
 
-int main()
+#include <memory>
+
+class Object
 {
-	AppInfo appInfo;
-	appInfo.name = "Immediate Mode Ray Tracer";
-	appInfo.fontSize = 22.0f;
-	appInfo.width = 1920;
-	appInfo.height = 1080;
+public:
+	virtual ~Object() = default;
 
-	try
+	void setMaterial(const std::shared_ptr<Material>& material)
 	{
-		const auto app = new App(appInfo);
-		app->setInterface<Renderer>();
-		app->run();
-		delete app;
+		mMaterial = material;
 	}
-	catch (const std::exception& e)
-	{
-		fprintf(stderr, e.what());
-		return EXIT_FAILURE;
-	}
-	return EXIT_SUCCESS;
-}
+
+	[[nodiscard]] virtual float intersect(const Ray&) const = 0;
+	[[nodiscard]] virtual glm::vec3 normal(const glm::vec3&) const = 0;
+	[[nodiscard]] virtual std::shared_ptr<Material> getMaterial() const { return mMaterial; }
+
+private:
+	std::shared_ptr<Material> mMaterial;
+
+};

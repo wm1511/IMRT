@@ -12,28 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "renderer/Renderer.hpp"
-#include "wrapper/App.hpp"
+#include "Specular.hpp"
 
-int main()
+Specular::Specular(const glm::vec3 color) : Material(color)
 {
-	AppInfo appInfo;
-	appInfo.name = "Immediate Mode Ray Tracer";
-	appInfo.fontSize = 22.0f;
-	appInfo.width = 1920;
-	appInfo.height = 1080;
+}
 
-	try
-	{
-		const auto app = new App(appInfo);
-		app->setInterface<Renderer>();
-		app->run();
-		delete app;
-	}
-	catch (const std::exception& e)
-	{
-		fprintf(stderr, e.what());
-		return EXIT_FAILURE;
-	}
-	return EXIT_SUCCESS;
+void Specular::emit(Ray& ray, glm::vec3& colorChange, const glm::vec3 normal)
+{
+	const float cost = dot(ray.getDirection(), normal);
+	ray.setDirection(normalize(ray.getDirection() - normal * (cost * 2)));
+	colorChange = glm::vec3{1.0f};
 }

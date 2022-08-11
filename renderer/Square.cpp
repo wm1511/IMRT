@@ -12,28 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "renderer/Renderer.hpp"
-#include "wrapper/App.hpp"
+#include "Square.hpp"
 
-int main()
+#include <limits>
+
+Square::Square(const glm::vec3 normal = {0.0f, 0.0f, 0.0f}, const float offset = 0.0f) : mNormal(normal), mOffset(offset)
 {
-	AppInfo appInfo;
-	appInfo.name = "Immediate Mode Ray Tracer";
-	appInfo.fontSize = 22.0f;
-	appInfo.width = 1920;
-	appInfo.height = 1080;
+}
 
-	try
+float Square::intersect(const Ray& ray) const
+{
+	const float angle = dot(mNormal, ray.getDirection());
+	if (glm::abs(angle) > std::numeric_limits<float>::epsilon())
 	{
-		const auto app = new App(appInfo);
-		app->setInterface<Renderer>();
-		app->run();
-		delete app;
+		const float t = -1.0f * ((dot(mNormal, ray.getOrigin()) + mOffset) / angle);
+		return t > std::numeric_limits<float>::epsilon() ? t : 0;
 	}
-	catch (const std::exception& e)
-	{
-		fprintf(stderr, e.what());
-		return EXIT_FAILURE;
-	}
-	return EXIT_SUCCESS;
+	return 0.0f;
+}
+
+glm::vec3 Square::normal(const glm::vec3&) const
+{
+	return mNormal;
 }

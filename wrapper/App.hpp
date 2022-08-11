@@ -1,3 +1,17 @@
+// Copyright (c) 2022, Wiktor Merta
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include "IDrawable.hpp"
@@ -12,53 +26,49 @@
 #include <memory>
 #include <stdexcept>
 
-namespace imrt
+
+struct AppInfo
 {
-	struct AppInfo
+	std::string name = "Default mWindow name";
+	int32_t width = 1280;
+	int32_t height = 720;
+	float fontSize = 20.0f;
+};
+
+class App
+{
+public:
+	explicit App(AppInfo& appInfo);
+	~App();
+
+	void run();
+
+	template <typename T>
+	void setInterface()
 	{
-		std::string name = "Default window name";
-		int32_t width = 1280;
-		int32_t height = 720;
-		float fontSize = 20.0f;
-	};
+		if (!std::is_base_of_v<IDrawable, T>)
+			throw std::invalid_argument("Passed class is not a class derived of IDrawable");
 
-	class App
-	{
-	public:
-		explicit App(AppInfo& appInfo);
-		~App();
+		mAppInterface = std::make_unique<T>();
+	}
 
-		void run();
+	explicit App(const App&) = delete;
+	explicit App(App&&) = delete;
+	App operator= (const App&) = delete;
+	App operator= (App&&) = delete;
 
-		template <typename T>
-		void setInterface()
-		{
-			if (!std::is_base_of_v<IDrawable, T>)
-			{
-				fprintf(stderr, "Passed class is not a class derived of IDrawable");
-				abort();
-			}
-			appInterface = std::make_unique<T>();
-		}
+	static VkInstance getInstance();
+	static VkPhysicalDevice getPhysicalDevice();
+	static VkDevice getDevice();
 
-		explicit App(const App&) = delete;
-		explicit App(App&&) = delete;
-		App operator= (const App&) = delete;
-		App operator= (App&&) = delete;
+	static VkCommandBuffer getCommandBuffer();
+	static void flushCommandBuffer(VkCommandBuffer commandBuffer);
 
-		static VkInstance getInstance();
-		static VkPhysicalDevice getPhysicalDevice();
-		static VkDevice getDevice();
+private:
+	void initialize();
+	void terminate();
 
-		static VkCommandBuffer getCommandBuffer();
-		static void flushCommandBuffer(VkCommandBuffer commandBuffer);
-
-	private:
-		void initialize();
-		void terminate();
-
-		AppInfo info;
-		GLFWwindow* window;
-		std::unique_ptr<IDrawable> appInterface;
-	};
-}
+	AppInfo mInfo;
+	GLFWwindow* mWindow;
+	std::unique_ptr<IDrawable> mAppInterface;
+};

@@ -106,9 +106,10 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>%VULKAN_SDK%\include;D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Biblioteki\glm;%VULKAN_SDK%\include;D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -145,10 +146,11 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>%VULKAN_SDK%\include;D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Biblioteki\glm;%VULKAN_SDK%\include;D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -170,7 +172,13 @@
     <ClCompile Include="imgui\imgui_tables.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="renderer\Diffuse.cpp" />
+    <ClCompile Include="renderer\Refractive.cpp" />
     <ClCompile Include="renderer\Renderer.cpp" />
+    <ClCompile Include="renderer\Scene.cpp" />
+    <ClCompile Include="renderer\Specular.cpp" />
+    <ClCompile Include="renderer\Sphere.cpp" />
+    <ClCompile Include="renderer\Square.cpp" />
     <ClCompile Include="wrapper\App.cpp" />
     <ClCompile Include="wrapper\Image.cpp" />
   </ItemGroup>
@@ -183,13 +191,25 @@
     <ClInclude Include="imgui\imstb_rectpack.h" />
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
+    <ClInclude Include="renderer\Diffuse.hpp" />
+    <ClInclude Include="renderer\Material.hpp" />
+    <ClInclude Include="renderer\Intersection.hpp" />
+    <ClInclude Include="renderer\Object.hpp" />
+    <ClInclude Include="renderer\Ray.hpp" />
+    <ClInclude Include="renderer\Refractive.hpp" />
+    <ClInclude Include="renderer\Specular.hpp" />
+    <ClInclude Include="renderer\Scene.hpp" />
+    <ClInclude Include="renderer\Sphere.hpp" />
+    <ClInclude Include="renderer\Square.hpp" />
     <ClInclude Include="renderer\Renderer.hpp" />
+    <ClInclude Include="renderer\Utils.hpp" />
     <ClInclude Include="wrapper\App.hpp" />
     <ClInclude Include="wrapper\Image.hpp" />
     <ClInclude Include="wrapper\IDrawable.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="imgui\LICENSE.txt" />
+    <Text Include="LICENSE.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

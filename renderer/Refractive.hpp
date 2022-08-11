@@ -12,28 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "renderer/Renderer.hpp"
-#include "wrapper/App.hpp"
+#pragma once
+#include "Material.hpp"
 
-int main()
+class Refractive final : public Material
 {
-	AppInfo appInfo;
-	appInfo.name = "Immediate Mode Ray Tracer";
-	appInfo.fontSize = 22.0f;
-	appInfo.width = 1920;
-	appInfo.height = 1080;
+public:
+	Refractive(glm::vec3 color, float indexOfRefraction);
 
-	try
-	{
-		const auto app = new App(appInfo);
-		app->setInterface<Renderer>();
-		app->run();
-		delete app;
-	}
-	catch (const std::exception& e)
-	{
-		fprintf(stderr, e.what());
-		return EXIT_FAILURE;
-	}
-	return EXIT_SUCCESS;
-}
+	void emit(Ray& ray, glm::vec3& colorChange, glm::vec3 normal) override;
+	[[nodiscard]] float getIndexOfRefraction() const { return mIndexOfRefraction; }
+
+private:
+	float mIndexOfRefraction = 1.0f;
+
+};

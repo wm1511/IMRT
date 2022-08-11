@@ -12,28 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "renderer/Renderer.hpp"
-#include "wrapper/App.hpp"
+#pragma once
+#include <glm/glm.hpp>
 
-int main()
+class Ray
 {
-	AppInfo appInfo;
-	appInfo.name = "Immediate Mode Ray Tracer";
-	appInfo.fontSize = 22.0f;
-	appInfo.width = 1920;
-	appInfo.height = 1080;
+public:
+	explicit Ray(const glm::vec3 origin = glm::vec3{0.0f}, const glm::vec3 direction = glm::vec3{0.0f}) : mOrigin(origin), mDirection(normalize(direction))
+	{
+	}
 
-	try
-	{
-		const auto app = new App(appInfo);
-		app->setInterface<Renderer>();
-		app->run();
-		delete app;
-	}
-	catch (const std::exception& e)
-	{
-		fprintf(stderr, e.what());
-		return EXIT_FAILURE;
-	}
-	return EXIT_SUCCESS;
-}
+	[[nodiscard]] glm::vec3 getOrigin() const { return mOrigin; }
+	[[nodiscard]] glm::vec3 getDirection() const { return mDirection; }
+
+	void setOrigin(const glm::vec3 origin) { mOrigin = origin; }
+	void setDirection(const glm::vec3 direction) { mDirection = direction; }
+
+private:
+	glm::vec3 mOrigin, mDirection;
+
+};
