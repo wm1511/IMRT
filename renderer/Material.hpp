@@ -28,7 +28,7 @@ public:
 	{
 	}
 
-	virtual void emit(Ray& ray, glm::vec3& colorChange, glm::vec3 normal) = 0;
+	virtual glm::vec3 emit(Ray& ray, glm::vec3 normal) = 0;
 
 	[[nodiscard]] float getEmission() const { return mEmission; }
 	[[nodiscard]] glm::vec3 getColor() const { return mColor; }

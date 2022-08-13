@@ -25,7 +25,7 @@ Diffuse::Diffuse(const glm::vec3 color, const float emission) : Material(color, 
 {
 }
 
-void Diffuse::emit(Ray& ray, glm::vec3& colorChange, const glm::vec3 normal)
+glm::vec3 Diffuse::emit(Ray& ray, const glm::vec3 normal)
 {
 	glm::vec3 rotationX{0.0f}, rotationY{0.0f};
 	Utils::orthonormalize(normal, rotationX, rotationY);
@@ -36,5 +36,5 @@ void Diffuse::emit(Ray& ray, glm::vec3& colorChange, const glm::vec3 normal)
 	rotatedDirection.z = dot(glm::vec3(rotationX.z, rotationY.z, normal.z), randomDirection);
 	ray.setDirection(rotatedDirection);
 	const float cost = dot(ray.getDirection(), normal);
-	colorChange = cost * this->getColor() * 0.1f;
+	return cost * this->getColor() * 0.1f;
 }

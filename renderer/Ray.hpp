@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#define GLM_FORCE_INLINE
 #include <glm/glm.hpp>
 
 class Ray

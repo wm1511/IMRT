@@ -25,10 +25,9 @@ int main()
 
 	try
 	{
-		const auto app = new App(appInfo);
-		app->setInterface<Renderer>();
-		app->run();
-		delete app;
+		App app(appInfo);
+		app.setInterface<Renderer>();
+		app.run();
 	}
 	catch (const std::exception& e)
 	{

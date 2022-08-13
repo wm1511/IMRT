@@ -32,7 +32,7 @@
     <ClCompile Include="renderer\Renderer.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\Square.cpp">
+    <ClCompile Include="renderer\Plane.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\Sphere.cpp">
@@ -94,7 +94,7 @@
     <ClInclude Include="renderer\Ray.hpp">
       <Filter>renderer</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\Square.hpp">
+    <ClInclude Include="renderer\Plane.hpp">
       <Filter>renderer</Filter>
     </ClInclude>
     <ClInclude Include="renderer\Sphere.hpp">
@@ -119,6 +119,9 @@
       <Filter>renderer</Filter>
     </ClInclude>
     <ClInclude Include="renderer\Utils.hpp">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\AABB.hpp">
       <Filter>renderer</Filter>
     </ClInclude>
   </ItemGroup>

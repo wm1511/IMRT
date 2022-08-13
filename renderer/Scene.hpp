@@ -17,24 +17,70 @@
 
 #include <vector>
 
-struct SceneInfo
-{
-	uint32_t samplesPerPixel = 8;
-};
-
 class Scene
 {
-public:
-	[[nodiscard]] Intersection intersect(const Ray& ray) const;
+	class BoundInfo
+	{
+	public:
+		explicit BoundInfo(const std::shared_ptr<Object>& object) : mObject(object), mAABB(object->getAABB()),
+		                                                            mCentroid((mAABB.getMin() + mAABB.getMax()) / 2.0f)
+		{
+		}
 
+		[[nodiscard]] glm::vec3 getCentroid() const { return mCentroid; }
+		[[nodiscard]] std::shared_ptr<Object> getObject() const { return mObject; }
+		[[nodiscard]] AABB getAABB() const { return mAABB; }
+
+	private:
+		std::shared_ptr<Object> mObject;
+		AABB mAABB;
+		glm::vec3 mCentroid;
+
+	};
+
+	class CentroidComparator
+	{
+	public:
+		explicit CentroidComparator(const int32_t dimension) : mDimension(dimension)
+		{
+		}
+
+		bool operator()(const BoundInfo& first, const BoundInfo& second) const
+		{
+			return first.getCentroid()[mDimension] < second.getCentroid()[mDimension];
+		}
+
+	private:
+		int32_t mDimension;
+	};
+
+	class BVHNode
+	{
+	public:
+		AABB aabb{};
+		union 
+		{
+			uint32_t firstObjectIndex;
+			uint32_t secondChildIndex;
+		};
+		uint8_t objectCount;
+		uint8_t splitAxis;
+	};
+
+public:
 	[[nodiscard]] static Scene makeCornellBox();
-	[[nodiscard]] SceneInfo getInfo() const;
+	[[nodiscard]] Intersection intersect(const Ray& ray) const;
+	void rebuildBVH(uint8_t maxObjectsPerLeaf);
+
+	static constexpr uint32_t SAMPLES_PER_PIXEL = 8;
 
 private:
 	Scene() = default;
 	void add(std::shared_ptr<Object> object, const std::shared_ptr<Material>& material);
+	void splitBoundsRecursively(std::vector<BoundInfo>::iterator begin, std::vector<BoundInfo>::iterator end, uint8_t maxObjectsPerLeaf);
 
-	std::vector<std::shared_ptr<Object>> mObjects;
-	SceneInfo mSceneInfo;
-
+	std::vector<std::shared_ptr<Object>> mBoundedObjects;
+	std::vector<std::shared_ptr<Object>> mUnboundedObjects;
+	std::vector<BoundInfo> mBoundInfos;
+	std::vector<BVHNode> mBVH;
 };

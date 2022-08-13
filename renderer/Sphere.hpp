@@ -22,6 +22,7 @@ public:
 
 	[[nodiscard]] float intersect(const Ray& ray) const override;
 	[[nodiscard]] glm::vec3 normal(const glm::vec3& point) const override;
+	[[nodiscard]] AABB getAABB() const override;
 
 private:
 	glm::vec3 mCenter;

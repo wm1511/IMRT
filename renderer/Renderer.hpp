@@ -26,9 +26,10 @@ public:
 
 private:
 	void render();
-	void trace(Ray& ray, const Scene& scene, int32_t depth, glm::vec3& color);
+	glm::vec3 trace(Ray& ray, const Scene& scene, int32_t depth);
 
 	std::unique_ptr<Image> mImage;
 	uint32_t mHeight = 0, mWidth = 0;
 	uint32_t* mImageData = nullptr;
+	float mRenderTime = 0.0f;
 };

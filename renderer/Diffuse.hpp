@@ -21,6 +21,6 @@ public:
 	explicit Diffuse(glm::vec3 color);
 	explicit Diffuse(glm::vec3 color, float emission);
 
-	void emit(Ray& ray, glm::vec3& colorChange, glm::vec3 normal) override;
+	glm::vec3 emit(Ray& ray, glm::vec3 normal) override;
 
 };

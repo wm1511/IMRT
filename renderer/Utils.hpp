@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#define GLM_FORCE_INLINE
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
 
@@ -28,7 +29,7 @@ public:
 		return {glm::cos(angle) * radius, glm::sin(angle) * radius, r1};
 	}
 
-	[[nodiscard]] static glm::vec3 getCameraCoords(const uint32_t x, const uint32_t y, const uint32_t width, const uint32_t height)
+	[[nodiscard]] static glm::vec3 calculateCameraCoords(const uint32_t x, const uint32_t y, const uint32_t width, const uint32_t height)
 	{
 		const auto w = static_cast<float>(width);
 		const auto h = static_cast<float>(height);
@@ -40,21 +41,21 @@ public:
 	static uint32_t convert(const glm::vec3 color)
 	{
 		return 0xff000000 |
-			static_cast<uint8_t>(color.z) << 16 |
-			static_cast<uint8_t>(color.y) << 8 |
-			static_cast<uint8_t>(color.x);
+			static_cast<uint8_t>(color.b) << 16 |
+			static_cast<uint8_t>(color.g) << 8 |
+			static_cast<uint8_t>(color.r);
 	}
 
 	static void orthonormalize(const glm::vec3& v1, glm::vec3& v2, glm::vec3& v3)
 	{
 		if (glm::abs(v1.x) > glm::abs(v1.y))
 		{
-			const float inverseLength = 1.0f / glm::sqrt(v1.x * v1.x + v1.z * v1.z);
+			const float inverseLength = glm::inversesqrt(v1.x * v1.x + v1.z * v1.z);
 			v2 = glm::vec3(-v1.z * inverseLength, 0.0f, v1.x * inverseLength);
 		}
 		else
 		{
-			const float inverseLength = 1.0f / glm::sqrt(v1.y * v1.y + v1.z * v1.z);
+			const float inverseLength = glm::inversesqrt(v1.y * v1.y + v1.z * v1.z);
 			v2 = glm::vec3(0.0f, v1.z * inverseLength, -v1.y * inverseLength);
 		}
 		v3 = cross(v1, v2);

@@ -20,7 +20,7 @@ Refractive::Refractive(const glm::vec3 color, const float indexOfRefraction) : M
 {
 }
 
-void Refractive::emit(Ray& ray, glm::vec3& colorChange, const glm::vec3 normal)
+glm::vec3 Refractive::emit(Ray& ray, const glm::vec3 normal)
 {
 	float ior = this->getIndexOfRefraction();
 	glm::vec3 n = normal;
@@ -39,5 +39,5 @@ void Refractive::emit(Ray& ray, glm::vec3& colorChange, const glm::vec3 normal)
 		ray.setDirection(normalize(ray.getDirection() * ior + n * (ior * cosTheta1 - glm::sqrt(cosTheta2))));
 	else
 		ray.setDirection(normalize(ray.getDirection() + n * (cosTheta1 * 2)));
-	colorChange = glm::vec3{1.15f};
+	return glm::vec3{1.15f};
 }

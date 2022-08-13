@@ -15,13 +15,14 @@
 #pragma once
 #include "Object.hpp"
 
-class Square final : public Object
+class Plane final : public Object
 {
 public:
-	Square(glm::vec3 normal, float offset);
+	Plane(glm::vec3 normal, float offset);
 
 	[[nodiscard]] float intersect(const Ray& ray) const override;
 	[[nodiscard]] glm::vec3 normal(const glm::vec3&) const override;
+	[[nodiscard]] AABB getAABB() const override;
 
 private:
 	glm::vec3 mNormal;

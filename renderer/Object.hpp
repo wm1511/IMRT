@@ -14,7 +14,7 @@
 
 #pragma once
 #include "Material.hpp"
-#include "Ray.hpp"
+#include "AABB.hpp"
 
 #include <memory>
 
@@ -31,6 +31,7 @@ public:
 	[[nodiscard]] virtual float intersect(const Ray&) const = 0;
 	[[nodiscard]] virtual glm::vec3 normal(const glm::vec3&) const = 0;
 	[[nodiscard]] virtual std::shared_ptr<Material> getMaterial() const { return mMaterial; }
+	[[nodiscard]] virtual AABB getAABB() const = 0;
 
 private:
 	std::shared_ptr<Material> mMaterial;

@@ -20,6 +20,6 @@ class Specular final : public Material
 public:
 	explicit Specular(glm::vec3 color);
 
-	void emit(Ray& ray, glm::vec3& colorChange, glm::vec3 normal) override;
+	glm::vec3 emit(Ray& ray, glm::vec3 normal) override;
 
 };

@@ -178,7 +178,7 @@
     <ClCompile Include="renderer\Scene.cpp" />
     <ClCompile Include="renderer\Specular.cpp" />
     <ClCompile Include="renderer\Sphere.cpp" />
-    <ClCompile Include="renderer\Square.cpp" />
+    <ClCompile Include="renderer\Plane.cpp" />
     <ClCompile Include="wrapper\App.cpp" />
     <ClCompile Include="wrapper\Image.cpp" />
   </ItemGroup>
@@ -191,6 +191,7 @@
     <ClInclude Include="imgui\imstb_rectpack.h" />
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
+    <ClInclude Include="renderer\AABB.hpp" />
     <ClInclude Include="renderer\Diffuse.hpp" />
     <ClInclude Include="renderer\Material.hpp" />
     <ClInclude Include="renderer\Intersection.hpp" />
@@ -200,7 +201,7 @@
     <ClInclude Include="renderer\Specular.hpp" />
     <ClInclude Include="renderer\Scene.hpp" />
     <ClInclude Include="renderer\Sphere.hpp" />
-    <ClInclude Include="renderer\Square.hpp" />
+    <ClInclude Include="renderer\Plane.hpp" />
     <ClInclude Include="renderer\Renderer.hpp" />
     <ClInclude Include="renderer\Utils.hpp" />
     <ClInclude Include="wrapper\App.hpp" />

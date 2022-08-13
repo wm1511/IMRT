@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "Square.hpp"
+#include "Plane.hpp"
 
 #include <limits>
 
-Square::Square(const glm::vec3 normal = {0.0f, 0.0f, 0.0f}, const float offset = 0.0f) : mNormal(normal), mOffset(offset)
+Plane::Plane(const glm::vec3 normal = {0.0f, 0.0f, 0.0f}, const float offset = 0.0f) : mNormal(normal), mOffset(offset)
 {
 }
 
-float Square::intersect(const Ray& ray) const
+float Plane::intersect(const Ray& ray) const
 {
 	const float angle = dot(mNormal, ray.getDirection());
 	if (glm::abs(angle) > std::numeric_limits<float>::epsilon())
@@ -31,7 +31,19 @@ float Square::intersect(const Ray& ray) const
 	return 0.0f;
 }
 
-glm::vec3 Square::normal(const glm::vec3&) const
+glm::vec3 Plane::normal(const glm::vec3&) const
 {
 	return mNormal;
+}
+
+AABB Plane::getAABB() const
+{
+	constexpr float infinity = std::numeric_limits<float>::infinity();
+	if (mNormal.x == 0 && mNormal.y == 0)
+		return {glm::vec3(-infinity, -infinity, mOffset * mNormal.z), glm::vec3(infinity, infinity, mOffset * mNormal.z)};
+	if (mNormal.x == 0 && mNormal.z == 0)
+		return {glm::vec3(-infinity, mOffset * mNormal.y, -infinity), glm::vec3(infinity, mOffset * mNormal.y, infinity)};
+	if (mNormal.y == 0 && mNormal.z == 0)
+		return {glm::vec3(mOffset * mNormal.x, -infinity, -infinity), glm::vec3(mOffset * mNormal.z, infinity, infinity)};
+	return {glm::vec3{-infinity}, glm::vec3{infinity}};
 }

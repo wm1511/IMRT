@@ -18,9 +18,9 @@ Specular::Specular(const glm::vec3 color) : Material(color)
 {
 }
 
-void Specular::emit(Ray& ray, glm::vec3& colorChange, const glm::vec3 normal)
+glm::vec3 Specular::emit(Ray& ray, const glm::vec3 normal)
 {
 	const float cost = dot(ray.getDirection(), normal);
 	ray.setDirection(normalize(ray.getDirection() - normal * (cost * 2)));
-	colorChange = glm::vec3{1.0f};
+	return glm::vec3{1.0f};
 }

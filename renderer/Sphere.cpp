@@ -30,10 +30,20 @@ float Sphere::intersect(const Ray& ray) const
 	discriminant = glm::sqrt(discriminant);
 	const float solution1 = -b + discriminant;
 	const float solution2 = -b - discriminant;
-	return solution2 > std::numeric_limits<float>::epsilon() ? solution2 / 2 : solution1 > std::numeric_limits<float>::epsilon() ? solution1 / 2 : 0;
+	return solution2 > std::numeric_limits<float>::epsilon()
+		       ? solution2 / 2
+		       : solution1 > std::numeric_limits<float>::epsilon()
+		       ? solution1 / 2
+		       : 0;
 }
 
 glm::vec3 Sphere::normal(const glm::vec3& point) const
 {
     return normalize(point - mCenter);
+}
+
+AABB Sphere::getAABB() const
+{
+	return {glm::vec3(mCenter.x - mRadius, mCenter.y - mRadius, mCenter.z - mRadius),
+			  glm::vec3(mCenter.x + mRadius, mCenter.y + mRadius, mCenter.z + mRadius)};
 }
