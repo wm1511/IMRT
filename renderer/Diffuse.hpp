@@ -18,9 +18,9 @@
 class Diffuse final : public Material
 {
 public:
-	explicit Diffuse(glm::vec3 color);
-	explicit Diffuse(glm::vec3 color, float emission);
+	explicit Diffuse(glm::dvec3 color);
+	explicit Diffuse(glm::dvec3 color, double emission);
 
-	glm::vec3 emit(Ray& ray, glm::vec3 normal) override;
+	glm::dvec3 emit(Ray& ray, glm::dvec3 normal) override;
 
 };

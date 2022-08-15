@@ -16,34 +16,34 @@
 
 #include <limits>
 
-Sphere::Sphere(const glm::vec3 center = {0.0f, 0.0f, 0.0f}, const float radius = 0) : mCenter(center), mRadius(radius)
+Sphere::Sphere(const glm::dvec3 center = {0.0f, 0.0f, 0.0f}, const double radius = 0) : mCenter(center), mRadius(radius)
 {
 }
 
-float Sphere::intersect(const Ray& ray) const
+double Sphere::intersect(const Ray& ray) const
 {
-	const float b = dot(2.0f * (ray.getOrigin() - mCenter), ray.getDirection());
-	const float c = dot(ray.getOrigin() - mCenter, ray.getOrigin() - mCenter) - mRadius * mRadius;
-	float discriminant = b * b - 4 * c;
+	const double b = dot(2.0 * (ray.getOrigin() - mCenter), ray.getDirection());
+	const double c = dot(ray.getOrigin() - mCenter, ray.getOrigin() - mCenter) - mRadius * mRadius;
+	double discriminant = b * b - 4 * c;
 	if (discriminant < 0)
-		return 0.0f;
+		return 0.0;
 	discriminant = glm::sqrt(discriminant);
-	const float solution1 = -b + discriminant;
-	const float solution2 = -b - discriminant;
-	return solution2 > std::numeric_limits<float>::epsilon()
+	const double solution1 = -b + discriminant;
+	const double solution2 = -b - discriminant;
+	return solution2 > std::numeric_limits<double>::epsilon()
 		       ? solution2 / 2
-		       : solution1 > std::numeric_limits<float>::epsilon()
+		       : solution1 > std::numeric_limits<double>::epsilon()
 		       ? solution1 / 2
 		       : 0;
 }
 
-glm::vec3 Sphere::normal(const glm::vec3& point) const
+glm::dvec3 Sphere::normal(const glm::dvec3& point) const
 {
     return normalize(point - mCenter);
 }
 
 AABB Sphere::getAABB() const
 {
-	return {glm::vec3(mCenter.x - mRadius, mCenter.y - mRadius, mCenter.z - mRadius),
-			  glm::vec3(mCenter.x + mRadius, mCenter.y + mRadius, mCenter.z + mRadius)};
+	return {glm::dvec3(mCenter.x - mRadius, mCenter.y - mRadius, mCenter.z - mRadius),
+			  glm::dvec3(mCenter.x + mRadius, mCenter.y + mRadius, mCenter.z + mRadius)};
 }

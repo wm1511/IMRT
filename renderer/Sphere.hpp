@@ -18,14 +18,14 @@
 class Sphere final : public Object
 {
 public:
-	Sphere(glm::vec3 center, float radius);
+	Sphere(glm::dvec3 center, double radius);
 
-	[[nodiscard]] float intersect(const Ray& ray) const override;
-	[[nodiscard]] glm::vec3 normal(const glm::vec3& point) const override;
+	[[nodiscard]] double intersect(const Ray& ray) const override;
+	[[nodiscard]] glm::dvec3 normal(const glm::dvec3& point) const override;
 	[[nodiscard]] AABB getAABB() const override;
 
 private:
-	glm::vec3 mCenter;
-	float mRadius;
+	glm::dvec3 mCenter;
+	double mRadius;
 
 };

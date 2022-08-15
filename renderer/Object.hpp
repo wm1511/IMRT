@@ -28,8 +28,8 @@ public:
 		mMaterial = material;
 	}
 
-	[[nodiscard]] virtual float intersect(const Ray&) const = 0;
-	[[nodiscard]] virtual glm::vec3 normal(const glm::vec3&) const = 0;
+	[[nodiscard]] virtual double intersect(const Ray&) const = 0;
+	[[nodiscard]] virtual glm::dvec3 normal(const glm::dvec3&) const = 0;
 	[[nodiscard]] virtual std::shared_ptr<Material> getMaterial() const { return mMaterial; }
 	[[nodiscard]] virtual AABB getAABB() const = 0;
 

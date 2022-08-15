@@ -25,11 +25,22 @@ public:
 	void draw() override;
 
 private:
-	void render();
-	glm::vec3 trace(Ray& ray, const Scene& scene, int32_t depth);
+	struct RenderInfo
+	{
+		int32_t sceneIndex{0}, samplesPerPixel{8};
+		glm::dvec3 lookOrigin{0.0, 0.0, 0.0}, lookTarget{-1.0, -1.5, -4.0};
+		float vfov{0.872f};
+		double aperture{0.0}, focusDistance{10.0};
+	};
 
+	[[nodiscard]] Scene prepareSelectedScene() const;
+	void render();
+	glm::dvec3 trace(Ray& ray, const Scene& scene, int32_t depth);
+
+	RenderInfo mRenderInfo;
 	std::unique_ptr<Image> mImage;
 	uint32_t mHeight = 0, mWidth = 0;
 	uint32_t* mImageData = nullptr;
-	float mRenderTime = 0.0f;
+	double mRenderTime = 0.0;
+
 };

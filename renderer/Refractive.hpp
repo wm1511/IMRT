@@ -18,12 +18,12 @@
 class Refractive final : public Material
 {
 public:
-	Refractive(glm::vec3 color, float indexOfRefraction);
+	Refractive(glm::dvec3 color, double indexOfRefraction);
 
-	glm::vec3 emit(Ray& ray, glm::vec3 normal) override;
-	[[nodiscard]] float getIndexOfRefraction() const { return mIndexOfRefraction; }
+	glm::dvec3 emit(Ray& ray, glm::dvec3 normal) override;
+	[[nodiscard]] double getIndexOfRefraction() const { return mIndexOfRefraction; }
 
 private:
-	float mIndexOfRefraction = 1.0f;
+	double mIndexOfRefraction = 1.0;
 
 };

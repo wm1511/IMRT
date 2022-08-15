@@ -22,23 +22,14 @@ class Utils
 public:
 	Utils() = delete;
 
-	[[nodiscard]] static glm::vec3 hemisphereSample(const float r1, const float r2)
+	[[nodiscard]] static glm::dvec3 hemisphereSample(const double r1, const double r2)
 	{
-		const float radius = glm::sqrt(1.0f - r1 * r1);
-		const float angle = 2 * glm::pi<float>() * r2;
+		const double radius = glm::sqrt(1.0 - r1 * r1);
+		const double angle = 2 * glm::pi<double>() * r2;
 		return {glm::cos(angle) * radius, glm::sin(angle) * radius, r1};
 	}
 
-	[[nodiscard]] static glm::vec3 calculateCameraCoords(const uint32_t x, const uint32_t y, const uint32_t width, const uint32_t height)
-	{
-		const auto w = static_cast<float>(width);
-		const auto h = static_cast<float>(height);
-		constexpr float fovx = glm::pi<float>() / 4;
-		const float fovy = h / w * fovx;
-		return {(static_cast<float>(2 * x) - w) / w * glm::tan(fovx), -((static_cast<float>(2 * y) - h) / h) * glm::tan(fovy), -1.0f};
-	}
-
-	static uint32_t convert(const glm::vec3 color)
+	static uint32_t convert(const glm::dvec3 color)
 	{
 		return 0xff000000 |
 			static_cast<uint8_t>(color.b) << 16 |
@@ -46,17 +37,17 @@ public:
 			static_cast<uint8_t>(color.r);
 	}
 
-	static void orthonormalize(const glm::vec3& v1, glm::vec3& v2, glm::vec3& v3)
+	static void orthonormalize(const glm::dvec3& v1, glm::dvec3& v2, glm::dvec3& v3)
 	{
 		if (glm::abs(v1.x) > glm::abs(v1.y))
 		{
-			const float inverseLength = glm::inversesqrt(v1.x * v1.x + v1.z * v1.z);
-			v2 = glm::vec3(-v1.z * inverseLength, 0.0f, v1.x * inverseLength);
+			const double inverseLength = glm::inversesqrt(v1.x * v1.x + v1.z * v1.z);
+			v2 = glm::dvec3(-v1.z * inverseLength, 0.0, v1.x * inverseLength);
 		}
 		else
 		{
-			const float inverseLength = glm::inversesqrt(v1.y * v1.y + v1.z * v1.z);
-			v2 = glm::vec3(0.0f, v1.z * inverseLength, -v1.y * inverseLength);
+			const double inverseLength = glm::inversesqrt(v1.y * v1.y + v1.z * v1.z);
+			v2 = glm::dvec3(0.0, v1.z * inverseLength, -v1.y * inverseLength);
 		}
 		v3 = cross(v1, v2);
 	}

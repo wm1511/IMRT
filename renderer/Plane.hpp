@@ -18,13 +18,13 @@
 class Plane final : public Object
 {
 public:
-	Plane(glm::vec3 normal, float offset);
+	Plane(glm::dvec3 normal, double offset);
 
-	[[nodiscard]] float intersect(const Ray& ray) const override;
-	[[nodiscard]] glm::vec3 normal(const glm::vec3&) const override;
+	[[nodiscard]] double intersect(const Ray& ray) const override;
+	[[nodiscard]] glm::dvec3 normal(const glm::dvec3&) const override;
 	[[nodiscard]] AABB getAABB() const override;
 
 private:
-	glm::vec3 mNormal;
-	float mOffset;
+	glm::dvec3 mNormal;
+	double mOffset;
 };

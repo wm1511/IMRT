@@ -23,7 +23,7 @@ class Scene
 	{
 	public:
 		explicit BoundInfo(const std::shared_ptr<Object>& object) : mObject(object), mAABB(object->getAABB()),
-		                                                            mCentroid((mAABB.getMin() + mAABB.getMax()) / 2.0f)
+		                                                            mCentroid((mAABB.getMin() + mAABB.getMax()) / 2.0)
 		{
 		}
 
@@ -69,15 +69,16 @@ class Scene
 
 public:
 	[[nodiscard]] static Scene makeCornellBox();
+	[[nodiscard]] static Scene makeWall();
+
 	[[nodiscard]] Intersection intersect(const Ray& ray) const;
 	void rebuildBVH(uint8_t maxObjectsPerLeaf);
-
-	static constexpr uint32_t SAMPLES_PER_PIXEL = 8;
 
 private:
 	Scene() = default;
 	void add(std::shared_ptr<Object> object, const std::shared_ptr<Material>& material);
 	void splitBoundsRecursively(std::vector<BoundInfo>::iterator begin, std::vector<BoundInfo>::iterator end, uint8_t maxObjectsPerLeaf);
+
 
 	std::vector<std::shared_ptr<Object>> mBoundedObjects;
 	std::vector<std::shared_ptr<Object>> mUnboundedObjects;

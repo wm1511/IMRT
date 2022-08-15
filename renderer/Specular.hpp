@@ -18,8 +18,8 @@
 class Specular final : public Material
 {
 public:
-	explicit Specular(glm::vec3 color);
+	explicit Specular(glm::dvec3 color);
 
-	glm::vec3 emit(Ray& ray, glm::vec3 normal) override;
+	glm::dvec3 emit(Ray& ray, glm::dvec3 normal) override;
 
 };

@@ -20,21 +20,21 @@ class Material
 public:
 	virtual ~Material() = default;
 
-	explicit Material(const glm::vec3 color) : mColor(color)
+	explicit Material(const glm::dvec3 color) : mColor(color)
 	{
 	}
 
-	explicit Material(const glm::vec3 color, const float emission) : mColor(color), mEmission(emission)
+	explicit Material(const glm::dvec3 color, const double emission) : mColor(color), mEmission(emission)
 	{
 	}
 
-	virtual glm::vec3 emit(Ray& ray, glm::vec3 normal) = 0;
+	virtual glm::dvec3 emit(Ray& ray, glm::dvec3 normal) = 0;
 
-	[[nodiscard]] float getEmission() const { return mEmission; }
-	[[nodiscard]] glm::vec3 getColor() const { return mColor; }
+	[[nodiscard]] double getEmission() const { return mEmission; }
+	[[nodiscard]] glm::dvec3 getColor() const { return mColor; }
 
 protected:
-	glm::vec3 mColor{0.0f};
-	float mEmission = 0.0f;
+	glm::dvec3 mColor{0.0};
+	double mEmission = 0.0;
 
 };

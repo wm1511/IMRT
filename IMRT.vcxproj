@@ -192,6 +192,7 @@
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
     <ClInclude Include="renderer\AABB.hpp" />
+    <ClInclude Include="renderer\Camera.hpp" />
     <ClInclude Include="renderer\Diffuse.hpp" />
     <ClInclude Include="renderer\Material.hpp" />
     <ClInclude Include="renderer\Intersection.hpp" />

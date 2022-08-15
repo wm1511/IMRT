@@ -16,34 +16,34 @@
 
 #include <limits>
 
-Plane::Plane(const glm::vec3 normal = {0.0f, 0.0f, 0.0f}, const float offset = 0.0f) : mNormal(normal), mOffset(offset)
+Plane::Plane(const glm::dvec3 normal = {0.0, 0.0, 0.0}, const double offset = 0.0) : mNormal(normal), mOffset(offset)
 {
 }
 
-float Plane::intersect(const Ray& ray) const
+double Plane::intersect(const Ray& ray) const
 {
-	const float angle = dot(mNormal, ray.getDirection());
-	if (glm::abs(angle) > std::numeric_limits<float>::epsilon())
+	const double angle = dot(mNormal, ray.getDirection());
+	if (glm::abs(angle) > std::numeric_limits<double>::epsilon())
 	{
-		const float t = -1.0f * ((dot(mNormal, ray.getOrigin()) + mOffset) / angle);
-		return t > std::numeric_limits<float>::epsilon() ? t : 0;
+		const double t = -1.0 * ((dot(mNormal, ray.getOrigin()) + mOffset) / angle);
+		return t > std::numeric_limits<double>::epsilon() ? t : 0;
 	}
-	return 0.0f;
+	return 0.0;
 }
 
-glm::vec3 Plane::normal(const glm::vec3&) const
+glm::dvec3 Plane::normal(const glm::dvec3&) const
 {
 	return mNormal;
 }
 
 AABB Plane::getAABB() const
 {
-	constexpr float infinity = std::numeric_limits<float>::infinity();
+	constexpr double infinity = std::numeric_limits<double>::infinity();
 	if (mNormal.x == 0 && mNormal.y == 0)
-		return {glm::vec3(-infinity, -infinity, mOffset * mNormal.z), glm::vec3(infinity, infinity, mOffset * mNormal.z)};
+		return {glm::dvec3(-infinity, -infinity, mOffset * mNormal.z), glm::dvec3(infinity, infinity, mOffset * mNormal.z)};
 	if (mNormal.x == 0 && mNormal.z == 0)
-		return {glm::vec3(-infinity, mOffset * mNormal.y, -infinity), glm::vec3(infinity, mOffset * mNormal.y, infinity)};
+		return {glm::dvec3(-infinity, mOffset * mNormal.y, -infinity), glm::dvec3(infinity, mOffset * mNormal.y, infinity)};
 	if (mNormal.y == 0 && mNormal.z == 0)
-		return {glm::vec3(mOffset * mNormal.x, -infinity, -infinity), glm::vec3(mOffset * mNormal.z, infinity, infinity)};
-	return {glm::vec3{-infinity}, glm::vec3{infinity}};
+		return {glm::dvec3(mOffset * mNormal.x, -infinity, -infinity), glm::dvec3(mOffset * mNormal.z, infinity, infinity)};
+	return {glm::dvec3{-infinity}, glm::dvec3{infinity}};
 }

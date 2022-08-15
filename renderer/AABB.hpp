@@ -20,30 +20,30 @@
 class AABB
 {
 public:
-	AABB() : mMin(glm::vec3{std::numeric_limits<float>::infinity()}), mMax(glm::vec3{-std::numeric_limits<float>::infinity()})
+	AABB() : mMin(glm::dvec3{std::numeric_limits<double>::infinity()}), mMax(glm::dvec3{-std::numeric_limits<double>::infinity()})
 	{
 	}
 
-	AABB(const glm::vec3 min, const glm::vec3 max) : mMin(min), mMax(max)
+	AABB(const glm::dvec3 min, const glm::dvec3 max) : mMin(min), mMax(max)
 	{	
 	}
 
 
 	[[nodiscard]] bool unbounded() const
 	{
-		return mMin.x == -std::numeric_limits<float>::infinity() ||
-			mMin.y == -std::numeric_limits<float>::infinity() ||
-			mMin.z == -std::numeric_limits<float>::infinity() ||
-			mMax.x == std::numeric_limits<float>::infinity() ||
-			mMax.y == std::numeric_limits<float>::infinity() ||
-			mMax.z == std::numeric_limits<float>::infinity();
+		return mMin.x == -std::numeric_limits<double>::infinity() ||
+			mMin.y == -std::numeric_limits<double>::infinity() ||
+			mMin.z == -std::numeric_limits<double>::infinity() ||
+			mMax.x == std::numeric_limits<double>::infinity() ||
+			mMax.y == std::numeric_limits<double>::infinity() ||
+			mMax.z == std::numeric_limits<double>::infinity();
 	}
 
 	[[nodiscard]] uint64_t getLargestDimension() const
 	{
-		const float dx = glm::abs(mMax.x - mMin.x);
-		const float dy = glm::abs(mMax.y - mMin.y);
-		const float dz = glm::abs(mMax.z - mMin.z);
+		const double dx = glm::abs(mMax.x - mMin.x);
+		const double dy = glm::abs(mMax.y - mMin.y);
+		const double dz = glm::abs(mMax.z - mMin.z);
 		
 		if (dx > dy && dx > dz)
 			return 0;
@@ -52,12 +52,12 @@ public:
 		return 2;
 	}
 
-	[[nodiscard]] bool intersect(const Ray& ray, const glm::vec3& inverseDirection, float closestT) const
+	[[nodiscard]] bool intersect(const Ray& ray, const glm::dvec3& inverseDirection, const double closestT) const
 	{
-		float txmin = ((ray.getDirection().x < 0 ? mMax.x : mMin.x) - ray.getOrigin().x) * inverseDirection.x;
-		float txmax = ((ray.getDirection().x < 0 ? mMin.x : mMax.x) - ray.getOrigin().x) * inverseDirection.x;
-		const float tymin = ((ray.getDirection().y < 0 ? mMax.y : mMin.y) - ray.getOrigin().y) * inverseDirection.y;
-		const float tymax = ((ray.getDirection().y < 0 ? mMin.y : mMax.y) - ray.getOrigin().y) * inverseDirection.y;
+		double txmin = ((ray.getDirection().x < 0 ? mMax.x : mMin.x) - ray.getOrigin().x) * inverseDirection.x;
+		double txmax = ((ray.getDirection().x < 0 ? mMin.x : mMax.x) - ray.getOrigin().x) * inverseDirection.x;
+		const double tymin = ((ray.getDirection().y < 0 ? mMax.y : mMin.y) - ray.getOrigin().y) * inverseDirection.y;
+		const double tymax = ((ray.getDirection().y < 0 ? mMin.y : mMax.y) - ray.getOrigin().y) * inverseDirection.y;
 
 		if (txmin > tymax || tymin > txmax)
 			return false;
@@ -66,8 +66,8 @@ public:
 		if (tymax < txmax)
 			txmax = tymax;
 
-		const float tzmin = ((ray.getDirection().z < 0 ? mMax.z : mMin.z) - ray.getOrigin().z) * inverseDirection.z;
-		const float tzmax = ((ray.getDirection().z < 0 ? mMin.z : mMax.z) - ray.getOrigin().z) * inverseDirection.z;
+		const double tzmin = ((ray.getDirection().z < 0 ? mMax.z : mMin.z) - ray.getOrigin().z) * inverseDirection.z;
+		const double tzmax = ((ray.getDirection().z < 0 ? mMin.z : mMax.z) - ray.getOrigin().z) * inverseDirection.z;
 
 		if (txmin > tzmax || tzmin > txmax)
 			return false;
@@ -75,11 +75,11 @@ public:
 			txmin = tzmin;
 		if (tzmax < txmax)
 			txmax = tzmax;
-		return txmin < closestT && txmax > std::numeric_limits<float>::epsilon();
+		return txmin < closestT && txmax > std::numeric_limits<double>::epsilon();
 	}
 
-	[[nodiscard]] glm::vec3 getMin() const { return mMin; }
-	[[nodiscard]] glm::vec3 getMax() const { return mMax; }
+	[[nodiscard]] glm::dvec3 getMin() const { return mMin; }
+	[[nodiscard]] glm::dvec3 getMax() const { return mMax; }
 
 	void enclose(const AABB& other)
 	{
@@ -103,7 +103,7 @@ public:
 		this->mMax.z = glm::max(first.mMax.z, second.mMax.z);
 	}
 
-	void enclose(const glm::vec3& point)
+	void enclose(const glm::dvec3& point)
 	{
 		this->mMin.x = glm::min(this->mMin.x, point.x);
 		this->mMin.y = glm::min(this->mMin.y, point.y);
@@ -115,6 +115,6 @@ public:
 	}
 
 private:
-	glm::vec3 mMin;
-	glm::vec3 mMax;
+	glm::dvec3 mMin;
+	glm::dvec3 mMax;
 };

@@ -14,13 +14,13 @@
 
 #include "Specular.hpp"
 
-Specular::Specular(const glm::vec3 color) : Material(color)
+Specular::Specular(const glm::dvec3 color) : Material(color)
 {
 }
 
-glm::vec3 Specular::emit(Ray& ray, const glm::vec3 normal)
+glm::dvec3 Specular::emit(Ray& ray, const glm::dvec3 normal)
 {
-	const float cost = dot(ray.getDirection(), normal);
+	const double cost = dot(ray.getDirection(), normal);
 	ray.setDirection(normalize(ray.getDirection() - normal * (cost * 2)));
-	return glm::vec3{1.0f};
+	return glm::dvec3{1.0};
 }

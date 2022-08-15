@@ -18,23 +18,17 @@
 class Intersection
 {
 public:
-	Intersection() : mT(std::numeric_limits<float>::infinity()), mObject(nullptr)
+	Intersection() : t(std::numeric_limits<double>::infinity()), object(nullptr)
 	{
 	}
 
-	Intersection(const float t, std::shared_ptr<Object>& object) : mT(t), mObject(object)
+	Intersection(const double t, std::shared_ptr<Object>& object) : t(t), object(object)
 	{
 	}
 
-	explicit operator bool() const { return mObject != nullptr; }
+	explicit operator bool() const { return object != nullptr; }
 
-	[[nodiscard]] float getT() const { return mT; }
-	[[nodiscard]] std::shared_ptr<Object> getObject() const { return mObject; }
-	void setT(const float t) { mT = t; }
-	void setObject(const std::shared_ptr<Object>& object) { mObject = object; }
-
-private:
-	float mT;
-	std::shared_ptr<Object> mObject;
+	double t;
+	std::shared_ptr<Object> object;
 
 };

@@ -124,6 +124,9 @@
     <ClInclude Include="renderer\AABB.hpp">
       <Filter>renderer</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\Camera.hpp">
+      <Filter>renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="imgui">

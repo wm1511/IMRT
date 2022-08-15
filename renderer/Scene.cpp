@@ -28,17 +28,17 @@ Intersection Scene::intersect(const Ray& ray) const
 
     for (const auto& object : mUnboundedObjects)
     {
-	    const float t = object->intersect(ray);
-        if (t > std::numeric_limits<float>::epsilon() && t < closest.getT())
+	    const double t = object->intersect(ray);
+        if (t > std::numeric_limits<double>::epsilon() && t < closest.t)
         {
-	        closest.setT(t);
-            closest.setObject(object);
+	        closest.t = t;
+            closest.object = object;
         }
     }
 
     if (!mBVH.empty())
     {
-	    const glm::vec3 inverseDirection{1.0f / ray.getDirection()};
+	    const glm::vec3 inverseDirection{1.0 / ray.getDirection()};
 
         uint32_t stack[64];
         uint32_t nodeNumber = 0, stackSize = 0;
@@ -46,17 +46,17 @@ Intersection Scene::intersect(const Ray& ray) const
         while (true)
         {
 	        const BVHNode& node = mBVH[nodeNumber];
-            if(node.aabb.intersect(ray, inverseDirection, closest.getT()))
+            if(node.aabb.intersect(ray, inverseDirection, closest.t))
             {
 	            if (node.objectCount > 0)
 	            {
 		            for (uint64_t objectNumber = 0; objectNumber != node.objectCount; ++objectNumber)
 		            {
-			            const float t = mBoundedObjects[node.firstObjectIndex + objectNumber]->intersect(ray);
-                        if (t > std::numeric_limits<float>::epsilon() && t < closest.getT())
+			            const double t = mBoundedObjects[node.firstObjectIndex + objectNumber]->intersect(ray);
+                        if (t > std::numeric_limits<double>::epsilon() && t < closest.t)
                         {
-	                        closest.setT(t);
-                            closest.setObject(mBoundedObjects[node.firstObjectIndex + objectNumber]);
+	                        closest.t = t;
+                            closest.object = mBoundedObjects[node.firstObjectIndex + objectNumber];
                         }
 		            }
                     if (stackSize == 0)
@@ -154,24 +154,43 @@ Scene Scene::makeCornellBox()
     Scene scene;
 
     const auto specular = std::make_shared<Specular>(glm::vec3(4, 8, 4));
-    const auto refractive = std::make_shared<Refractive>(glm::vec3(10, 10, 1), 1.5f);
+    const auto refractive = std::make_shared<Refractive>(glm::vec3(10, 10, 1), 1.5);
     const auto blue = std::make_shared<Diffuse>(glm::vec3(4, 4, 12));
-    const auto light = std::make_shared<Diffuse>(glm::vec3(0, 0, 0), 10000.0f);
+    const auto light = std::make_shared<Diffuse>(glm::vec3(6, 2, 12), 10000.0);
     const auto gray = std::make_shared<Diffuse>(glm::vec3(6, 6, 6));
     const auto red = std::make_shared<Diffuse>(glm::vec3(10, 2, 2));
     const auto green = std::make_shared<Diffuse>(glm::vec3(2, 10, 2));
 
-	scene.add(std::make_shared<Sphere>(glm::vec3(-0.75, -1.45, -4.4), 1.05f), specular);
-    scene.add(std::make_shared<Sphere>(glm::vec3(2.0, -2.05, -3.7), 0.5f), refractive);
-    scene.add(std::make_shared<Sphere>(glm::vec3(-1.75, -1.95, -3.1), 0.6f), blue);
-    scene.add(std::make_shared<Sphere>(glm::vec3(0, 1.9, -3), 0.5f), light);
+	scene.add(std::make_shared<Sphere>(glm::vec3(-0.75, -1.45, -4.4), 1.05), specular);
+    scene.add(std::make_shared<Sphere>(glm::vec3(2.0, -2.05, -3.7), 0.5), refractive);
+    scene.add(std::make_shared<Sphere>(glm::vec3(-1.75, -1.95, -3.1), 0.6), blue);
+    scene.add(std::make_shared<Sphere>(glm::vec3(0, 1.9, -3), 0.5), light);
 
-    scene.add(std::make_shared<Plane>(glm::vec3(1, 0, 0), 2.75f), red);
-    scene.add(std::make_shared<Plane>(glm::vec3(-1, 0, 0), 2.75f), green);
-    scene.add(std::make_shared<Plane>(glm::vec3(0, 1, 0), 2.5f), gray);
-    scene.add(std::make_shared<Plane>(glm::vec3(0, -1, 0), 3.0f), gray);
-    scene.add(std::make_shared<Plane>(glm::vec3(0, 0, 1), 5.5f), gray);
-    scene.add(std::make_shared<Plane>(glm::vec3(0, 0, -1), 0.5f), gray);
+    scene.add(std::make_shared<Plane>(glm::vec3(1, 0, 0), 2.75), red);
+    scene.add(std::make_shared<Plane>(glm::vec3(-1, 0, 0), 2.75), green);
+    scene.add(std::make_shared<Plane>(glm::vec3(0, 1, 0), 2.5), gray);
+    scene.add(std::make_shared<Plane>(glm::vec3(0, -1, 0), 3.0), gray);
+    scene.add(std::make_shared<Plane>(glm::vec3(0, 0, 1), 5.5), gray);
+    scene.add(std::make_shared<Plane>(glm::vec3(0, 0, -1), 0.5), gray);
+
+    return scene;
+}
+
+Scene Scene::makeWall()
+{
+    Scene scene;
+
+    const auto gray = std::make_shared<Diffuse>(glm::vec3(6, 6, 6));
+    const auto refractive = std::make_shared<Refractive>(glm::vec3(10, 10, 10), 1.5);
+    const auto specular = std::make_shared<Specular>(glm::vec3(40, 40, 40));
+    const auto light = std::make_shared<Diffuse>(glm::vec3(6, 2, 12), 10000.0);
+
+    scene.add(std::make_shared<Sphere>(glm::vec3(0, 7, -1), 2.0), light);
+    scene.add(std::make_shared<Sphere>(glm::vec3(0.0, -2.0, -2.5), 1.0), refractive);
+    scene.add(std::make_shared<Sphere>(glm::vec3(2.0, 3.0, -4.5), 1.0), specular);
+
+    scene.add(std::make_shared<Plane>(glm::vec3(0, 0, 1), 5.5), gray);
+    scene.add(std::make_shared<Plane>(glm::vec3(0, 1, 0), 2.5), gray);
 
     return scene;
 }

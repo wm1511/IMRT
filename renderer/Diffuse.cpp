@@ -17,24 +17,24 @@
 
 #include <glm/gtc/random.hpp>
 
-Diffuse::Diffuse(const glm::vec3 color) : Material(color)
+Diffuse::Diffuse(const glm::dvec3 color) : Material(color)
 {
 }
 
-Diffuse::Diffuse(const glm::vec3 color, const float emission) : Material(color, emission)
+Diffuse::Diffuse(const glm::dvec3 color, const double emission) : Material(color, emission)
 {
 }
 
-glm::vec3 Diffuse::emit(Ray& ray, const glm::vec3 normal)
+glm::dvec3 Diffuse::emit(Ray& ray, const glm::dvec3 normal)
 {
-	glm::vec3 rotationX{0.0f}, rotationY{0.0f};
+	glm::dvec3 rotationX{0.0}, rotationY{0.0};
 	Utils::orthonormalize(normal, rotationX, rotationY);
-	const glm::vec3 randomDirection = Utils::hemisphereSample(glm::linearRand(0.0f, 1.0f), glm::linearRand(0.0f, 1.0f));
-	glm::vec3 rotatedDirection;
-	rotatedDirection.x = dot(glm::vec3(rotationX.x, rotationY.x, normal.x), randomDirection);
-	rotatedDirection.y = dot(glm::vec3(rotationX.y, rotationY.y, normal.y), randomDirection);
-	rotatedDirection.z = dot(glm::vec3(rotationX.z, rotationY.z, normal.z), randomDirection);
+	const glm::dvec3 randomDirection = Utils::hemisphereSample(glm::linearRand(0.0, 1.0), glm::linearRand(0.0, 1.0));
+	glm::dvec3 rotatedDirection;
+	rotatedDirection.x = dot(glm::dvec3(rotationX.x, rotationY.x, normal.x), randomDirection);
+	rotatedDirection.y = dot(glm::dvec3(rotationX.y, rotationY.y, normal.y), randomDirection);
+	rotatedDirection.z = dot(glm::dvec3(rotationX.z, rotationY.z, normal.z), randomDirection);
 	ray.setDirection(rotatedDirection);
-	const float cost = dot(ray.getDirection(), normal);
-	return cost * this->getColor() * 0.1f;
+	const double cost = dot(ray.getDirection(), normal);
+	return cost * this->getColor() * 0.1;
 }

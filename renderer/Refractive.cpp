@@ -16,28 +16,28 @@
 
 #include <glm/gtc/random.hpp>
 
-Refractive::Refractive(const glm::vec3 color, const float indexOfRefraction) : Material(color), mIndexOfRefraction(indexOfRefraction)
+Refractive::Refractive(const glm::dvec3 color, const double indexOfRefraction) : Material(color), mIndexOfRefraction(indexOfRefraction)
 {
 }
 
-glm::vec3 Refractive::emit(Ray& ray, const glm::vec3 normal)
+glm::dvec3 Refractive::emit(Ray& ray, const glm::dvec3 normal)
 {
-	float ior = this->getIndexOfRefraction();
-	glm::vec3 n = normal;
-	float r0 = (1.0f - ior) / (1.0f + ior);
+	double ior = this->getIndexOfRefraction();
+	glm::dvec3 n = normal;
+	double r0 = (1.0 - ior) / (1.0 + ior);
 	r0 = r0 * r0;
 	if (dot(normal, ray.getDirection()) > 0)
 	{
-		n = normal * -1.0f;
+		n = normal * -1.0;
 		ior = 1 / ior;
 	}
 	ior = 1 / ior;
-	const float cosTheta1 = dot(n, ray.getDirection()) * -1.0f;
-	const float cosTheta2 = 1.0f - ior * ior * (1.0f - cosTheta1 * cosTheta1);
-	const float reflCoeff = r0 + (1.0f - r0) * glm::pow(1.0f - cosTheta1, 5.0f);
-	if (cosTheta2 > 0 && glm::linearRand(0.0f, 1.0f) > reflCoeff)
+	const double cosTheta1 = dot(n, ray.getDirection()) * -1.0;
+	const double cosTheta2 = 1.0 - ior * ior * (1.0 - cosTheta1 * cosTheta1);
+	const double reflCoeff = r0 + (1.0 - r0) * glm::pow(1.0 - cosTheta1, 5.0);
+	if (cosTheta2 > 0 && glm::linearRand(0.0, 1.0) > reflCoeff)
 		ray.setDirection(normalize(ray.getDirection() * ior + n * (ior * cosTheta1 - glm::sqrt(cosTheta2))));
 	else
 		ray.setDirection(normalize(ray.getDirection() + n * (cosTheta1 * 2)));
-	return glm::vec3{1.15f};
+	return glm::dvec3{1.15};
 }
