@@ -153,7 +153,7 @@ Scene Scene::makeCornellBox()
 {
     Scene scene;
 
-    const auto specular = std::make_shared<Specular>(glm::vec3(4, 8, 4));
+    const auto specular = std::make_shared<Specular>(glm::vec3(12, 12, 12), 1.0);
     const auto refractive = std::make_shared<Refractive>(glm::vec3(10, 10, 1), 1.5);
     const auto blue = std::make_shared<Diffuse>(glm::vec3(4, 4, 12));
     const auto light = std::make_shared<Diffuse>(glm::vec3(6, 2, 12), 10000.0);
@@ -182,8 +182,8 @@ Scene Scene::makeWall()
 
     const auto gray = std::make_shared<Diffuse>(glm::vec3(6, 6, 6));
     const auto refractive = std::make_shared<Refractive>(glm::vec3(10, 10, 10), 1.5);
-    const auto specular = std::make_shared<Specular>(glm::vec3(40, 40, 40));
-    const auto light = std::make_shared<Diffuse>(glm::vec3(6, 2, 12), 10000.0);
+    const auto specular = std::make_shared<Specular>(glm::vec3(14, 14, 14), 0.5);
+    const auto light = std::make_shared<Diffuse>(glm::vec3(6, 2, 12), 5000.0);
 
     scene.add(std::make_shared<Sphere>(glm::vec3(0, 7, -1), 2.0), light);
     scene.add(std::make_shared<Sphere>(glm::vec3(0.0, -2.0, -2.5), 1.0), refractive);

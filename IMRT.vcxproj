@@ -204,7 +204,6 @@
     <ClInclude Include="renderer\Sphere.hpp" />
     <ClInclude Include="renderer\Plane.hpp" />
     <ClInclude Include="renderer\Renderer.hpp" />
-    <ClInclude Include="renderer\Utils.hpp" />
     <ClInclude Include="wrapper\App.hpp" />
     <ClInclude Include="wrapper\Image.hpp" />
     <ClInclude Include="wrapper\IDrawable.hpp" />

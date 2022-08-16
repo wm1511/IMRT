@@ -18,6 +18,7 @@
 #include "Scene.hpp"
 
 #include <memory>
+#include <functional>
 
 class Renderer final : public IDrawable
 {
@@ -27,17 +28,21 @@ public:
 private:
 	struct RenderInfo
 	{
-		int32_t sceneIndex{0}, samplesPerPixel{8};
-		glm::dvec3 lookOrigin{0.0, 0.0, 0.0}, lookTarget{-1.0, -1.5, -4.0};
-		float vfov{0.872f};
-		double aperture{0.0}, focusDistance{10.0};
+		int32_t sceneIndex{0}, traceType{0}, samplesPerPixel{8}, maxDepth{10}, rrCertainDepth{5};
+		glm::dvec3 lookOrigin{0.0, 0.0, 0.0}, lookTarget{0.0, -2.0, -2.5};
+		float vfov{1.5f};
+		double aperture{0.0}, focusDistance{10.0}, rrStopProbability{0.1};
 	};
 
-	[[nodiscard]] Scene prepareSelectedScene() const;
+	void assignFunctions();
 	void render();
-	glm::dvec3 trace(Ray& ray, const Scene& scene, int32_t depth);
+	static uint32_t convert(glm::dvec3 color);
+	glm::dvec3 rrTrace(Ray& ray, const Scene& scene, int32_t depth);
+	glm::dvec3 dTrace(Ray& ray, const Scene& scene, int32_t depth);
 
 	RenderInfo mRenderInfo;
+	std::function<Scene()> mPrepareScene = nullptr;
+	std::function<glm::dvec3(Renderer*, Ray&, const Scene&, int32_t)> mTrace = nullptr;
 	std::unique_ptr<Image> mImage;
 	uint32_t mHeight = 0, mWidth = 0;
 	uint32_t* mImageData = nullptr;

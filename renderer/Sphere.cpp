@@ -39,7 +39,7 @@ double Sphere::intersect(const Ray& ray) const
 
 glm::dvec3 Sphere::normal(const glm::dvec3& point) const
 {
-    return normalize(point - mCenter);
+    return (point - mCenter) / mRadius;
 }
 
 AABB Sphere::getAABB() const

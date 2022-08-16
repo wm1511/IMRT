@@ -118,9 +118,6 @@
     <ClInclude Include="renderer\Refractive.hpp">
       <Filter>renderer</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\Utils.hpp">
-      <Filter>renderer</Filter>
-    </ClInclude>
     <ClInclude Include="renderer\AABB.hpp">
       <Filter>renderer</Filter>
     </ClInclude>

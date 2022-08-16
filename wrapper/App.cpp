@@ -435,6 +435,7 @@ void App::initialize()
     {
         style.WindowRounding = 0.0f;
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+        style.ItemSpacing.y = 8.0f;
     }
 
     // Setup Platform/Renderer backends

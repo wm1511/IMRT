@@ -23,7 +23,7 @@ public:
 		mLensRadius = aperture / 2.0;
 	}
 
-	[[nodiscard]] Ray getRay(const double x, const double y) const
+	[[nodiscard]] Ray castRay(const double x, const double y) const
 	{
 		const glm::dvec3 randomOnLens = mLensRadius * normalize(
 			glm::dvec3(glm::linearRand(-1.0, 1.0), glm::linearRand(-1.0, 1.0), 0.0));

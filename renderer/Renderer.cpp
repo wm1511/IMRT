@@ -14,7 +14,7 @@
 
 #include "Renderer.hpp"
 #include "Camera.hpp"
-#include "Utils.hpp"
+
 
 #include "../imgui/imgui.h"
 #include <glm/gtc/random.hpp>
@@ -26,7 +26,7 @@
 void Renderer::draw()
 {
 	{
-		ImGui::ShowDemoWindow();
+		//ImGui::ShowDemoWindow();
 
 		ImGui::Begin("Control panel");
 		if (ImGui::Button("Render", {ImGui::GetContentRegionAvail().x, 0}))
@@ -43,15 +43,58 @@ void Renderer::draw()
 		if (ImGui::CollapsingHeader("Scene settings", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			const char* items[] = { "Cornell Box", "Wall" };
-			ImGui::Combo("Select render scene", &mRenderInfo.sceneIndex, items, IM_ARRAYSIZE(items));
+			ImGui::Combo("##SelectScene", &mRenderInfo.sceneIndex, items, IM_ARRAYSIZE(items));
+			if (ImGui::IsItemActive() || ImGui::IsItemHovered())
+				ImGui::SetTooltip("Select a scene to be rendered");
 		}
 
 		if (ImGui::CollapsingHeader("Quality settings", ImGuiTreeNodeFlags_DefaultOpen))
         {
-			ImGui::SliderInt("Samples per pixel", &mRenderInfo.samplesPerPixel, 1, 100000, "%d",
+			constexpr double zero = 0.0;
+			constexpr double one = 1.0;
+
+			ImGui::SliderInt("##spp", &mRenderInfo.samplesPerPixel, 1, INT16_MAX, "%d",
 							 ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			if (ImGui::IsItemActive() || ImGui::IsItemHovered())
-				ImGui::SetTooltip("CTRL+click to input value manually");
+				ImGui::SetTooltip("Count of samples generated for each pixel");
+
+			ImGui::Text("Recursion termination method");
+			ImGui::SameLine();
+			ImGui::RadioButton("Depth", &mRenderInfo.traceType, 0);
+			ImGui::SameLine();
+			ImGui::RadioButton("Russian roulette",&mRenderInfo.traceType, 1);
+
+			if (mRenderInfo.traceType != 0)
+				ImGui::BeginDisabled(true);
+			if (ImGui::TreeNode("Depth"))
+			{
+				ImGui::SliderInt("##MaxDepth", &mRenderInfo.maxDepth, 1, INT8_MAX, "%d",
+								 ImGuiSliderFlags_AlwaysClamp);
+				if (ImGui::IsItemActive() || ImGui::IsItemHovered())
+					ImGui::SetTooltip("Maximum depth, that recursion can achieve before being stopped");
+				ImGui::TreePop();
+			}
+			if (mRenderInfo.traceType != 0)
+				ImGui::EndDisabled();
+			
+			if (mRenderInfo.traceType != 1)
+				ImGui::BeginDisabled(true);
+			if (ImGui::TreeNode("Russian roulette"))
+			{
+				ImGui::SliderInt("##CertDepth", &mRenderInfo.rrCertainDepth, 1, INT8_MAX, "%d",
+								 ImGuiSliderFlags_AlwaysClamp);
+				if (ImGui::IsItemActive() || ImGui::IsItemHovered())
+					ImGui::SetTooltip("Recursion depth, that will be always achieved before stopping recursion");
+
+				ImGui::DragScalar("##StopProb", ImGuiDataType_Double, &mRenderInfo.rrStopProbability, 0.001f, &zero, &one, "%.3f");
+				if (ImGui::IsItemActive() || ImGui::IsItemHovered())
+					ImGui::SetTooltip("Probability to stop recursion");
+
+				ImGui::TreePop();
+			}
+			if (mRenderInfo.traceType != 1)
+				ImGui::EndDisabled();
+		
 		}
 
 		if (ImGui::CollapsingHeader("Camera settings", ImGuiTreeNodeFlags_DefaultOpen))
@@ -80,12 +123,12 @@ void Renderer::draw()
 			}
 			if (ImGui::TreeNode("Aperture"))
 			{
-				ImGui::DragScalar("diameter", ImGuiDataType_Double, &mRenderInfo.aperture, 0.001f, &zero, &max, "%.3f");
+				ImGui::DragScalar("##Aperture", ImGuiDataType_Double, &mRenderInfo.aperture, 0.001f, &zero, &max, "%.3f");
 				ImGui::TreePop();
 			}
 			if (ImGui::TreeNode("Focus distance"))
 			{
-				ImGui::DragScalar("distance", ImGuiDataType_Double, &mRenderInfo.focusDistance, 0.05f, &zero, &max, "%.3f");
+				ImGui::DragScalar("##FocusDist", ImGuiDataType_Double, &mRenderInfo.focusDistance, 0.05f, &zero, &max, "%.3f");
 				ImGui::TreePop();
 			}
 		}
@@ -106,41 +149,35 @@ void Renderer::draw()
 	}
 }
 
-Scene Renderer::prepareSelectedScene() const
+void Renderer::assignFunctions()
 {
-	if (mRenderInfo.sceneIndex == 1)
-		return Scene::makeWall();
-	return Scene::makeCornellBox();
-}
-
-glm::dvec3 Renderer::trace(Ray& ray, const Scene& scene, int32_t depth)
-{
-	glm::dvec3 color{};
-	double rrFactor = 1.0;
-	if (depth >= 5)
+	switch (mRenderInfo.sceneIndex)
 	{
-		constexpr double rrStopProbability = 0.1;
-		if (glm::linearRand(0.0, 1.0) <= rrStopProbability)
-			return glm::dvec3{0.0};
-		rrFactor = 1.0 / (1.0 - rrStopProbability);
+	default:
+	case 0:
+		mPrepareScene = &Scene::makeCornellBox;
+		break;
+	case 1:
+		mPrepareScene = &Scene::makeWall;
+		break;
 	}
 
-	const Intersection intersection = scene.intersect(ray);
-	if (!intersection)
-		return glm::dvec3{0.0};
-
-	const glm::dvec3 hitPoint = ray.getOrigin() + ray.getDirection() * intersection.t;
-	const glm::dvec3 normal = intersection.object->normal(hitPoint);
-	ray.setOrigin(hitPoint);
-
-	const glm::dvec3 colorChange = intersection.object->getMaterial()->emit(ray, normal);
-	const auto materialEmission = glm::dvec3{intersection.object->getMaterial()->getEmission()};
-	color += (trace(ray, scene, depth + 1) * colorChange + materialEmission) * rrFactor;
-	return color;
+	switch (mRenderInfo.traceType)
+	{
+	default:
+	case 0:
+		mTrace = &Renderer::dTrace;
+		break;
+	case 1:
+		mTrace = &Renderer::rrTrace;
+		break;
+	}
 }
 
 void Renderer::render()
 {
+	assignFunctions();
+
 	if (!mImage || mWidth != mImage->getWidth() || mHeight != mImage->getHeight())
 	{
 		mImage = std::make_unique<Image>(mWidth, mHeight);
@@ -155,7 +192,7 @@ void Renderer::render()
 						mRenderInfo.aperture,
 	                    mRenderInfo.focusDistance);
 
-	Scene scene = prepareSelectedScene();
+	Scene scene = mPrepareScene();
 	scene.rebuildBVH(1);
 
 	const auto start = std::chrono::high_resolution_clock::now();
@@ -168,14 +205,67 @@ void Renderer::render()
 			glm::dvec3 pixelColor{0.0};
 			for (int32_t k = 0; k < mRenderInfo.samplesPerPixel; k++)
 			{
-				Ray ray = camera.getRay((x + glm::linearRand(0.0, 1.0)) / mWidth, (y + glm::linearRand(0.0, 1.0)) / mHeight);
-				pixelColor += trace(ray, scene, 0) / static_cast<double>(mRenderInfo.samplesPerPixel);
+				Ray ray = camera.castRay((x + glm::linearRand(0.0, 1.0)) / mWidth, (y + glm::linearRand(0.0, 1.0)) / mHeight);
+				pixelColor += mTrace(this, ray, scene, 0) / static_cast<double>(mRenderInfo.samplesPerPixel);
 			}
-			mImageData[y * mWidth + x] = Utils::convert(clamp(pixelColor, 0.0, 255.0));
+			mImageData[y * mWidth + x] = convert(clamp(pixelColor, 0.0, 255.0));
 		}
 	}
 	mImage->setData(mImageData);
 
 	const auto duration = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start);
 	mRenderTime = duration.count();
+}
+
+glm::dvec3 Renderer::rrTrace(Ray& ray, const Scene& scene, int32_t depth)
+{
+	glm::dvec3 color{};
+	double rrFactor = 1.0;
+	if (depth >= mRenderInfo.rrCertainDepth)
+	{
+		if (glm::linearRand(0.0, 1.0) <= mRenderInfo.rrStopProbability)
+			return glm::dvec3{0.0};
+		rrFactor = 1.0 / (1.0 - mRenderInfo.rrStopProbability);
+	}
+
+	const Intersection intersection = scene.intersect(ray);
+	if (!intersection)
+		return glm::dvec3{0.0};
+
+	const glm::dvec3 hitPoint = ray.getOrigin() + ray.getDirection() * intersection.t;
+	const glm::dvec3 normal = intersection.object->normal(hitPoint);
+	ray.setOrigin(hitPoint);
+
+	const glm::dvec3 colorChange = intersection.object->getMaterial()->emit(ray, normal);
+	const auto materialEmission = glm::dvec3{intersection.object->getMaterial()->getEmission()};
+	color += (rrTrace(ray, scene, depth + 1) * colorChange + materialEmission) * rrFactor;
+	return color;
+}
+
+glm::dvec3 Renderer::dTrace(Ray& ray, const Scene& scene, int32_t depth)
+{
+	glm::dvec3 color{};
+	if (depth >= mRenderInfo.maxDepth)
+		return glm::dvec3{0.0};
+
+	const Intersection intersection = scene.intersect(ray);
+	if (!intersection)
+		return glm::dvec3{0.0};
+
+	const glm::dvec3 hitPoint = ray.getOrigin() + ray.getDirection() * intersection.t;
+	const glm::dvec3 normal = intersection.object->normal(hitPoint);
+	ray.setOrigin(hitPoint);
+
+	const glm::dvec3 colorChange = intersection.object->getMaterial()->emit(ray, normal);
+	const auto materialEmission = glm::dvec3{intersection.object->getMaterial()->getEmission()};
+	color += rrTrace(ray, scene, depth + 1) * colorChange + materialEmission;
+	return color;
+}
+
+uint32_t Renderer::convert(const glm::dvec3 color)
+{
+	return 0xff000000 |
+		static_cast<uint8_t>(color.b) << 16 |
+		static_cast<uint8_t>(color.g) << 8 |
+		static_cast<uint8_t>(color.r);
 }

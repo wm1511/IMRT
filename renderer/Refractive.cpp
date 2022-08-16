@@ -20,24 +20,24 @@ Refractive::Refractive(const glm::dvec3 color, const double indexOfRefraction) :
 {
 }
 
-glm::dvec3 Refractive::emit(Ray& ray, const glm::dvec3 normal)
+double approximateSchlick(const double cosTh, const double ior)
 {
-	double ior = this->getIndexOfRefraction();
-	glm::dvec3 n = normal;
 	double r0 = (1.0 - ior) / (1.0 + ior);
 	r0 = r0 * r0;
-	if (dot(normal, ray.getDirection()) > 0)
-	{
-		n = normal * -1.0;
-		ior = 1 / ior;
-	}
-	ior = 1 / ior;
+	return r0 + (1.0 - r0) * pow((1.0 - cosTh), 5);
+}
+
+glm::dvec3 Refractive::emit(Ray& ray, const glm::dvec3 normal)
+{
+	const bool inside = dot(normal, ray.getDirection()) > 0;
+	const double ior = inside ? mIndexOfRefraction : 1.0 / mIndexOfRefraction;
+	const glm::dvec3 n = inside ? -normal : normal;
+
 	const double cosTheta1 = dot(n, ray.getDirection()) * -1.0;
 	const double cosTheta2 = 1.0 - ior * ior * (1.0 - cosTheta1 * cosTheta1);
-	const double reflCoeff = r0 + (1.0 - r0) * glm::pow(1.0 - cosTheta1, 5.0);
-	if (cosTheta2 > 0 && glm::linearRand(0.0, 1.0) > reflCoeff)
+	if (cosTheta2 > 0 && glm::linearRand(0.0, 1.0) > approximateSchlick(cosTheta1, ior))
 		ray.setDirection(normalize(ray.getDirection() * ior + n * (ior * cosTheta1 - glm::sqrt(cosTheta2))));
 	else
 		ray.setDirection(normalize(ray.getDirection() + n * (cosTheta1 * 2)));
-	return glm::dvec3{1.15};
+	return glm::dvec3{1.0};
 }

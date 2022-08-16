@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "Diffuse.hpp"
-#include "Utils.hpp"
 
 #include <glm/gtc/random.hpp>
 
@@ -27,14 +26,7 @@ Diffuse::Diffuse(const glm::dvec3 color, const double emission) : Material(color
 
 glm::dvec3 Diffuse::emit(Ray& ray, const glm::dvec3 normal)
 {
-	glm::dvec3 rotationX{0.0}, rotationY{0.0};
-	Utils::orthonormalize(normal, rotationX, rotationY);
-	const glm::dvec3 randomDirection = Utils::hemisphereSample(glm::linearRand(0.0, 1.0), glm::linearRand(0.0, 1.0));
-	glm::dvec3 rotatedDirection;
-	rotatedDirection.x = dot(glm::dvec3(rotationX.x, rotationY.x, normal.x), randomDirection);
-	rotatedDirection.y = dot(glm::dvec3(rotationX.y, rotationY.y, normal.y), randomDirection);
-	rotatedDirection.z = dot(glm::dvec3(rotationX.z, rotationY.z, normal.z), randomDirection);
-	ray.setDirection(rotatedDirection);
+	ray.setDirection(normalize(glm::sphericalRand(1.0) + normal));
 	const double cost = dot(ray.getDirection(), normal);
 	return cost * this->getColor() * 0.1;
 }
