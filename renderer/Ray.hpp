@@ -19,18 +19,11 @@
 class Ray
 {
 public:
-	explicit Ray(const glm::dvec3 origin = glm::dvec3{0.0},
-	             const glm::dvec3 direction = glm::dvec3{0.0}) : mOrigin(origin), mDirection(normalize(direction))
+	explicit Ray(const glm::dvec3 origin = glm::dvec3{0.0}, const glm::dvec3 direction = glm::dvec3{0.0}) :
+		origin(origin), direction(normalize(direction))
 	{
 	}
 
-	[[nodiscard]] glm::dvec3 getOrigin() const { return mOrigin; }
-	[[nodiscard]] glm::dvec3 getDirection() const { return mDirection; }
-
-	void setOrigin(const glm::dvec3 origin) { mOrigin = origin; }
-	void setDirection(const glm::dvec3 direction) { mDirection = direction; }
-
-private:
-	glm::dvec3 mOrigin, mDirection;
+	glm::dvec3 origin, direction;
 
 };

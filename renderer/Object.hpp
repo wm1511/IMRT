@@ -23,17 +23,10 @@ class Object
 public:
 	virtual ~Object() = default;
 
-	void setMaterial(const std::shared_ptr<Material>& material)
-	{
-		mMaterial = material;
-	}
-
 	[[nodiscard]] virtual double intersect(const Ray&) const = 0;
 	[[nodiscard]] virtual glm::dvec3 normal(const glm::dvec3&) const = 0;
-	[[nodiscard]] virtual std::shared_ptr<Material> getMaterial() const { return mMaterial; }
 	[[nodiscard]] virtual AABB getAABB() const = 0;
 
-private:
-	std::shared_ptr<Material> mMaterial;
+	std::shared_ptr<Material> material;
 
 };

@@ -18,11 +18,11 @@
 class Specular final : public Material
 {
 public:
-	explicit Specular(glm::dvec3 color, double glossiness);
+	explicit Specular(glm::dvec3 color, double blurriness);
 
-	glm::dvec3 emit(Ray& ray, glm::dvec3 normal) override;
+	glm::dvec3 scatter(Ray& ray, glm::dvec3 normal) override;
 
 private:
-	double mDimness = 1.0;
+	double mBlurriness = 0.0;
 
 };

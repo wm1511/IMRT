@@ -50,6 +50,12 @@
     <ClCompile Include="renderer\Refractive.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
+    <ClCompile Include="renderer\SceneBuilder.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\Triangle.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imstb_truetype.h">
@@ -122,6 +128,12 @@
       <Filter>renderer</Filter>
     </ClInclude>
     <ClInclude Include="renderer\Camera.hpp">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\SceneBuilder.hpp">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\Triangle.hpp">
       <Filter>renderer</Filter>
     </ClInclude>
   </ItemGroup>

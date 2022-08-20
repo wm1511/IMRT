@@ -176,9 +176,11 @@
     <ClCompile Include="renderer\Refractive.cpp" />
     <ClCompile Include="renderer\Renderer.cpp" />
     <ClCompile Include="renderer\Scene.cpp" />
+    <ClCompile Include="renderer\SceneBuilder.cpp" />
     <ClCompile Include="renderer\Specular.cpp" />
     <ClCompile Include="renderer\Sphere.cpp" />
     <ClCompile Include="renderer\Plane.cpp" />
+    <ClCompile Include="renderer\Triangle.cpp" />
     <ClCompile Include="wrapper\App.cpp" />
     <ClCompile Include="wrapper\Image.cpp" />
   </ItemGroup>
@@ -199,11 +201,13 @@
     <ClInclude Include="renderer\Object.hpp" />
     <ClInclude Include="renderer\Ray.hpp" />
     <ClInclude Include="renderer\Refractive.hpp" />
+    <ClInclude Include="renderer\SceneBuilder.hpp" />
     <ClInclude Include="renderer\Specular.hpp" />
     <ClInclude Include="renderer\Scene.hpp" />
     <ClInclude Include="renderer\Sphere.hpp" />
     <ClInclude Include="renderer\Plane.hpp" />
     <ClInclude Include="renderer\Renderer.hpp" />
+    <ClInclude Include="renderer\Triangle.hpp" />
     <ClInclude Include="wrapper\App.hpp" />
     <ClInclude Include="wrapper\Image.hpp" />
     <ClInclude Include="wrapper\IDrawable.hpp" />

@@ -22,8 +22,8 @@ Sphere::Sphere(const glm::dvec3 center = {0.0f, 0.0f, 0.0f}, const double radius
 
 double Sphere::intersect(const Ray& ray) const
 {
-	const double b = dot(2.0 * (ray.getOrigin() - mCenter), ray.getDirection());
-	const double c = dot(ray.getOrigin() - mCenter, ray.getOrigin() - mCenter) - mRadius * mRadius;
+	const double b = dot(2.0 * (ray.origin - mCenter), ray.direction);
+	const double c = dot(ray.origin - mCenter, ray.origin - mCenter) - mRadius * mRadius;
 	double discriminant = b * b - 4 * c;
 	if (discriminant < 0)
 		return 0.0;

@@ -68,17 +68,12 @@ class Scene
 	};
 
 public:
-	[[nodiscard]] static Scene makeCornellBox();
-	[[nodiscard]] static Scene makeWall();
-
 	[[nodiscard]] Intersection intersect(const Ray& ray) const;
-	void rebuildBVH(uint8_t maxObjectsPerLeaf);
+ 	void rebuildBVH(uint8_t maxObjectsPerLeaf);
+	void add(std::shared_ptr<Object> object, const std::shared_ptr<Material>& material);
 
 private:
-	Scene() = default;
-	void add(std::shared_ptr<Object> object, const std::shared_ptr<Material>& material);
 	void splitBoundsRecursively(std::vector<BoundInfo>::iterator begin, std::vector<BoundInfo>::iterator end, uint8_t maxObjectsPerLeaf);
-
 
 	std::vector<std::shared_ptr<Object>> mBoundedObjects;
 	std::vector<std::shared_ptr<Object>> mUnboundedObjects;

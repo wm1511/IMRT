@@ -12,21 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "Diffuse.hpp"
+#pragma once
+#include "Scene.hpp"
 
-#include <glm/gtc/random.hpp>
 
-Diffuse::Diffuse(const glm::dvec3 color) : Material(color)
+class SceneBuilder
 {
-}
+public:
+	SceneBuilder() = delete;
 
-Diffuse::Diffuse(const glm::dvec3 color, const double emission) : Material(color, emission)
-{
-}
+	[[nodiscard]] static Scene makeCornellBox();
+	[[nodiscard]] static Scene makeUkraine();
+	[[nodiscard]] static Scene makeChoinka();
 
-glm::dvec3 Diffuse::scatter(Ray& ray, const glm::dvec3 normal)
-{
-	ray.direction = normalize(glm::sphericalRand(1.0) + normal);
-	const double cost = dot(ray.direction, normal);
-	return cost * this->color;
-}
+};
+

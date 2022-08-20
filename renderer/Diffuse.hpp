@@ -21,6 +21,6 @@ public:
 	explicit Diffuse(glm::dvec3 color);
 	explicit Diffuse(glm::dvec3 color, double emission);
 
-	glm::dvec3 emit(Ray& ray, glm::dvec3 normal) override;
+	glm::dvec3 scatter(Ray& ray, glm::dvec3 normal) override;
 
 };

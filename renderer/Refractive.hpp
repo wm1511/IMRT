@@ -20,8 +20,7 @@ class Refractive final : public Material
 public:
 	Refractive(glm::dvec3 color, double indexOfRefraction);
 
-	glm::dvec3 emit(Ray& ray, glm::dvec3 normal) override;
-	[[nodiscard]] double getIndexOfRefraction() const { return mIndexOfRefraction; }
+	glm::dvec3 scatter(Ray& ray, glm::dvec3 normal) override;
 
 private:
 	double mIndexOfRefraction = 1.0;

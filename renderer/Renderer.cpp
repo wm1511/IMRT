@@ -15,7 +15,6 @@
 #include "Renderer.hpp"
 #include "Camera.hpp"
 
-
 #include "../imgui/imgui.h"
 #include <glm/gtc/random.hpp>
 
@@ -42,10 +41,40 @@ void Renderer::draw()
 
 		if (ImGui::CollapsingHeader("Scene settings", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			const char* items[] = { "Cornell Box", "Wall" };
+			const char* items[] = { "Cornell Box", "Ukraine", "Choinka"};
 			ImGui::Combo("##SelectScene", &mRenderInfo.sceneIndex, items, IM_ARRAYSIZE(items));
 			if (ImGui::IsItemActive() || ImGui::IsItemHovered())
 				ImGui::SetTooltip("Select a scene to be rendered");
+			if (ImGui::IsItemEdited())
+			{
+				if (mRenderInfo.sceneIndex == 0)
+				{
+					mRenderInfo.lookOrigin = {0.0, 0.0, 0.0};
+					mRenderInfo.lookTarget = {-1.0, -1.5, -4.5};
+					mRenderInfo.vfov = 1.5f;
+					mRenderInfo.aperture = 0.0;
+					mRenderInfo.focusDistance = 10.0;
+					mPrepareScene = &SceneBuilder::makeCornellBox;
+				}
+				else if (mRenderInfo.sceneIndex == 1)
+				{
+					mRenderInfo.lookOrigin = {0.0, 0.0, 0.0};
+					mRenderInfo.lookTarget = {0.0, -0.5, -2.5};
+					mRenderInfo.vfov = 1.5f;
+					mRenderInfo.aperture = 0.1;
+					mRenderInfo.focusDistance = 10.0;
+					mPrepareScene = &SceneBuilder::makeUkraine;
+				}
+				else if (mRenderInfo.sceneIndex == 2)
+				{
+					mRenderInfo.lookOrigin = {0.0, 0.0, 0.0};
+					mRenderInfo.lookTarget = {0.0, 0.0, -1.0};
+					mRenderInfo.vfov = 1.5f;
+					mRenderInfo.aperture = 0.0;
+					mRenderInfo.focusDistance = 10.0;
+					mPrepareScene = &SceneBuilder::makeChoinka;
+				}
+			}
 		}
 
 		if (ImGui::CollapsingHeader("Quality settings", ImGuiTreeNodeFlags_DefaultOpen))
@@ -63,6 +92,13 @@ void Renderer::draw()
 			ImGui::RadioButton("Depth", &mRenderInfo.traceType, 0);
 			ImGui::SameLine();
 			ImGui::RadioButton("Russian roulette",&mRenderInfo.traceType, 1);
+			if (ImGui::IsItemEdited())
+			{
+				if (mRenderInfo.traceType == 0)
+					mTrace = &Renderer::dTrace;
+				else if (mRenderInfo.traceType == 1)
+					mTrace = &Renderer::rrTrace;
+			}
 
 			if (mRenderInfo.traceType != 0)
 				ImGui::BeginDisabled(true);
@@ -149,41 +185,17 @@ void Renderer::draw()
 	}
 }
 
-void Renderer::assignFunctions()
-{
-	switch (mRenderInfo.sceneIndex)
-	{
-	default:
-	case 0:
-		mPrepareScene = &Scene::makeCornellBox;
-		break;
-	case 1:
-		mPrepareScene = &Scene::makeWall;
-		break;
-	}
-
-	switch (mRenderInfo.traceType)
-	{
-	default:
-	case 0:
-		mTrace = &Renderer::dTrace;
-		break;
-	case 1:
-		mTrace = &Renderer::rrTrace;
-		break;
-	}
-}
-
 void Renderer::render()
 {
-	assignFunctions();
-
 	if (!mImage || mWidth != mImage->getWidth() || mHeight != mImage->getHeight())
 	{
 		mImage = std::make_unique<Image>(mWidth, mHeight);
 		delete[] mImageData;
-		mImageData = new uint32_t[static_cast<uint64_t>(mWidth * mHeight)];
+		mImageData = new uint32_t[static_cast<uint64_t>(mWidth) * mHeight];
 	}
+
+	Scene scene = mPrepareScene();
+	scene.rebuildBVH(1);
 
 	const Camera camera(mRenderInfo.lookOrigin, 
 						mRenderInfo.lookTarget, 
@@ -191,9 +203,6 @@ void Renderer::render()
 	                    static_cast<double>(mWidth) / static_cast<double>(mHeight), 
 						mRenderInfo.aperture,
 	                    mRenderInfo.focusDistance);
-
-	Scene scene = mPrepareScene();
-	scene.rebuildBVH(1);
 
 	const auto start = std::chrono::high_resolution_clock::now();
 
@@ -232,12 +241,12 @@ glm::dvec3 Renderer::rrTrace(Ray& ray, const Scene& scene, int32_t depth)
 	if (!intersection)
 		return glm::dvec3{0.0};
 
-	const glm::dvec3 hitPoint = ray.getOrigin() + ray.getDirection() * intersection.t;
+	const glm::dvec3 hitPoint = ray.origin + ray.direction * intersection.t;
 	const glm::dvec3 normal = intersection.object->normal(hitPoint);
-	ray.setOrigin(hitPoint);
+	ray.origin = hitPoint;
 
-	const glm::dvec3 colorChange = intersection.object->getMaterial()->emit(ray, normal);
-	const auto materialEmission = glm::dvec3{intersection.object->getMaterial()->getEmission()};
+	const glm::dvec3 colorChange = intersection.object->material->scatter(ray, normal);
+	const auto materialEmission = glm::dvec3{intersection.object->material->emission};
 	color += (rrTrace(ray, scene, depth + 1) * colorChange + materialEmission) * rrFactor;
 	return color;
 }
@@ -252,13 +261,13 @@ glm::dvec3 Renderer::dTrace(Ray& ray, const Scene& scene, int32_t depth)
 	if (!intersection)
 		return glm::dvec3{0.0};
 
-	const glm::dvec3 hitPoint = ray.getOrigin() + ray.getDirection() * intersection.t;
+	const glm::dvec3 hitPoint = ray.origin + ray.direction * intersection.t;
 	const glm::dvec3 normal = intersection.object->normal(hitPoint);
-	ray.setOrigin(hitPoint);
+	ray.origin = hitPoint;
 
-	const glm::dvec3 colorChange = intersection.object->getMaterial()->emit(ray, normal);
-	const auto materialEmission = glm::dvec3{intersection.object->getMaterial()->getEmission()};
-	color += rrTrace(ray, scene, depth + 1) * colorChange + materialEmission;
+	const glm::dvec3 colorChange = intersection.object->material->scatter(ray, normal);
+	const auto materialEmission = glm::dvec3{intersection.object->material->emission};
+	color += dTrace(ray, scene, depth + 1) * colorChange + materialEmission;
 	return color;
 }
 

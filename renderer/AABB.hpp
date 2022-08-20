@@ -54,10 +54,10 @@ public:
 
 	[[nodiscard]] bool intersect(const Ray& ray, const glm::dvec3& inverseDirection, const double closestT) const
 	{
-		double txmin = ((ray.getDirection().x < 0 ? mMax.x : mMin.x) - ray.getOrigin().x) * inverseDirection.x;
-		double txmax = ((ray.getDirection().x < 0 ? mMin.x : mMax.x) - ray.getOrigin().x) * inverseDirection.x;
-		const double tymin = ((ray.getDirection().y < 0 ? mMax.y : mMin.y) - ray.getOrigin().y) * inverseDirection.y;
-		const double tymax = ((ray.getDirection().y < 0 ? mMin.y : mMax.y) - ray.getOrigin().y) * inverseDirection.y;
+		double txmax = ((ray.direction.x < 0 ? mMin.x : mMax.x) - ray.origin.x) * inverseDirection.x;
+		double txmin = ((ray.direction.x < 0 ? mMax.x : mMin.x) - ray.origin.x) * inverseDirection.x;
+		const double tymin = ((ray.direction.y < 0 ? mMax.y : mMin.y) - ray.origin.y) * inverseDirection.y;
+		const double tymax = ((ray.direction.y < 0 ? mMin.y : mMax.y) - ray.origin.y) * inverseDirection.y;
 
 		if (txmin > tymax || tymin > txmax)
 			return false;
@@ -66,8 +66,8 @@ public:
 		if (tymax < txmax)
 			txmax = tymax;
 
-		const double tzmin = ((ray.getDirection().z < 0 ? mMax.z : mMin.z) - ray.getOrigin().z) * inverseDirection.z;
-		const double tzmax = ((ray.getDirection().z < 0 ? mMin.z : mMax.z) - ray.getOrigin().z) * inverseDirection.z;
+		const double tzmin = ((ray.direction.z < 0 ? mMax.z : mMin.z) - ray.origin.z) * inverseDirection.z;
+		const double tzmax = ((ray.direction.z < 0 ? mMin.z : mMax.z) - ray.origin.z) * inverseDirection.z;
 
 		if (txmin > tzmax || tzmin > txmax)
 			return false;

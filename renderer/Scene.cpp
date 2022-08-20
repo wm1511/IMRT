@@ -14,12 +14,6 @@
 
 #include "Scene.hpp"
 
-#include "Sphere.hpp"
-#include "Plane.hpp"
-#include "Diffuse.hpp"
-#include "Specular.hpp"
-#include "Refractive.hpp"
-
 #include <algorithm>
 
 Intersection Scene::intersect(const Ray& ray) const
@@ -38,7 +32,7 @@ Intersection Scene::intersect(const Ray& ray) const
 
     if (!mBVH.empty())
     {
-	    const glm::vec3 inverseDirection{1.0 / ray.getDirection()};
+        const glm::vec3 inverseDirection{1.0 / ray.direction};
 
         uint32_t stack[64];
         uint32_t nodeNumber = 0, stackSize = 0;
@@ -46,7 +40,7 @@ Intersection Scene::intersect(const Ray& ray) const
         while (true)
         {
 	        const BVHNode& node = mBVH[nodeNumber];
-            if(node.aabb.intersect(ray, inverseDirection, closest.t))
+            if (node.aabb.intersect(ray, inverseDirection, closest.t))
             {
 	            if (node.objectCount > 0)
 	            {
@@ -65,7 +59,7 @@ Intersection Scene::intersect(const Ray& ray) const
 	            }
                 else
                 {
-	                if (ray.getDirection()[node.splitAxis] < 0)
+	                if (ray.direction[node.splitAxis] < 0)
 	                {
 		                stack[stackSize++] = nodeNumber + 1;
                         nodeNumber = node.secondChildIndex;
@@ -91,7 +85,7 @@ Intersection Scene::intersect(const Ray& ray) const
 
 void Scene::add(std::shared_ptr<Object> object, const std::shared_ptr<Material>& material)
 {
-    object->setMaterial(material);
+    object->material = material;
     if (object->getAABB().unbounded())
 		mUnboundedObjects.push_back(std::move(object));
     else
@@ -110,7 +104,7 @@ void Scene::rebuildBVH(uint8_t maxObjectsPerLeaf)
     mBoundedObjects.clear();
     mBoundedObjects.reserve(mBoundInfos.size());
     for (auto& boundInfo : mBoundInfos)
-        mBoundedObjects.emplace_back(std::move(boundInfo.getObject()));
+        mBoundedObjects.emplace_back(boundInfo.getObject());
 }
 
 void Scene::splitBoundsRecursively(const std::vector<BoundInfo>::iterator begin,
@@ -147,50 +141,4 @@ void Scene::splitBoundsRecursively(const std::vector<BoundInfo>::iterator begin,
 
         thisNode->aabb.enclose(mBVH[firstChildIndex].aabb, mBVH[thisNode->secondChildIndex].aabb);
     }
-}
-
-Scene Scene::makeCornellBox()
-{
-    Scene scene;
-
-    const auto specular = std::make_shared<Specular>(glm::vec3(12, 12, 12), 1.0);
-    const auto refractive = std::make_shared<Refractive>(glm::vec3(10, 10, 1), 1.5);
-    const auto blue = std::make_shared<Diffuse>(glm::vec3(4, 4, 12));
-    const auto light = std::make_shared<Diffuse>(glm::vec3(6, 2, 12), 10000.0);
-    const auto gray = std::make_shared<Diffuse>(glm::vec3(6, 6, 6));
-    const auto red = std::make_shared<Diffuse>(glm::vec3(10, 2, 2));
-    const auto green = std::make_shared<Diffuse>(glm::vec3(2, 10, 2));
-
-	scene.add(std::make_shared<Sphere>(glm::vec3(-0.75, -1.45, -4.4), 1.05), specular);
-    scene.add(std::make_shared<Sphere>(glm::vec3(2.0, -2.05, -3.7), 0.5), refractive);
-    scene.add(std::make_shared<Sphere>(glm::vec3(-1.75, -1.95, -3.1), 0.6), blue);
-    scene.add(std::make_shared<Sphere>(glm::vec3(0, 1.9, -3), 0.5), light);
-
-    scene.add(std::make_shared<Plane>(glm::vec3(1, 0, 0), 2.75), red);
-    scene.add(std::make_shared<Plane>(glm::vec3(-1, 0, 0), 2.75), green);
-    scene.add(std::make_shared<Plane>(glm::vec3(0, 1, 0), 2.5), gray);
-    scene.add(std::make_shared<Plane>(glm::vec3(0, -1, 0), 3.0), gray);
-    scene.add(std::make_shared<Plane>(glm::vec3(0, 0, 1), 5.5), gray);
-    scene.add(std::make_shared<Plane>(glm::vec3(0, 0, -1), 0.5), gray);
-
-    return scene;
-}
-
-Scene Scene::makeWall()
-{
-    Scene scene;
-
-    const auto gray = std::make_shared<Diffuse>(glm::vec3(6, 6, 6));
-    const auto refractive = std::make_shared<Refractive>(glm::vec3(10, 10, 10), 1.5);
-    const auto specular = std::make_shared<Specular>(glm::vec3(14, 14, 14), 0.5);
-    const auto light = std::make_shared<Diffuse>(glm::vec3(6, 2, 12), 5000.0);
-
-    scene.add(std::make_shared<Sphere>(glm::vec3(0, 7, -1), 2.0), light);
-    scene.add(std::make_shared<Sphere>(glm::vec3(0.0, -2.0, -2.5), 1.0), refractive);
-    scene.add(std::make_shared<Sphere>(glm::vec3(2.0, 3.0, -4.5), 1.0), specular);
-
-    scene.add(std::make_shared<Plane>(glm::vec3(0, 0, 1), 5.5), gray);
-    scene.add(std::make_shared<Plane>(glm::vec3(0, 1, 0), 2.5), gray);
-
-    return scene;
 }

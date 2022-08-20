@@ -16,13 +16,13 @@
 
 #include <glm/gtc/random.hpp>
 
-Specular::Specular(const glm::dvec3 color, const double glossiness) : Material(color), mDimness(1.0 - glossiness)
+Specular::Specular(const glm::dvec3 color, const double blurriness) : Material(color), mBlurriness(blurriness)
 {
 }
 
-glm::dvec3 Specular::emit(Ray& ray, const glm::dvec3 normal)
+glm::dvec3 Specular::scatter(Ray& ray, const glm::dvec3 normal)
 {
-	const double cost = dot(ray.getDirection(), normal);
-	ray.setDirection(normalize(ray.getDirection() - normal * 2.0 * cost + mDimness * glm::sphericalRand(1.0)));
+	const double cost = dot(ray.direction, normal);
+	ray.direction = normalize(ray.direction - normal * 2.0 * cost + mBlurriness * glm::sphericalRand(1.0));
 	return glm::dvec3{1.0};
 }

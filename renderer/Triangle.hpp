@@ -12,21 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "Diffuse.hpp"
+#pragma once
+#include "Object.hpp"
 
-#include <glm/gtc/random.hpp>
-
-Diffuse::Diffuse(const glm::dvec3 color) : Material(color)
+class Triangle final : public Object
 {
-}
+	public:
+	Triangle(const glm::dvec3 v0, const glm::dvec3 v1, const glm::dvec3 v2) : mV0(v0), mV1(v1), mV2(v2)
+	{
+	}
 
-Diffuse::Diffuse(const glm::dvec3 color, const double emission) : Material(color, emission)
-{
-}
+	[[nodiscard]] double intersect(const Ray& ray) const override;
+	[[nodiscard]] glm::dvec3 normal(const glm::dvec3&) const override;
+	[[nodiscard]] AABB getAABB() const override;
 
-glm::dvec3 Diffuse::scatter(Ray& ray, const glm::dvec3 normal)
-{
-	ray.direction = normalize(glm::sphericalRand(1.0) + normal);
-	const double cost = dot(ray.direction, normal);
-	return cost * this->color;
-}
+private:
+	glm::dvec3 mV0, mV1, mV2;
+};

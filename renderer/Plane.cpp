@@ -22,10 +22,10 @@ Plane::Plane(const glm::dvec3 normal = {0.0, 0.0, 0.0}, const double offset = 0.
 
 double Plane::intersect(const Ray& ray) const
 {
-	const double angle = dot(mNormal, ray.getDirection());
+	const double angle = dot(mNormal, ray.direction);
 	if (glm::abs(angle) > std::numeric_limits<double>::epsilon())
 	{
-		const double t = -1.0 * ((dot(mNormal, ray.getOrigin()) + mOffset) / angle);
+		const double t = -1.0 * ((dot(mNormal, ray.origin) + mOffset) / angle);
 		return t > std::numeric_limits<double>::epsilon() ? t : 0;
 	}
 	return 0.0;
