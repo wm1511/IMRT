@@ -1,17 +1,3 @@
-// Copyright (c) 2022, Wiktor Merta
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 #pragma once
 #include "Ray.hpp"
 
@@ -20,36 +6,36 @@
 class Camera
 {
 public:
-	Camera(glm::dvec3 lookOrigin, glm::dvec3 lookTarget, float vfov, double aspectRatio, double aperture, double focusDistance)
+	Camera(glm::dvec3 look_origin, glm::dvec3 look_target, float vfov, double aspect_ratio, double aperture, double focus_distance)
 	{
-		double viewportHeight = 2.0 * static_cast<double>(glm::tan(vfov / 2));
-		double viewportWidth = viewportHeight * aspectRatio;
+		double viewport_height = 2.0 * static_cast<double>(glm::tan(vfov / 2));
+		double viewport_width = viewport_height * aspect_ratio;
 
-		glm::dvec3 cameraDirection = normalize(lookOrigin - lookTarget);
-		u = normalize(cross({0.0, -1.0, 0.0}, cameraDirection));
-		v = cross(cameraDirection, u);
+		glm::dvec3 camera_direction = normalize(look_origin - look_target);
+		u_ = normalize(cross({0.0, -1.0, 0.0}, camera_direction));
+		v_ = cross(camera_direction, u_);
 
-		mOrigin = lookOrigin;
-		mHorizontalMap = focusDistance * viewportWidth * u;
-		mVerticalMap = focusDistance * viewportHeight * v;
-		mStart = mOrigin - mHorizontalMap / 2.0 - mVerticalMap / 2.0 - focusDistance * cameraDirection;
-		mLensRadius = aperture / 2.0;
+		origin_ = look_origin;
+		horizontal_map_ = focus_distance * viewport_width * u_;
+		vertical_map_ = focus_distance * viewport_height * v_;
+		start_ = origin_ - horizontal_map_ / 2.0 - vertical_map_ / 2.0 - focus_distance * camera_direction;
+		lens_radius_ = aperture / 2.0;
 	}
 
-	[[nodiscard]] Ray castRay(const double x, const double y) const
+	[[nodiscard]] Ray CastRay(const double x, const double y) const
 	{
-		const glm::dvec3 randomOnLens = mLensRadius * normalize(
+		const glm::dvec3 random_on_lens = lens_radius_ * normalize(
 			glm::dvec3(glm::linearRand(-1.0, 1.0), glm::linearRand(-1.0, 1.0), 0.0));
-		const glm::dvec3 offset = u * randomOnLens.x + v * randomOnLens.y;
-		return Ray(mOrigin + offset, mStart + x * mHorizontalMap + y * mVerticalMap - mOrigin - offset);
+		const glm::dvec3 offset = u_ * random_on_lens.x + v_ * random_on_lens.y;
+		return Ray(origin_ + offset, start_ + x * horizontal_map_ + y * vertical_map_ - origin_ - offset);
 	}
 
 private:
-	glm::dvec3 mOrigin{};
-	glm::dvec3 mStart{};
-	glm::dvec3 mHorizontalMap{};
-	glm::dvec3 mVerticalMap{};
-	glm::dvec3 u{}, v{};
-	double mLensRadius{};
+	glm::dvec3 origin_{};
+	glm::dvec3 start_{};
+	glm::dvec3 horizontal_map_{};
+	glm::dvec3 vertical_map_{};
+	glm::dvec3 u_{}, v_{};
+	double lens_radius_{};
 
 };

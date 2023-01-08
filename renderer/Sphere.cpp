@@ -1,29 +1,15 @@
-// Copyright (c) 2022, Wiktor Merta
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 #include "Sphere.hpp"
 
 #include <limits>
 
-Sphere::Sphere(const glm::dvec3 center = {0.0f, 0.0f, 0.0f}, const double radius = 0) : mCenter(center), mRadius(radius)
+Sphere::Sphere(const glm::dvec3 center = {0.0f, 0.0f, 0.0f}, const double radius = 0) : center_(center), radius_(radius)
 {
 }
 
 double Sphere::intersect(const Ray& ray) const
 {
-	const double b = dot(2.0 * (ray.origin - mCenter), ray.direction);
-	const double c = dot(ray.origin - mCenter, ray.origin - mCenter) - mRadius * mRadius;
+	const double b = dot(2.0 * (ray.origin_ - center_), ray.direction_);
+	const double c = dot(ray.origin_ - center_, ray.origin_ - center_) - radius_ * radius_;
 	double discriminant = b * b - 4 * c;
 	if (discriminant < 0)
 		return 0.0;
@@ -39,11 +25,11 @@ double Sphere::intersect(const Ray& ray) const
 
 glm::dvec3 Sphere::normal(const glm::dvec3& point) const
 {
-    return (point - mCenter) / mRadius;
+    return (point - center_) / radius_;
 }
 
 AABB Sphere::getAABB() const
 {
-	return {glm::dvec3(mCenter.x - mRadius, mCenter.y - mRadius, mCenter.z - mRadius),
-			  glm::dvec3(mCenter.x + mRadius, mCenter.y + mRadius, mCenter.z + mRadius)};
+	return {glm::dvec3(center_.x - radius_, center_.y - radius_, center_.z - radius_),
+			  glm::dvec3(center_.x + radius_, center_.y + radius_, center_.z + radius_)};
 }

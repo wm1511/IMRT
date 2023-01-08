@@ -1,17 +1,3 @@
-// Copyright (c) 2022, Wiktor Merta
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 // Mainly based on ImGui GLFW + Vulkan example
 
 #include "App.hpp"
@@ -373,7 +359,7 @@ static void glfw_error_callback(int error, const char* description)
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-App::App(AppInfo& appInfo) : mInfo(std::move(appInfo))
+App::App(AppInfo& app_info) : info_(std::move(app_info))
 {
 	initialize();
 }
@@ -385,13 +371,13 @@ App::~App()
 
 void App::initialize()
 {
-    // Setup GLFW mWindow
+    // Setup GLFW window_
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
 	    throw std::runtime_error("GLFW could not be initialized");
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    mWindow = glfwCreateWindow(mInfo.width, mInfo.height, mInfo.name.c_str(), nullptr, nullptr);
+    window_ = glfwCreateWindow(info_.width, info_.height, info_.name.c_str(), nullptr, nullptr);
 
     // Setup Vulkan
     if (!glfwVulkanSupported())
@@ -403,12 +389,12 @@ void App::initialize()
 
     // Create Window Surface
     VkSurfaceKHR surface;
-    VkResult err = glfwCreateWindowSurface(g_Instance, mWindow, g_Allocator, &surface);
+    VkResult err = glfwCreateWindowSurface(g_Instance, window_, g_Allocator, &surface);
     check_vk_result(err);
 
     // Create Framebuffers
     int w, h;
-    glfwGetFramebufferSize(mWindow, &w, &h);
+    glfwGetFramebufferSize(window_, &w, &h);
     ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
     SetupVulkanWindow(wd, surface, w, h);
 
@@ -439,7 +425,7 @@ void App::initialize()
     }
 
     // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForVulkan(mWindow, true);
+    ImGui_ImplGlfw_InitForVulkan(window_, true);
     ImGui_ImplVulkan_InitInfo init_info = {};
     init_info.Instance = g_Instance;
     init_info.PhysicalDevice = g_PhysicalDevice;
@@ -457,32 +443,32 @@ void App::initialize()
     ImGui_ImplVulkan_Init(&init_info, wd->RenderPass);
 
     // Load font
-    const ImFont* font = io.Fonts->AddFontFromFileTTF("wrapper/OpenSans-Regular.ttf", mInfo.fontSize);
+    const ImFont* font = io.Fonts->AddFontFromFileTTF("wrapper/OpenSans-Regular.ttf", info_.font_size);
     IM_ASSERT(font != NULL);
 
     // Upload Fonts
     {
         // Use any command queue
         VkCommandPool command_pool = wd->Frames[wd->FrameIndex].CommandPool;
-        VkCommandBuffer commandBuffer = wd->Frames[wd->FrameIndex].CommandBuffer;
+        VkCommandBuffer command_buffer = wd->Frames[wd->FrameIndex].CommandBuffer;
 
         err = vkResetCommandPool(g_Device, command_pool, 0);
         check_vk_result(err);
-        VkCommandBufferBeginInfo beginInfo = {};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        err = vkBeginCommandBuffer(commandBuffer, &beginInfo);
+        VkCommandBufferBeginInfo begin_info = {};
+        begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        err = vkBeginCommandBuffer(command_buffer, &begin_info);
         check_vk_result(err);
 
-        ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
+        ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
 
-        VkSubmitInfo submitInfo = {};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-        err = vkEndCommandBuffer(commandBuffer);
+        VkSubmitInfo submit_info = {};
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit_info.commandBufferCount = 1;
+        submit_info.pCommandBuffers = &command_buffer;
+        err = vkEndCommandBuffer(command_buffer);
         check_vk_result(err);
-        err = vkQueueSubmit(g_Queue, 1, &submitInfo, VK_NULL_HANDLE);
+        err = vkQueueSubmit(g_Queue, 1, &submit_info, VK_NULL_HANDLE);
         check_vk_result(err);
 
         err = vkDeviceWaitIdle(g_Device);
@@ -501,25 +487,25 @@ void App::terminate()
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
-	mAppInterface.reset();
+	app_interface_.reset();
 
     CleanupVulkanWindow();
     CleanupVulkan();
 
-    glfwDestroyWindow(mWindow);
+    glfwDestroyWindow(window_);
     glfwTerminate();
 }
 
-void App::run()
+void App::run() const
 {
     ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
-    const ImVec4 clearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    constexpr auto clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     const ImGuiIO& io = ImGui::GetIO();
 
     // Main loop
-    while (!glfwWindowShouldClose(mWindow))
+    while (!glfwWindowShouldClose(window_))
     {
-        // Poll and handle events (inputs, mWindow resize, etc.)
+        // Poll and handle events (inputs, window_ resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
@@ -530,7 +516,7 @@ void App::run()
         if (g_SwapChainRebuild)
         {
             int width, height;
-            glfwGetFramebufferSize(mWindow, &width, &height);
+            glfwGetFramebufferSize(window_, &width, &height);
             if (width > 0 && height > 0)
             {
                 ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
@@ -552,7 +538,7 @@ void App::run()
         {
 	    	static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
 
-			// We are using the ImGuiWindowFlags_NoDocking flag to make the parent mWindow not dockable into,
+			// We are using the ImGuiWindowFlags_NoDocking flag to make the parent window_ not dockable into,
 			// because it would be confusing to have two docking targets within each others.
 			ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking;
 
@@ -570,10 +556,10 @@ void App::run()
 			if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
 				window_flags |= ImGuiWindowFlags_NoBackground;
 
-			// Important: note that we proceed even if Begin() returns false (aka mWindow is collapsed).
+			// Important: note that we proceed even if Begin() returns false (aka window_ is collapsed).
 			// This is because we want to keep our DockSpace() active. If a DockSpace() is inactive,
 			// all active windows docked into it will lose their parent and become undocked.
-			// We cannot preserve the docking relationship between an active mWindow and an inactive docking, otherwise
+			// We cannot preserve the docking relationship between an active window_ and an inactive docking, otherwise
 			// any change of dockspace/settings would lead to windows being stuck in limbo and never being visible.
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 			ImGui::Begin("DockSpace", nullptr, window_flags);
@@ -588,7 +574,7 @@ void App::run()
 				ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
 			}
 
-            mAppInterface->draw();
+            app_interface_->draw();
 
 			ImGui::End();
         }
@@ -597,10 +583,10 @@ void App::run()
         ImGui::Render();
         ImDrawData* main_draw_data = ImGui::GetDrawData();
         const bool main_is_minimized = (main_draw_data->DisplaySize.x <= 0.0f || main_draw_data->DisplaySize.y <= 0.0f);
-        wd->ClearValue.color.float32[0] = clearColor.x * clearColor.w;
-        wd->ClearValue.color.float32[1] = clearColor.y * clearColor.w;
-        wd->ClearValue.color.float32[2] = clearColor.z * clearColor.w;
-        wd->ClearValue.color.float32[3] = clearColor.w;
+        wd->ClearValue.color.float32[0] = clear_color.x * clear_color.w;
+        wd->ClearValue.color.float32[1] = clear_color.y * clear_color.w;
+        wd->ClearValue.color.float32[2] = clear_color.z * clear_color.w;
+        wd->ClearValue.color.float32[3] = clear_color.w;
         if (!main_is_minimized)
             FrameRender(wd, main_draw_data);
 
@@ -617,62 +603,61 @@ void App::run()
     }
 }
 
-VkInstance App::getInstance()
+VkInstance App::GetInstance()
 {
 	return g_Instance;
 }
 
-VkPhysicalDevice App::getPhysicalDevice()
+VkPhysicalDevice App::GetPhysicalDevice()
 {
 	return g_PhysicalDevice;
 }
 
-VkDevice App::getDevice()
+VkDevice App::GetDevice()
 {
 	return g_Device;
 }
 
-VkCommandBuffer App::getCommandBuffer()
+VkCommandBuffer App::GetCommandBuffer()
 {
 	ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
+	VkCommandPool command_pool = wd->Frames[wd->FrameIndex].CommandPool;
 
-	VkCommandPool commandPool = wd->Frames[wd->FrameIndex].CommandPool;
+	VkCommandBufferAllocateInfo cmd_buf_allocate_info = {};
+	cmd_buf_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	cmd_buf_allocate_info.commandPool = command_pool;
+	cmd_buf_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	cmd_buf_allocate_info.commandBufferCount = 1;
 
-	VkCommandBufferAllocateInfo cmdBufAllocateInfo = {};
-	cmdBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	cmdBufAllocateInfo.commandPool = commandPool;
-	cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmdBufAllocateInfo.commandBufferCount = 1;
+	VkCommandBuffer& command_buffer = g_allocatedCommandBuffers[wd->FrameIndex].emplace_back();
+	auto err = vkAllocateCommandBuffers(g_Device, &cmd_buf_allocate_info, &command_buffer);
 
-	VkCommandBuffer& commandBuffer = g_allocatedCommandBuffers[wd->FrameIndex].emplace_back();
-	auto err = vkAllocateCommandBuffers(g_Device, &cmdBufAllocateInfo, &commandBuffer);
-
-	VkCommandBufferBeginInfo beginInfo = {};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	err = vkBeginCommandBuffer(commandBuffer, &beginInfo);
+	VkCommandBufferBeginInfo begin_info = {};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	err = vkBeginCommandBuffer(command_buffer, &begin_info);
 	check_vk_result(err);
 
-	return commandBuffer;
+	return command_buffer;
 }
 
-void App::flushCommandBuffer(VkCommandBuffer commandBuffer)
+void App::FlushCommandBuffer(const VkCommandBuffer command_buffer)
 {
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
-	auto err = vkEndCommandBuffer(commandBuffer);
+	VkSubmitInfo submit_info = {};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &command_buffer;
+	auto err = vkEndCommandBuffer(command_buffer);
 	check_vk_result(err);
 
-	VkFenceCreateInfo fenceCreateInfo = {};
-	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceCreateInfo.flags = 0;
+	VkFenceCreateInfo fence_create_info = {};
+	fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fence_create_info.flags = 0;
 	VkFence fence;
-	err = vkCreateFence(g_Device, &fenceCreateInfo, nullptr, &fence);
+	err = vkCreateFence(g_Device, &fence_create_info, nullptr, &fence);
 	check_vk_result(err);
 
-	err = vkQueueSubmit(g_Queue, 1, &submitInfo, fence);
+	err = vkQueueSubmit(g_Queue, 1, &submit_info, fence);
 	check_vk_result(err);
 
 	err = vkWaitForFences(g_Device, 1, &fence, VK_TRUE, 100000000000);

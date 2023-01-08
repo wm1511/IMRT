@@ -53,6 +53,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.0.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -106,15 +107,15 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>D:\Biblioteki\glm;%VULKAN_SDK%\include;D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files\Microsoft Visual Studio\Libraries\glm;%VULKAN_SDK%\include;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;D:\Biblioteki\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;curand.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
     </Link>
@@ -146,7 +147,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>D:\Biblioteki\glm;%VULKAN_SDK%\include;D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files\Microsoft Visual Studio\Libraries\glm;%VULKAN_SDK%\include;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -156,14 +157,15 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;D:\Biblioteki\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;curand.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="cpu_renderer\CpuRenderer.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
@@ -173,18 +175,25 @@
     <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="renderer\Diffuse.cpp" />
+    <ClCompile Include="renderer\Plane.cpp" />
     <ClCompile Include="renderer\Refractive.cpp" />
     <ClCompile Include="renderer\Renderer.cpp" />
     <ClCompile Include="renderer\Scene.cpp" />
     <ClCompile Include="renderer\SceneBuilder.cpp" />
     <ClCompile Include="renderer\Specular.cpp" />
     <ClCompile Include="renderer\Sphere.cpp" />
-    <ClCompile Include="renderer\Plane.cpp" />
     <ClCompile Include="renderer\Triangle.cpp" />
     <ClCompile Include="wrapper\App.cpp" />
     <ClCompile Include="wrapper\Image.cpp" />
+    <ClCompile Include="wrapper\RtInterface.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="abstract\IDrawable.hpp" />
+    <ClInclude Include="abstract\IRenderer.hpp" />
+    <ClInclude Include="cpu_renderer\CpuRenderer.hpp" />
+    <ClInclude Include="cuda_renderer\CudaRenderer.cuh" />
+    <ClInclude Include="cuda_renderer\Math.cuh" />
+    <ClInclude Include="cuda_renderer\Ray.cuh" />
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_glfw.h" />
@@ -196,27 +205,32 @@
     <ClInclude Include="renderer\AABB.hpp" />
     <ClInclude Include="renderer\Camera.hpp" />
     <ClInclude Include="renderer\Diffuse.hpp" />
-    <ClInclude Include="renderer\Material.hpp" />
     <ClInclude Include="renderer\Intersection.hpp" />
+    <ClInclude Include="renderer\Material.hpp" />
     <ClInclude Include="renderer\Object.hpp" />
+    <ClInclude Include="renderer\Plane.hpp" />
     <ClInclude Include="renderer\Ray.hpp" />
     <ClInclude Include="renderer\Refractive.hpp" />
+    <ClInclude Include="renderer\Renderer.hpp" />
+    <ClInclude Include="renderer\Scene.hpp" />
     <ClInclude Include="renderer\SceneBuilder.hpp" />
     <ClInclude Include="renderer\Specular.hpp" />
-    <ClInclude Include="renderer\Scene.hpp" />
     <ClInclude Include="renderer\Sphere.hpp" />
-    <ClInclude Include="renderer\Plane.hpp" />
-    <ClInclude Include="renderer\Renderer.hpp" />
     <ClInclude Include="renderer\Triangle.hpp" />
     <ClInclude Include="wrapper\App.hpp" />
     <ClInclude Include="wrapper\Image.hpp" />
-    <ClInclude Include="wrapper\IDrawable.hpp" />
+    <ClInclude Include="wrapper\RtInfo.hpp" />
+    <ClInclude Include="wrapper\RtInterface.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="imgui\LICENSE.txt" />
     <Text Include="LICENSE.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="cuda_renderer\CudaRenderer.cu" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.0.targets" />
   </ImportGroup>
 </Project>

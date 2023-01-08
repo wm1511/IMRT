@@ -1,17 +1,3 @@
-// Copyright (c) 2022, Wiktor Merta
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 #pragma once
 #include "App.hpp"
 
@@ -25,27 +11,27 @@ public:
 	Image operator= (Image&&) = delete;
 	~Image();
 
-	void setData(const void* data);
+	void SetData(const void* data);
 
-	[[nodiscard]] VkDescriptorSet getDescriptorSet() const { return mDescriptorSet; }
+	[[nodiscard]] VkDescriptorSet GetDescriptorSet() const { return descriptor_set_; }
 
-	[[nodiscard]] uint32_t getWidth() const { return mWidth; }
-	[[nodiscard]] uint32_t getHeight() const { return mHeight; }
+	[[nodiscard]] uint32_t GetWidth() const { return width_; }
+	[[nodiscard]] uint32_t GetHeight() const { return height_; }
 
 private:
-	void allocateMemory();
-	void releaseMemory();
+	void AllocateMemory();
+	void ReleaseMemory();
 
-	uint32_t mWidth = 0, mHeight = 0;
+	uint32_t width_ = 0, height_ = 0;
 
-	VkImage mImage = nullptr;
-	VkImageView mImageView = nullptr;
-	VkDeviceMemory mMemory = nullptr;
-	VkSampler mSampler = nullptr;
-	VkBuffer mStagingBuffer = nullptr;
-	VkDeviceMemory mStagingBufferMemory = nullptr;
+	VkImage image_ = nullptr;
+	VkImageView image_view_ = nullptr;
+	VkDeviceMemory memory_ = nullptr;
+	VkSampler sampler_ = nullptr;
+	VkBuffer staging_buffer_ = nullptr;
+	VkDeviceMemory staging_buffer_memory_ = nullptr;
 
-	size_t mRequiredMemorySize = 0;
+	size_t required_memory_size_ = 0;
 
-	VkDescriptorSet mDescriptorSet = nullptr;
+	VkDescriptorSet descriptor_set_ = nullptr;
 };

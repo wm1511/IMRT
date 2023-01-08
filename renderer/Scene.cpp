@@ -1,17 +1,3 @@
-// Copyright (c) 2022, Wiktor Merta
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 #include "Scene.hpp"
 
 #include <algorithm>
@@ -20,62 +6,62 @@ Intersection Scene::intersect(const Ray& ray) const
 {
     Intersection closest;
 
-    for (const auto& object : mUnboundedObjects)
+    for (const auto& object : unbounded_objects_)
     {
 	    const double t = object->intersect(ray);
-        if (t > std::numeric_limits<double>::epsilon() && t < closest.t)
+        if (t > std::numeric_limits<double>::epsilon() && t < closest.t_)
         {
-	        closest.t = t;
-            closest.object = object;
+	        closest.t_ = t;
+            closest.object_ = object;
         }
     }
 
-    if (!mBVH.empty())
+    if (!bvh_.empty())
     {
-        const glm::vec3 inverseDirection{1.0 / ray.direction};
+        const glm::vec3 inverse_direction{1.0 / ray.direction_};
 
         uint32_t stack[64];
-        uint32_t nodeNumber = 0, stackSize = 0;
+        uint32_t node_number = 0, stack_size = 0;
 
         while (true)
         {
-	        const BVHNode& node = mBVH[nodeNumber];
-            if (node.aabb.intersect(ray, inverseDirection, closest.t))
+	        const BVHNode& node = bvh_[node_number];
+            if (node.aabb_.intersect(ray, inverse_direction, closest.t_))
             {
-	            if (node.objectCount > 0)
+	            if (node.object_count_ > 0)
 	            {
-		            for (uint64_t objectNumber = 0; objectNumber != node.objectCount; ++objectNumber)
+		            for (uint64_t object_number = 0; object_number != node.object_count_; ++object_number)
 		            {
-			            const double t = mBoundedObjects[node.firstObjectIndex + objectNumber]->intersect(ray);
-                        if (t > std::numeric_limits<double>::epsilon() && t < closest.t)
+			            const double t = bounded_objects_[node.first_object_index + object_number]->intersect(ray);
+                        if (t > std::numeric_limits<double>::epsilon() && t < closest.t_)
                         {
-	                        closest.t = t;
-                            closest.object = mBoundedObjects[node.firstObjectIndex + objectNumber];
+	                        closest.t_ = t;
+                            closest.object_ = bounded_objects_[node.first_object_index + object_number];
                         }
 		            }
-                    if (stackSize == 0)
+                    if (stack_size == 0)
                         break;
-                    nodeNumber = stack[--stackSize];
+                    node_number = stack[--stack_size];
 	            }
                 else
                 {
-	                if (ray.direction[node.splitAxis] < 0)
+	                if (ray.direction_[node.split_axis_] < 0)
 	                {
-		                stack[stackSize++] = nodeNumber + 1;
-                        nodeNumber = node.secondChildIndex;
+		                stack[stack_size++] = node_number + 1;
+                        node_number = node.second_child_index;
 	                }
                     else
                     {
-	                    stack[stackSize++] = node.secondChildIndex;
-                        nodeNumber += 1;
+	                    stack[stack_size++] = node.second_child_index;
+                        node_number += 1;
                     }
                 }
             }
             else
             {
-	            if (stackSize == 0)
+	            if (stack_size == 0)
                     break;
-            	nodeNumber = stack[--stackSize];
+            	node_number = stack[--stack_size];
             }
         }
     }
@@ -85,60 +71,60 @@ Intersection Scene::intersect(const Ray& ray) const
 
 void Scene::add(std::shared_ptr<Object> object, const std::shared_ptr<Material>& material)
 {
-    object->material = material;
+    object->material_ = material;
     if (object->getAABB().unbounded())
-		mUnboundedObjects.push_back(std::move(object));
+		unbounded_objects_.push_back(std::move(object));
     else
-        mBoundInfos.emplace_back(object);
+        bound_infos_.emplace_back(object);
 }
 
-void Scene::rebuildBVH(uint8_t maxObjectsPerLeaf)
+void Scene::RebuildBvh(uint8_t max_objects_per_leaf)
 {
-    if (maxObjectsPerLeaf == 0)
-        maxObjectsPerLeaf = 1;
+    if (max_objects_per_leaf == 0)
+        max_objects_per_leaf = 1;
 
-    mBVH.clear();
-    mBVH.reserve(4 * mBoundInfos.size());
-    splitBoundsRecursively(mBoundInfos.begin(), mBoundInfos.end(), maxObjectsPerLeaf);
+    bvh_.clear();
+    bvh_.reserve(4 * bound_infos_.size());
+    SplitBoundsRecursively(bound_infos_.begin(), bound_infos_.end(), max_objects_per_leaf);
 
-    mBoundedObjects.clear();
-    mBoundedObjects.reserve(mBoundInfos.size());
-    for (auto& boundInfo : mBoundInfos)
-        mBoundedObjects.emplace_back(boundInfo.getObject());
+    bounded_objects_.clear();
+    bounded_objects_.reserve(bound_infos_.size());
+    for (auto& bound_info : bound_infos_)
+        bounded_objects_.emplace_back(bound_info.GetObject());
 }
 
-void Scene::splitBoundsRecursively(const std::vector<BoundInfo>::iterator begin,
-	const std::vector<BoundInfo>::iterator end, uint8_t maxObjectsPerLeaf)
+void Scene::SplitBoundsRecursively(const std::vector<BoundInfo>::iterator begin,
+	const std::vector<BoundInfo>::iterator end, uint8_t max_objects_per_leaf)
 {
-    mBVH.emplace_back(BVHNode());
-    auto thisNode = mBVH.end();
-    --thisNode;
+    bvh_.emplace_back(BVHNode());
+    auto this_node = bvh_.end();
+    --this_node;
 
-    const uint64_t objectCount = end - begin;
-    if (objectCount <= maxObjectsPerLeaf)
+    const uint64_t object_count = end - begin;
+    if (object_count <= max_objects_per_leaf)
     {
-	    thisNode->objectCount = static_cast<uint8_t>(objectCount);
+	    this_node->object_count_ = static_cast<uint8_t>(object_count);
         for (auto it = begin; it != end; ++it)
-            thisNode->aabb.enclose(it->getAABB());
-        thisNode->firstObjectIndex = static_cast<uint32_t>(begin - mBoundInfos.begin());
+            this_node->aabb_.enclose(it->getAABB());
+        this_node->first_object_index = static_cast<uint32_t>(begin - bound_infos_.begin());
     }
     else
     {
-	    thisNode->objectCount = 0;
+	    this_node->object_count_ = 0;
 
-        AABB centroidBound;
+        AABB centroid_bound;
         for (auto it = begin; it != end; ++it)
-            centroidBound.enclose(it->getAABB());
+            centroid_bound.enclose(it->getAABB());
 
-        thisNode->splitAxis = static_cast<uint8_t>(centroidBound.getLargestDimension());
-        const auto medianIterator = begin + (end - begin) / 2;
-        std::nth_element(begin, medianIterator, end, CentroidComparator(thisNode->splitAxis));
+        this_node->split_axis_ = static_cast<uint8_t>(centroid_bound.GetLargestDimension());
+        const auto median_iterator = begin + (end - begin) / 2;
+        std::nth_element(begin, median_iterator, end, CentroidComparator(this_node->split_axis_));
 
-        const uint64_t firstChildIndex = mBVH.size();
-        splitBoundsRecursively(begin, medianIterator, maxObjectsPerLeaf);
-        thisNode->secondChildIndex = static_cast<uint32_t>(mBVH.size());
-        splitBoundsRecursively(medianIterator, end, maxObjectsPerLeaf);
+        const uint64_t first_child_index = bvh_.size();
+        SplitBoundsRecursively(begin, median_iterator, max_objects_per_leaf);
+        this_node->second_child_index = static_cast<uint32_t>(bvh_.size());
+        SplitBoundsRecursively(median_iterator, end, max_objects_per_leaf);
 
-        thisNode->aabb.enclose(mBVH[firstChildIndex].aabb, mBVH[thisNode->secondChildIndex].aabb);
+        this_node->aabb_.enclose(bvh_[first_child_index].aabb_, bvh_[this_node->second_child_index].aabb_);
     }
 }

@@ -29,32 +29,38 @@
     <ClCompile Include="wrapper\Image.cpp">
       <Filter>wrapper</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\Renderer.cpp">
+    <ClCompile Include="wrapper\RtInterface.cpp">
+      <Filter>wrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\Diffuse.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\Plane.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\Sphere.cpp">
+    <ClCompile Include="renderer\Refractive.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\Renderer.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\Scene.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\Diffuse.cpp">
+    <ClCompile Include="renderer\SceneBuilder.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\Specular.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\Refractive.cpp">
-      <Filter>renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\SceneBuilder.cpp">
+    <ClCompile Include="renderer\Sphere.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\Triangle.cpp">
       <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="cpu_renderer\CpuRenderer.cpp">
+      <Filter>cpu_renderer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -88,41 +94,17 @@
     <ClInclude Include="wrapper\Image.hpp">
       <Filter>wrapper</Filter>
     </ClInclude>
-    <ClInclude Include="wrapper\IDrawable.hpp">
+    <ClInclude Include="wrapper\RtInterface.hpp">
       <Filter>wrapper</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\Renderer.hpp">
-      <Filter>renderer</Filter>
+    <ClInclude Include="wrapper\RtInfo.hpp">
+      <Filter>wrapper</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\Object.hpp">
-      <Filter>renderer</Filter>
+    <ClInclude Include="abstract\IDrawable.hpp">
+      <Filter>abstract</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\Ray.hpp">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\Plane.hpp">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\Sphere.hpp">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\Intersection.hpp">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\Scene.hpp">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\Material.hpp">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\Diffuse.hpp">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\Specular.hpp">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\Refractive.hpp">
-      <Filter>renderer</Filter>
+    <ClInclude Include="abstract\IRenderer.hpp">
+      <Filter>abstract</Filter>
     </ClInclude>
     <ClInclude Include="renderer\AABB.hpp">
       <Filter>renderer</Filter>
@@ -130,22 +112,70 @@
     <ClInclude Include="renderer\Camera.hpp">
       <Filter>renderer</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\Diffuse.hpp">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\Intersection.hpp">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\Material.hpp">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\Object.hpp">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\Plane.hpp">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\Ray.hpp">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\Refractive.hpp">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\Renderer.hpp">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\Scene.hpp">
+      <Filter>renderer</Filter>
+    </ClInclude>
     <ClInclude Include="renderer\SceneBuilder.hpp">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\Specular.hpp">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\Sphere.hpp">
       <Filter>renderer</Filter>
     </ClInclude>
     <ClInclude Include="renderer\Triangle.hpp">
       <Filter>renderer</Filter>
     </ClInclude>
+    <ClInclude Include="cpu_renderer\CpuRenderer.hpp">
+      <Filter>cpu_renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="cuda_renderer\CudaRenderer.cuh" />
+    <ClInclude Include="cuda_renderer\Math.cuh" />
+    <ClInclude Include="cuda_renderer\Ray.cuh" />
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="imgui">
-      <UniqueIdentifier>{61852a68-5750-4263-91c6-feeb88180f49}</UniqueIdentifier>
-    </Filter>
     <Filter Include="wrapper">
       <UniqueIdentifier>{7fb5ced1-344d-4103-920f-94d5b2277e71}</UniqueIdentifier>
     </Filter>
+    <Filter Include="abstract">
+      <UniqueIdentifier>{c1ee75d6-d5d0-4286-90d8-87cbbf96bd88}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="cuda_renderer">
+      <UniqueIdentifier>{0b3c61ea-4d94-4d22-80f0-8ec077098d30}</UniqueIdentifier>
+    </Filter>
     <Filter Include="renderer">
       <UniqueIdentifier>{96983b84-1554-40ba-8bb8-a7f6f915bdc5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="cpu_renderer">
+      <UniqueIdentifier>{f6023032-4be0-4eb3-85c9-6659ffe1da12}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="imgui">
+      <UniqueIdentifier>{61852a68-5750-4263-91c6-feeb88180f49}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -153,5 +183,8 @@
       <Filter>imgui</Filter>
     </Text>
     <Text Include="LICENSE.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="cuda_renderer\CudaRenderer.cu" />
   </ItemGroup>
 </Project>
