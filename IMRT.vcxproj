@@ -107,14 +107,14 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>C:\Program Files\Microsoft Visual Studio\Libraries\glm;%VULKAN_SDK%\include;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Biblioteki\glm;%VULKAN_SDK%\include;D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;D:\Biblioteki\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;curand.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
@@ -147,7 +147,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>C:\Program Files\Microsoft Visual Studio\Libraries\glm;%VULKAN_SDK%\include;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Biblioteki\glm;%VULKAN_SDK%\include;D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -157,7 +157,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;D:\Biblioteki\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;curand.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <IgnoreSpecificDefaultLibraries>
@@ -191,9 +191,14 @@
     <ClInclude Include="abstract\IDrawable.hpp" />
     <ClInclude Include="abstract\IRenderer.hpp" />
     <ClInclude Include="cpu_renderer\CpuRenderer.hpp" />
+    <ClInclude Include="cuda_renderer\Camera.cuh" />
     <ClInclude Include="cuda_renderer\CudaRenderer.cuh" />
+    <ClInclude Include="cuda_renderer\Intersection.cuh" />
+    <ClInclude Include="cuda_renderer\Material.cuh" />
     <ClInclude Include="cuda_renderer\Math.cuh" />
+    <ClInclude Include="cuda_renderer\Primitive.cuh" />
     <ClInclude Include="cuda_renderer\Ray.cuh" />
+    <ClInclude Include="cuda_renderer\World.cuh" />
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_glfw.h" />

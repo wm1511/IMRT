@@ -8,11 +8,11 @@ static uint32_t GetDeviceMemoryType(const VkMemoryPropertyFlags properties, cons
 	vkGetPhysicalDeviceMemoryProperties(App::GetPhysicalDevice(), &device_memory_properties);
 	for (uint32_t i = 0; i < device_memory_properties.memoryTypeCount; i++)
 	{
-		if ((device_memory_properties.memoryTypes[i].propertyFlags & properties) == properties && type_bits & (1 << i))
+		if ((device_memory_properties.memoryTypes[i].propertyFlags & properties) == properties && type_bits & 1 << i)
 			return i;
 	}
 	
-	return UINT32_MAX;
+	return 0xffffffff;
 }
 
 Image::Image(const uint32_t width, const uint32_t height, const void* data): width_(width), height_(height)
@@ -30,7 +30,7 @@ Image::~Image()
 void Image::AllocateMemory()
 {
 	const VkDevice device = App::GetDevice();
-	constexpr VkFormat image_format = VK_FORMAT_R8G8B8A8_UNORM;
+	constexpr VkFormat image_format = VK_FORMAT_R32G32B32A32_SFLOAT;
 
 	VkImageCreateInfo image_info = {};
 	image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -111,7 +111,7 @@ void Image::ReleaseMemory()
 void Image::SetData(const void* data)
 {
 	const VkDevice device = App::GetDevice();
-	const uint64_t staging_buffer_size = static_cast<uint64_t>(4) * width_ * height_;
+	const uint64_t staging_buffer_size = static_cast<uint64_t>(16) * width_ * height_;
 
 	if (!staging_buffer_)
 	{

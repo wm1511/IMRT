@@ -18,21 +18,21 @@ void RtInterface::draw()
 		{
 			frames_rendered_ = 0;
 			is_rendering_ = true;
-			renderer_ = std::make_unique<CudaRenderer>(rt_info_);
+			renderer_ = std::make_unique<CudaRenderer>(&rt_info_);
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("CPU render", {ImGui::GetContentRegionAvail().x / 2, 0}))
 		{
 			frames_rendered_ = 0;
 			is_rendering_ = true;
-			renderer_ = std::make_unique<CpuRenderer>(rt_info_);
+			renderer_ = std::make_unique<CpuRenderer>(&rt_info_);
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("Slow render", {ImGui::GetContentRegionAvail().x, 0}))
 		{
 			frames_rendered_ = 0;
 			is_rendering_ = true;
-			renderer_ = std::make_unique<Renderer>(rt_info_);
+			renderer_ = std::make_unique<Renderer>(&rt_info_);
 		}
 		if (ImGui::Button("Stop rendering", {ImGui::GetContentRegionAvail().x, 0}))
 		{
@@ -46,7 +46,7 @@ void RtInterface::draw()
 			{
 				image_ = std::make_unique<Image>(width_, height_);
 				delete[] image_data_;
-				image_data_ = new uint32_t[static_cast<uint64_t>(width_) * height_];
+				image_data_ = new float[static_cast<uint64_t>(width_) * height_ * 4];
 			}
 
 			const auto start = std::chrono::high_resolution_clock::now();
@@ -78,7 +78,7 @@ void RtInterface::draw()
 					rt_info_.look_target_x = -1.0f;
 					rt_info_.look_target_y = -1.5f;
 					rt_info_.look_target_z = -4.5f;
-					rt_info_.vfov = 1.5f;
+					rt_info_.fov = 1.5f;
 					rt_info_.aperture = 0.0f;
 					rt_info_.focus_distance = 10.0f;
 				}
@@ -87,7 +87,7 @@ void RtInterface::draw()
 					rt_info_.look_target_x = 0.0f;
 					rt_info_.look_target_y = -0.5f;
 					rt_info_.look_target_z = -2.5f;
-					rt_info_.vfov = 1.5f;
+					rt_info_.fov = 1.5f;
 					rt_info_.aperture = 0.1f;
 					rt_info_.focus_distance = 10.0f;
 				}
@@ -96,7 +96,7 @@ void RtInterface::draw()
 					rt_info_.look_target_x = 0.0f;
 					rt_info_.look_target_y = 0.0f;
 					rt_info_.look_target_z = -1.0f;
-					rt_info_.vfov = 1.5f;
+					rt_info_.fov = 1.5f;
 					rt_info_.aperture = 0.0f;
 					rt_info_.focus_distance = 10.0f;
 				}
@@ -105,7 +105,7 @@ void RtInterface::draw()
 
 		if (ImGui::CollapsingHeader("Quality settings", ImGuiTreeNodeFlags_DefaultOpen))
         {
-			ImGui::SliderInt("##spp", &rt_info_.samples_per_pixel, 1, INT16_MAX, "%d",
+			ImGui::SliderInt("##spp", &rt_info_.samples_per_pixel, 1, 1024, "%d",
 							 ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			if (ImGui::IsItemActive() || ImGui::IsItemHovered())
 				ImGui::SetTooltip("Count of samples generated for each pixel");
@@ -153,31 +153,31 @@ void RtInterface::draw()
         {
 			if (ImGui::TreeNode("Camera position"))
 			{
-				ImGui::SliderFloat("x", &rt_info_.look_origin_x, -FLT_MAX, FLT_MAX, "%.3f");
-				ImGui::SliderFloat("y", &rt_info_.look_origin_y, -FLT_MAX, FLT_MAX, "%.3f");
-				ImGui::SliderFloat("z", &rt_info_.look_origin_z, -FLT_MAX, FLT_MAX, "%.3f");
+				ImGui::SliderFloat("x", &rt_info_.look_origin_x, -UINT8_MAX, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic);
+				ImGui::SliderFloat("y", &rt_info_.look_origin_y, -UINT8_MAX, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic);
+				ImGui::SliderFloat("z", &rt_info_.look_origin_z, -UINT8_MAX, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic);
 				ImGui::TreePop();
 			}
 			if (ImGui::TreeNode("Camera target point"))
 			{
-				ImGui::SliderFloat("x", &rt_info_.look_target_x, -FLT_MAX, FLT_MAX, "%.3f");
-				ImGui::SliderFloat("y", &rt_info_.look_target_y, -FLT_MAX, FLT_MAX, "%.3f");
-				ImGui::SliderFloat("z", &rt_info_.look_target_z, -FLT_MAX, FLT_MAX, "%.3f");
+				ImGui::SliderFloat("x", &rt_info_.look_target_x, -UINT8_MAX, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic);
+				ImGui::SliderFloat("y", &rt_info_.look_target_y, -UINT8_MAX, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic);
+				ImGui::SliderFloat("z", &rt_info_.look_target_z, -UINT8_MAX, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic);
 				ImGui::TreePop();
 			}
 			if (ImGui::TreeNode("Vertical field of view"))
 			{
-				ImGui::SliderAngle("degrees", &rt_info_.vfov, 0.0f, 180.0f, "%.3f");
+				ImGui::SliderAngle("degrees", &rt_info_.fov, 0.0f, 180.0f, "%.3f");
 				ImGui::TreePop();
 			}
 			if (ImGui::TreeNode("Aperture"))
 			{
-				ImGui::SliderFloat("##Aperture", &rt_info_.aperture, 0, FLT_MAX, "%.3f");
+				ImGui::SliderFloat("##Aperture", &rt_info_.aperture, 0, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic);
 				ImGui::TreePop();
 			}
 			if (ImGui::TreeNode("Focus distance"))
 			{
-				ImGui::SliderFloat("##FocusDist", &rt_info_.focus_distance, 0, FLT_MAX, "%.3f");
+				ImGui::SliderFloat("##FocusDist", &rt_info_.focus_distance, 0, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic);
 				ImGui::TreePop();
 			}
 		}
@@ -190,10 +190,10 @@ void RtInterface::draw()
 		width_ = static_cast<uint32_t>(ImGui::GetContentRegionAvail().x);
 		height_ = static_cast<uint32_t>(ImGui::GetContentRegionAvail().y);
 
-		if (image_)
-			ImGui::Image(reinterpret_cast<ImU64>(image_->GetDescriptorSet()),
-				 {static_cast<float>(image_->GetWidth()), static_cast<float>(image_->GetHeight())},
-						ImVec2(1, 0), ImVec2(0, 1));
+		if (image_) ImGui::Image(
+				reinterpret_cast<ImU64>(image_->GetDescriptorSet()),
+				{static_cast<float>(image_->GetWidth()), static_cast<float>(image_->GetHeight())},
+				ImVec2(1, 0), ImVec2(0, 1));
 		ImGui::End();
 	}
 }

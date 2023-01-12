@@ -1,16 +1,19 @@
 #pragma once
-#include <cstdint>
-
 #include "cuda_runtime.h"
 
 #ifndef __CUDACC__
 #include <cmath>
 #endif
 
-// Constructor
+// Constructors
 inline __host__ __device__ float3 make_float3(float s)
 {
     return make_float3(s, s, s);
+}
+
+inline __host__ __device__ float4 make_float4(float3 v, float s)
+{
+    return make_float4(v.x, v.y, v.z, s);
 }
 
 // Negation
@@ -164,8 +167,7 @@ inline __host__ __device__ float length(float3 v)
 // Normalization
 inline __host__ __device__ float3 normalize(float3 v)
 {
-	const float inv_len = 1.0 / sqrtf(dot(v, v));
-    return v * inv_len;
+    return v * (1.0f / sqrtf(dot(v, v)));
 }
 
 // Floor
@@ -180,8 +182,12 @@ inline __host__ __device__ float3 abs(float3 v)
     return make_float3(fabs(v.x), fabs(v.y), fabs(v.z));
 }
 
-// Reflection
+inline __host__ __device__ float3 sqrt(float3 v)
+{
+	return make_float3(sqrt(v.x), sqrt(v.y), sqrt(v.z));
+}
 
+// Reflection
 inline __host__ __device__ float3 reflect(float3 i, float3 n)
 {
     return i - 2.0f * n * dot(n,i);

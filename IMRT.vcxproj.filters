@@ -157,6 +157,11 @@
     <ClInclude Include="cuda_renderer\CudaRenderer.cuh" />
     <ClInclude Include="cuda_renderer\Math.cuh" />
     <ClInclude Include="cuda_renderer\Ray.cuh" />
+    <ClInclude Include="cuda_renderer\Camera.cuh" />
+    <ClInclude Include="cuda_renderer\Primitive.cuh" />
+    <ClInclude Include="cuda_renderer\Intersection.cuh" />
+    <ClInclude Include="cuda_renderer\Material.cuh" />
+    <ClInclude Include="cuda_renderer\World.cuh" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="wrapper">

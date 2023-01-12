@@ -6,9 +6,9 @@
 class Camera
 {
 public:
-	Camera(glm::dvec3 look_origin, glm::dvec3 look_target, float vfov, double aspect_ratio, double aperture, double focus_distance)
+	Camera(glm::dvec3 look_origin, glm::dvec3 look_target, float fov, double aspect_ratio, double aperture, double focus_distance)
 	{
-		double viewport_height = 2.0 * static_cast<double>(glm::tan(vfov / 2));
+		double viewport_height = 2.0 * static_cast<double>(glm::tan(fov / 2));
 		double viewport_width = viewport_height * aspect_ratio;
 
 		glm::dvec3 camera_direction = normalize(look_origin - look_target);
@@ -22,7 +22,7 @@ public:
 		lens_radius_ = aperture / 2.0;
 	}
 
-	[[nodiscard]] Ray CastRay(const double x, const double y) const
+	[[nodiscard]] Ray cast_ray(const double x, const double y) const
 	{
 		const glm::dvec3 random_on_lens = lens_radius_ * normalize(
 			glm::dvec3(glm::linearRand(-1.0, 1.0), glm::linearRand(-1.0, 1.0), 0.0));

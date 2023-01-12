@@ -8,8 +8,9 @@ Sphere::Sphere(const glm::dvec3 center = {0.0f, 0.0f, 0.0f}, const double radius
 
 double Sphere::intersect(const Ray& ray) const
 {
-	const double b = dot(2.0 * (ray.origin_ - center_), ray.direction_);
-	const double c = dot(ray.origin_ - center_, ray.origin_ - center_) - radius_ * radius_;
+	const glm::dvec3 oc = ray.origin_ - center_;
+	const double b = dot(2.0 * oc, ray.direction_);
+	const double c = dot(oc, oc) - radius_ * radius_;
 	double discriminant = b * b - 4 * c;
 	if (discriminant < 0)
 		return 0.0;
