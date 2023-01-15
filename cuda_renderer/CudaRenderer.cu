@@ -104,8 +104,8 @@ __global__ void create_world(Primitive** primitive_list, Primitive** world, Came
 
 	 	*world = new World(primitive_list, 2);
         *camera = new Camera(
-            make_float3(rt_info.look_origin_x, rt_info.look_origin_y, rt_info.look_origin_z),
-            make_float3(rt_info.look_target_x, rt_info.look_target_y, rt_info.look_target_z),
+            make_float3(rt_info.look_origin),
+            make_float3(rt_info.look_target),
             rt_info.fov,
             (float)width / (float)height,
             rt_info.aperture,

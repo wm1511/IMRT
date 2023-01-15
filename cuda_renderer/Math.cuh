@@ -11,6 +11,11 @@ inline __host__ __device__ float3 make_float3(float s)
     return make_float3(s, s, s);
 }
 
+inline __host__ __device__ float3 make_float3(const float t[3])
+{
+	return make_float3(t[0], t[1], t[2]);
+}
+
 inline __host__ __device__ float4 make_float4(float3 v, float s)
 {
     return make_float4(v.x, v.y, v.z, s);

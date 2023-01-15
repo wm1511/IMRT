@@ -47,9 +47,6 @@
     <ClCompile Include="renderer\Scene.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\SceneBuilder.cpp">
-      <Filter>renderer</Filter>
-    </ClCompile>
     <ClCompile Include="renderer\Specular.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
@@ -137,9 +134,6 @@
       <Filter>renderer</Filter>
     </ClInclude>
     <ClInclude Include="renderer\Scene.hpp">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\SceneBuilder.hpp">
       <Filter>renderer</Filter>
     </ClInclude>
     <ClInclude Include="renderer\Specular.hpp">

@@ -107,18 +107,21 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>D:\Biblioteki\glm;%VULKAN_SDK%\include;D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Biblioteki\glm;%VULKAN_SDK%\include;D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\include;C:\Program Files\Microsoft Visual Studio\Libraries\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;D:\Biblioteki\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;D:\Biblioteki\glfw-3.3.7.bin.WIN64\lib-vc2022;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;curand.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
     </Link>
+    <CudaCompile>
+      <CodeGeneration>compute_50,sm_50</CodeGeneration>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -147,7 +150,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>D:\Biblioteki\glm;%VULKAN_SDK%\include;D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Biblioteki\glm;%VULKAN_SDK%\include;D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\include;C:\Program Files\Microsoft Visual Studio\Libraries\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -157,12 +160,15 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;D:\Biblioteki\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;D:\Biblioteki\glfw-3.3.7.bin.WIN64\lib-vc2022;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;curand.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
     </Link>
+    <CudaCompile>
+      <CodeGeneration>compute_50,sm_50</CodeGeneration>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="cpu_renderer\CpuRenderer.cpp" />
@@ -179,7 +185,6 @@
     <ClCompile Include="renderer\Refractive.cpp" />
     <ClCompile Include="renderer\Renderer.cpp" />
     <ClCompile Include="renderer\Scene.cpp" />
-    <ClCompile Include="renderer\SceneBuilder.cpp" />
     <ClCompile Include="renderer\Specular.cpp" />
     <ClCompile Include="renderer\Sphere.cpp" />
     <ClCompile Include="renderer\Triangle.cpp" />
@@ -218,7 +223,6 @@
     <ClInclude Include="renderer\Refractive.hpp" />
     <ClInclude Include="renderer\Renderer.hpp" />
     <ClInclude Include="renderer\Scene.hpp" />
-    <ClInclude Include="renderer\SceneBuilder.hpp" />
     <ClInclude Include="renderer\Specular.hpp" />
     <ClInclude Include="renderer\Sphere.hpp" />
     <ClInclude Include="renderer\Triangle.hpp" />
