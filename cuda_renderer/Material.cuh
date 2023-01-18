@@ -1,10 +1,8 @@
 #pragma once
+#include "Intersection.cuh"
 #include "Ray.cuh"
-#include "World.cuh"
 
 #include <curand_kernel.h>
-
-struct Intersection;
 
 __device__ inline float3 sphere_random(curandState* random_state)
 {
@@ -59,7 +57,7 @@ private:
 class Refractive final : public Material
 {
 public:
-	__device__ explicit Refractive(const float refraction_index) : refraction_index_(refraction_index) {}
+	__device__ explicit Refractive(const float refractive_index) : refractive_index_(refractive_index) {}
 	__device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, curandState* random_state) const override
 	{
 		bool refracted;
@@ -73,15 +71,15 @@ public:
 
 		if (dot(ray_in.direction(), intersection.normal) > 0.0f)
 		{
-			normal_out = -1.0f * intersection.normal;
-			ior = refraction_index_;
+			normal_out = -intersection.normal;
+			ior = refractive_index_;
 			cos_theta = dot(ray_in.direction(), intersection.normal) / length(ray_in.direction());
-			cos_theta = sqrt(1.0f - refraction_index_ * refraction_index_ * (1 - cos_theta * cos_theta));
+			cos_theta = sqrt(1.0f - refractive_index_ * refractive_index_ * (1 - cos_theta * cos_theta));
 		}
 		else
 		{
 			normal_out = intersection.normal;
-			ior = 1.0f / refraction_index_;
+			ior = 1.0f / refractive_index_;
 			cos_theta = -dot(ray_in.direction(), intersection.normal) / length(ray_in.direction());
 		}
 
@@ -100,7 +98,7 @@ public:
 
 		if (refracted)
 		{
-			float r0 = (1.0f - refraction_index_) / (1.0f + refraction_index_);
+			float r0 = (1.0f - refractive_index_) / (1.0f + refractive_index_);
 			r0 = r0 * r0;
 			reflection_probability = r0 + (1.0f - r0) * pow((1.0f - cos_theta), 5.0f);
 		}
@@ -121,5 +119,5 @@ public:
 	}
 
 private:
-	float refraction_index_;
+	float refractive_index_;
 };

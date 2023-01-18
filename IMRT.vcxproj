@@ -226,9 +226,12 @@
     <ClInclude Include="renderer\Specular.hpp" />
     <ClInclude Include="renderer\Sphere.hpp" />
     <ClInclude Include="renderer\Triangle.hpp" />
+    <ClInclude Include="scene\MaterialInfo.hpp" />
+    <ClInclude Include="scene\ObjectInfo.hpp" />
+    <ClInclude Include="scene\TransformInfo.hpp" />
     <ClInclude Include="wrapper\App.hpp" />
     <ClInclude Include="wrapper\Image.hpp" />
-    <ClInclude Include="wrapper\RtInfo.hpp" />
+    <ClInclude Include="scene\RtInfo.hpp" />
     <ClInclude Include="wrapper\RtInterface.hpp" />
   </ItemGroup>
   <ItemGroup>

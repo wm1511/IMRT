@@ -1,7 +1,7 @@
 #pragma once
 #include "Ray.cuh"
 
-#include "curand_kernel.h"
+#include <curand_kernel.h>
 
 __device__ inline float3 disk_random(curandState* random_state)
 {

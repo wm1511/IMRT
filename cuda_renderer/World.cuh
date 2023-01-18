@@ -1,11 +1,13 @@
 #pragma once
 #include "Primitive.cuh"
 
+#include <cstdint>
+
 class World final : public Primitive
 {
 public:
 	__device__ explicit World(Primitive** primitives, const uint32_t primitive_count) : primitives_(primitives), primitive_count_(primitive_count) {}
-	__device__ bool intersect(const Ray& ray, float t_min, float t_max, Intersection& intersection) const override
+	__device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection) const override
 	{
 		Intersection temp_intersection{};
 		bool intersected = false;

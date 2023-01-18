@@ -94,7 +94,7 @@
     <ClInclude Include="wrapper\RtInterface.hpp">
       <Filter>wrapper</Filter>
     </ClInclude>
-    <ClInclude Include="wrapper\RtInfo.hpp">
+    <ClInclude Include="scene\RtInfo.hpp">
       <Filter>wrapper</Filter>
     </ClInclude>
     <ClInclude Include="abstract\IDrawable.hpp">
@@ -156,6 +156,9 @@
     <ClInclude Include="cuda_renderer\Intersection.cuh" />
     <ClInclude Include="cuda_renderer\Material.cuh" />
     <ClInclude Include="cuda_renderer\World.cuh" />
+    <ClInclude Include="scene\ObjectInfo.hpp" />
+    <ClInclude Include="scene\MaterialInfo.hpp" />
+    <ClInclude Include="scene\TransformInfo.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="wrapper">

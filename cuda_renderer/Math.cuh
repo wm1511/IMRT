@@ -27,6 +27,11 @@ inline __host__ __device__ float3 operator-(float3 &a)
     return make_float3(-a.x, -a.y, -a.z);
 }
 
+inline __host__ __device__ float3 operator-(const float3 &a)
+{
+    return make_float3(-a.x, -a.y, -a.z);
+}
+
 // Addition
 inline __host__ __device__ float3 operator+(float3 a, float3 b)
 {

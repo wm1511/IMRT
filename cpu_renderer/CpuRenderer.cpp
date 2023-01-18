@@ -2,7 +2,7 @@
 
 #include <random>
 
-CpuRenderer::CpuRenderer(const RtInfo* rt_info) : rt_info_(rt_info)
+CpuRenderer::CpuRenderer(const RenderInfo* render_info) : render_info_(render_info)
 {
 }
 
@@ -19,4 +19,16 @@ void CpuRenderer::render(float* image_data, const uint32_t width, const uint32_t
 			image_data[4 * (y * width + x) + 3] = 1.0f;
 		}
 	}
+}
+
+void CpuRenderer::recreate_camera(uint32_t width, uint32_t height)
+{
+}
+
+void CpuRenderer::recreate_image(uint32_t width, uint32_t height)
+{
+}
+
+void CpuRenderer::recreate_scene()
+{
 }

@@ -1,4 +1,6 @@
 #pragma once
+#include <vector_types.h>
+
 class Material;
 
 struct Intersection

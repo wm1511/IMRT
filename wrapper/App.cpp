@@ -502,6 +502,8 @@ void App::run() const
     constexpr auto clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     const ImGuiIO& io = ImGui::GetIO();
 
+    app_interface_->init();
+
     // Main loop
     while (!glfwWindowShouldClose(window_))
     {
