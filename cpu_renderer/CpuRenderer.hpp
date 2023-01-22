@@ -9,7 +9,7 @@ public:
 	void render(float* image_data, uint32_t width, uint32_t height) override;
 	void recreate_camera(uint32_t width, uint32_t height) override;
 	void recreate_image(uint32_t width, uint32_t height) override;
-	void recreate_scene() override;
+	void recreate_world(MaterialInfo** material_data, ObjectInfo** object_data) override;
 
 private:
 	const RenderInfo* render_info_;

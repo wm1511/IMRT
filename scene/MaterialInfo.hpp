@@ -10,7 +10,7 @@ enum MaterialType
 
 struct MaterialInfo
 {
-	MaterialType type = UNKNOWN_MATERIAL;
+	MaterialType type{UNKNOWN_MATERIAL};
 };
 
 struct DiffuseInfo : MaterialInfo

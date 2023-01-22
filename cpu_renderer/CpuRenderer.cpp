@@ -29,6 +29,6 @@ void CpuRenderer::recreate_image(uint32_t width, uint32_t height)
 {
 }
 
-void CpuRenderer::recreate_scene()
+void CpuRenderer::recreate_world(MaterialInfo** material_data, ObjectInfo** object_data)
 {
 }

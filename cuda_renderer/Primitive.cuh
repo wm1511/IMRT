@@ -1,4 +1,5 @@
 #pragma once
+#include "../scene/ObjectInfo.hpp"
 #include "Intersection.cuh"
 #include "Ray.cuh"
 
@@ -14,7 +15,10 @@ public:
 class Sphere final : public Primitive
 {
 public:
-	__device__ Sphere(const float3 center, const float radius, Material* material) : center_(center), radius_(radius) { material_ = material; }
+	__device__ explicit Sphere(const SphereInfo* sphere_info, Material* material) : center_(make_float3(sphere_info->center)), radius_(sphere_info->radius)
+	{
+		material_ = material;
+	}
 	__device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection) const override
 	{
 		const float3 oc = ray.origin() - center_;
@@ -47,7 +51,7 @@ public:
 		return false;
 	}
 	
-private:
+//private:
 	float3 center_;
 	float radius_;
 };
@@ -55,7 +59,10 @@ private:
 class Triangle final : public Primitive																																																																						
 {
 public:
-	__device__ Triangle(const float3 v0, const float3 v1, const float3 v2, Material* material) : v0_(v0), v1_(v1), v2_(v2) { material_ = material; }
+	__device__ explicit Triangle(const TriangleInfo* triangle_info, Material* material) : v0_(make_float3(triangle_info->v0)), v1_(make_float3(triangle_info->v1)), v2_(make_float3(triangle_info->v1))
+	{
+		material_ = material;
+	}
 	__device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection) const override
 	{
 		const float3 v0_v1 = v1_ - v0_;

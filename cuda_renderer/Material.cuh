@@ -1,31 +1,20 @@
 #pragma once
+#include "../scene/MaterialInfo.hpp"
 #include "Intersection.cuh"
 #include "Ray.cuh"
-
-#include <curand_kernel.h>
-
-__device__ inline float3 sphere_random(curandState* random_state)
-{
-	float3 v;
-	do
-	{
-		v = make_float3(curand_uniform(random_state), curand_uniform(random_state), curand_uniform(random_state)) - make_float3(1.0f);
-	} while (dot(v, v) >= 1.0f);
-	return v;
-}
 
 class Material
 {
 public:
-	__device__ virtual bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, curandState* random_state) const = 0;
+	__device__ virtual bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const = 0;
 	virtual ~Material() = default;
 };
 
 class Diffuse final : public Material
 {
 public:
-	__device__ explicit Diffuse(const float3& albedo) : albedo_(albedo) {}
-	__device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, curandState* random_state) const override
+	__device__ explicit Diffuse(const DiffuseInfo* diffuse_info) : albedo_(make_float3(diffuse_info->albedo)) {}
+	__device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const override
 	{
 		const float3 reflected_direction = intersection.point + intersection.normal + sphere_random(random_state);
 		ray_out = Ray(intersection.point, reflected_direction - intersection.point);
@@ -40,8 +29,8 @@ private:
 class Specular final : public Material
 {
 public:
-	__device__ Specular(const float3& albedo, const float fuzziness) : albedo_(albedo), fuzziness_(fuzziness) {}
-	__device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, curandState* random_state) const override
+	__device__ explicit Specular(const SpecularInfo* specular_info) : albedo_(make_float3(specular_info->albedo)), fuzziness_(specular_info->fuzziness) {}
+	__device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const override
 	{
 		const float3 reflected_direction = reflect(versor(ray_in.direction()), intersection.normal);
 		ray_out = Ray(intersection.point, reflected_direction + fuzziness_ * sphere_random(random_state));
@@ -57,8 +46,8 @@ private:
 class Refractive final : public Material
 {
 public:
-	__device__ explicit Refractive(const float refractive_index) : refractive_index_(refractive_index) {}
-	__device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, curandState* random_state) const override
+	__device__ explicit Refractive(const RefractiveInfo* refractive_info) : refractive_index_(refractive_info->refractive_index) {}
+	__device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const override
 	{
 		bool refracted;
 		float ior;
@@ -107,7 +96,7 @@ public:
 			reflection_probability = 1.0f;
 		}
 
-		if (curand_uniform(random_state) < reflection_probability)
+		if (pcg_rxs_m_xs(random_state) < reflection_probability)
 		{
 			ray_out = Ray(intersection.point, reflected_direction);
 		}

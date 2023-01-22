@@ -1,18 +1,6 @@
 #pragma once
 #include "Ray.cuh"
 
-#include <curand_kernel.h>
-
-__device__ inline float3 disk_random(curandState* random_state)
-{
-	float3 v;
-	do
-	{
-		v = 2.0f * make_float3(curand_uniform(random_state), curand_uniform(random_state), 0.0f) - make_float3(1.0f, 1.0f, 0.0f);
-	} while (dot(v, v) >= 1.0f);
-	return v;
-}
-
 class Camera
 {
 public:
@@ -30,11 +18,11 @@ public:
 		starting_point_ = origin_ - horizontal_map_ / 2.0f - vertical_map_ - 2.0f - focus_distance * camera_direction;
 	}
 
-	__device__ Ray cast_ray(curandState* random_state, const float screen_x, const float screen_y) const
+	__device__ Ray cast_ray(uint32_t* random_state, const float screen_x, const float screen_y) const
 	{
 		const float3 random_on_lens = lens_radius_ * disk_random(random_state);
 		const float3 ray_offset = u_ * random_on_lens.x + v_ * random_on_lens.y;
-		return Ray(origin_ + ray_offset, starting_point_ + screen_x * horizontal_map_ + screen_y * vertical_map_ - origin_ - ray_offset);
+		return {origin_ + ray_offset, starting_point_ + screen_x * horizontal_map_ + screen_y * vertical_map_ - origin_ - ray_offset};
 	}
 
 private:
