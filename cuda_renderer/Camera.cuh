@@ -4,7 +4,7 @@
 class Camera
 {
 public:
-	__device__ Camera(const float3 look_origin, const float3 look_target, const float fov, const float aspect_ratio, const float aperture, const float focus_distance)
+	__host__ __device__ Camera(const float3 look_origin, const float3 look_target, const float fov, const float aspect_ratio, const float aperture, const float focus_distance)
 		: origin_(look_origin), lens_radius_(aperture / 2.0f)
 	{
 		const float viewport_height = 2.0f * tan(fov / 2.0f);
@@ -18,7 +18,7 @@ public:
 		starting_point_ = origin_ - horizontal_map_ / 2.0f - vertical_map_ - 2.0f - focus_distance * camera_direction;
 	}
 
-	__device__ Ray cast_ray(uint32_t* random_state, const float screen_x, const float screen_y) const
+	__host__ __device__ Ray cast_ray(uint32_t* random_state, const float screen_x, const float screen_y) const
 	{
 		const float3 random_on_lens = lens_radius_ * disk_random(random_state);
 		const float3 ray_offset = u_ * random_on_lens.x + v_ * random_on_lens.y;

@@ -10,8 +10,10 @@ Renderer::Renderer(const RenderInfo* render_info) : render_info_(render_info)
 	scene_.add(std::make_shared<Sphere>(glm::dvec3(0.0f, -100.5f, -1.0f), 100.0), std::make_shared<Diffuse>(glm::dvec3(0.2f, 0.2f, 0.8f)));
 }
 
-void Renderer::render(float* image_data, const uint32_t width, const uint32_t height)
+void Renderer::render(float* image_data)
 {
+	const uint32_t width = render_info_->width;
+    const uint32_t height = render_info_->height;
 	scene_.RebuildBvh(1);
 
 	const Camera camera({render_info_->look_origin[0], render_info_->look_origin[1], render_info_->look_origin[2]}, 

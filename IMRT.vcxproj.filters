@@ -159,6 +159,7 @@
     <ClInclude Include="scene\ObjectInfo.hpp" />
     <ClInclude Include="scene\MaterialInfo.hpp" />
     <ClInclude Include="scene\TransformInfo.hpp" />
+    <ClInclude Include="cpu_renderer\Ray.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="wrapper">

@@ -6,10 +6,10 @@ class CpuRenderer final : public IRenderer
 {
 public:
 	explicit CpuRenderer(const RenderInfo* render_info);
-	void render(float* image_data, uint32_t width, uint32_t height) override;
-	void recreate_camera(uint32_t width, uint32_t height) override;
-	void recreate_image(uint32_t width, uint32_t height) override;
-	void recreate_world(MaterialInfo** material_data, ObjectInfo** object_data) override;
+	void render(float* image_data) override;
+	void recreate_camera() override;
+	void recreate_image() override;
+	void recreate_world() override;
 
 private:
 	const RenderInfo* render_info_;

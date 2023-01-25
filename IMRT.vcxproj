@@ -196,6 +196,7 @@
     <ClInclude Include="abstract\IDrawable.hpp" />
     <ClInclude Include="abstract\IRenderer.hpp" />
     <ClInclude Include="cpu_renderer\CpuRenderer.hpp" />
+    <ClInclude Include="cpu_renderer\Ray.hpp" />
     <ClInclude Include="cuda_renderer\Camera.cuh" />
     <ClInclude Include="cuda_renderer\CudaRenderer.cuh" />
     <ClInclude Include="cuda_renderer\Intersection.cuh" />

@@ -11,7 +11,7 @@ class Renderer final : public IRenderer
 {
 public:
 	explicit Renderer(const RenderInfo* render_info);
-	void render(float* image_data, uint32_t width, uint32_t height) override;
+	void render(float* image_data) override;
 
 private:
 	glm::dvec3 Trace(Ray& ray, const Scene& scene, int32_t depth);

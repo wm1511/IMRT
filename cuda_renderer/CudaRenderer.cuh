@@ -10,7 +10,7 @@
 class CudaRenderer final : public IRenderer
 {
 public:
-	CudaRenderer(const RenderInfo* render_info, MaterialInfo** material_data, ObjectInfo** object_data,	uint32_t width, uint32_t height);
+	explicit CudaRenderer(const RenderInfo* render_info);
 	~CudaRenderer() override;
 
 	CudaRenderer(const CudaRenderer&) = delete;
@@ -18,19 +18,20 @@ public:
 	CudaRenderer operator=(const CudaRenderer&) = delete;
 	CudaRenderer operator=(CudaRenderer&&) = delete;
 
-	void render(float* image_data, uint32_t width, uint32_t height) override;
-	void recreate_camera(uint32_t width, uint32_t height) override;
-	void recreate_image(uint32_t width, uint32_t height) override;
-	void recreate_world(MaterialInfo** material_data, ObjectInfo** object_data) override;
+	void render(float* image_data) override;
+	void recreate_camera() override;
+	void recreate_image() override;
+	void recreate_world() override;
 
 private:
+	void allocate_world();
+	void deallocate_world() const;
+
 	const RenderInfo* render_info_;
-	const int32_t thread_x_ = 16;
-	const int32_t thread_y_ = 16;
 
 	MaterialInfo** device_material_data_ = nullptr, ** host_material_data_ = nullptr;
 	ObjectInfo** device_object_data_ = nullptr, ** host_object_data_ = nullptr;
-    float4* frame_buffer_ = nullptr;
+    float4* frame_buffer_ = nullptr, * accumulation_buffer_ = nullptr;
     uint32_t* random_state_ = nullptr;
     Material** materials_list_ = nullptr;
     Primitive** primitives_list_ = nullptr;
