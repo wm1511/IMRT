@@ -18,12 +18,24 @@ void CpuRenderer::render(float* image_data)
 	{
 		for (int32_t x = 0; x < static_cast<int32_t>(width); x++)
 		{
-			image_data[4 * (y * width + x)] = pcg_rxs_m_xs(&state);//static_cast<float>(rand()) / RAND_MAX;
-			image_data[4 * (y * width + x) + 1] = pcg_rxs_m_xs(&state);//static_cast<float>(rand()) / RAND_MAX;
-			image_data[4 * (y * width + x) + 2] = pcg_rxs_m_xs(&state);//static_cast<float>(rand()) / RAND_MAX;
+			image_data[4 * (y * width + x)] = pcg(&state);//static_cast<float>(rand()) / RAND_MAX;
+			image_data[4 * (y * width + x) + 1] = pcg(&state);//static_cast<float>(rand()) / RAND_MAX;
+			image_data[4 * (y * width + x) + 2] = pcg(&state);//static_cast<float>(rand()) / RAND_MAX;
 			image_data[4 * (y * width + x) + 3] = 1.0f;
 		}
 	}
+}
+
+void CpuRenderer::refresh_buffer()
+{
+}
+
+void CpuRenderer::refresh_camera()
+{
+}
+
+void CpuRenderer::refresh_world()
+{
 }
 
 void CpuRenderer::recreate_camera()
@@ -35,5 +47,9 @@ void CpuRenderer::recreate_image()
 }
 
 void CpuRenderer::recreate_world()
+{
+}
+
+void CpuRenderer::recreate_sky()
 {
 }

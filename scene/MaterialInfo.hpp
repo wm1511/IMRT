@@ -15,16 +15,24 @@ struct MaterialInfo
 
 struct DiffuseInfo : MaterialInfo
 {
-	explicit DiffuseInfo(float albedo[3]) : albedo{albedo[0], albedo[1], albedo[2]} { type = DIFFUSE; }
+	explicit DiffuseInfo(float3 albedo) : albedo{albedo} { type = DIFFUSE; }
 
-	float albedo[3];
+	union
+	{
+		float3 albedo;
+		float albedo_array[3];
+	};
 };
 
 struct SpecularInfo : MaterialInfo
 {
-	SpecularInfo(float albedo[3], const float fuzziness) : albedo{albedo[0], albedo[1], albedo[2]}, fuzziness(fuzziness) { type = SPECULAR; }
+	SpecularInfo(float3 albedo, const float fuzziness) : albedo{albedo}, fuzziness(fuzziness) { type = SPECULAR; }
 
-	float albedo[3];
+	union
+	{
+		float3 albedo;
+		float albedo_array[3];
+	};
 	float fuzziness;
 };
 

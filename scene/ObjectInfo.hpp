@@ -19,25 +19,43 @@ struct ObjectInfo
 
 struct SphereInfo : ObjectInfo
 {
-	SphereInfo(float center[3], const float radius, const uint32_t material_info) : center{center[0], center[1], center[2]}, radius(radius)
+	SphereInfo(float3 center, const float radius, const uint32_t material_info) : center{center}, radius(radius)
 	{
 		type = SPHERE;
 		material_id = material_info;
 	}
-	
-	float center[3];
+
+	union
+	{
+		float3 center;
+		float center_array[3];
+	};
 	float radius;
 };
 
 struct TriangleInfo : ObjectInfo
 {
-	TriangleInfo(float v0[3], float v1[3], float v2[3], const uint32_t material_info) : v0{v0[0], v0[1], v0[2]}, v1{v1[0], v1[1], v1[2]}, v2{v2[0], v2[1], v2[2]}
+	TriangleInfo(float3 v0, float3 v1, float3 v2, const uint32_t material_info) : v0{v0}, v1{v1}, v2{v2}
 	{
 		type = TRIANGLE;
 		material_id = material_info;
 	}
 
-	float v0[3], v1[3], v2[3];
+	union
+	{
+		float3 v0;
+		float v0_array[3];
+	};
+	union
+	{
+		float3 v1;
+		float v1_array[3];
+	};
+	union
+	{
+		float3 v2;
+		float v2_array[3];
+	};
 };
 
 struct TriangleMeshInfo : ObjectInfo

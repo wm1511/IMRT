@@ -15,10 +15,11 @@ public:
 class Sphere final : public Primitive
 {
 public:
-	__device__ explicit Sphere(const SphereInfo* sphere_info, Material* material) : center_(make_float3(sphere_info->center)), radius_(sphere_info->radius)
+	__device__ explicit Sphere(const SphereInfo* sphere_info, Material* material) : center_(sphere_info->center), radius_(sphere_info->radius)
 	{
 		material_ = material;
 	}
+
 	__device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection) const override
 	{
 		const float3 oc = ray.origin() - center_;
@@ -50,8 +51,15 @@ public:
 		}
 		return false;
 	}
+
+	__device__ void update(const SphereInfo* sphere_info, Material* material)
+	{
+		center_ = sphere_info->center;
+		radius_ = sphere_info->radius;
+		material_ = material;
+	}
 	
-//private:
+private:
 	float3 center_;
 	float radius_;
 };
@@ -59,10 +67,11 @@ public:
 class Triangle final : public Primitive																																																																						
 {
 public:
-	__device__ explicit Triangle(const TriangleInfo* triangle_info, Material* material) : v0_(make_float3(triangle_info->v0)), v1_(make_float3(triangle_info->v1)), v2_(make_float3(triangle_info->v1))
+	__device__ explicit Triangle(const TriangleInfo* triangle_info, Material* material) : v0_(triangle_info->v0), v1_(triangle_info->v1), v2_(triangle_info->v1)
 	{
 		material_ = material;
 	}
+
 	__device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection) const override
 	{
 		const float3 v0_v1 = v1_ - v0_;
@@ -92,6 +101,14 @@ public:
 		intersection.normal = cross(v1_ - v0_, v2_ - v0_);
 		intersection.material = material_;
 		return true;
+	}
+
+	__device__ void update(const TriangleInfo* triangle_info, Material* material)
+	{
+		v0_ = triangle_info->v0;
+		v1_ = triangle_info->v1;
+		v2_ = triangle_info->v2;
+		material_ = material;
 	}
 
 private:

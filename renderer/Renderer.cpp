@@ -16,8 +16,8 @@ void Renderer::render(float* image_data)
     const uint32_t height = render_info_->height;
 	scene_.RebuildBvh(1);
 
-	const Camera camera({render_info_->look_origin[0], render_info_->look_origin[1], render_info_->look_origin[2]}, 
-						{render_info_->look_target[0], render_info_->look_target[1], render_info_->look_target[2]}, 
+	const Camera camera({render_info_->camera_position.x, render_info_->camera_position.y, render_info_->camera_position.z}, 
+						{render_info_->camera_direction.x, render_info_->camera_direction.y, render_info_->camera_direction.z}, 
 						render_info_->fov,
 	                    static_cast<double>(width) / static_cast<double>(height), 
 						render_info_->aperture,

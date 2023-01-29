@@ -1,6 +1,14 @@
 #pragma once
 #include <cuda_runtime.h>
+
 #include <cmath>
+
+// Constants
+__device__ __constant__ constexpr float kPi = 3.141593f;
+__device__ __constant__ constexpr float kTwoPi = 6.283185f;
+__device__ __constant__ constexpr float kHalfPi =  1.570796f;
+__device__ __constant__ constexpr float kInvPi = 0.318309f;
+__device__ __constant__ constexpr float kInv2Pi = 0.159154f;
 
 // Constructors
 inline __host__ __device__ float3 make_float3(float s)
@@ -293,9 +301,15 @@ inline __host__ __device__ float3 abs(float3 v)
     return make_float3(fabs(v.x), fabs(v.y), fabs(v.z));
 }
 
+// Square root
 inline __host__ __device__ float3 sqrt(float3 v)
 {
 	return make_float3(sqrt(v.x), sqrt(v.y), sqrt(v.z));
+}
+
+inline __host__ __device__ float4 sqrt(float4 v)
+{
+	return make_float4(sqrt(v.x), sqrt(v.y), sqrt(v.z), sqrt(v.w));
 }
 
 // Reflection
@@ -317,7 +331,13 @@ inline __host__ __device__ float3 versor(float3 v)
 }
 
 // Random
-inline __host__ __device__ float pcg_rxs_m_xs(uint32_t* random_state)
+inline __host__ __device__ uint32_t rotl(const uint32_t x, int k)
+{
+	return (x << k) | (x >> (32 - k));
+}
+
+// pcg_rxs_m_xs
+inline __host__ __device__ float pcg(uint32_t* random_state)
 {
     uint32_t state = *random_state;
     *random_state = *random_state * 747796405u + 2891336453u;
@@ -325,47 +345,33 @@ inline __host__ __device__ float pcg_rxs_m_xs(uint32_t* random_state)
 	return (float)(((word >> 22u) ^ word) >> 8) * (1.0f / (UINT32_C(1) << 24));
 }
 
-//inline __host__ __device__ float pcg_xsh_rs(uint64_t* random_state)
-//{
-//	uint64_t old_state = *random_state;
-//	*random_state = old_state * 6364136223846793005u;
-//	old_state ^= old_state >> 22;
-//	uint32_t word = (uint32_t)(old_state >> (22 + (uint32_t)(old_state >> 61)));
-//	return (float)(word >> 8) * (1.0f / (UINT32_C(1) << 24));
-//}
-//
-//inline __host__ __device__ void pcg_xsh_rs_init(const uint64_t seed, uint64_t* random_state)
-//{
-//	*random_state = 2 * seed + 1;
-//	(void)pcg_xsh_rs(random_state);
-//}
-//
-//static __host__ __device__ uint32_t rotr32(const uint32_t x, const uint32_t r)
-//{
-//	return x >> r | x << (-r & 31);
-//}
-//
-//inline __host__ __device__ float pcg_xsh_rr(uint64_t* random_state)
-//{
-//	uint64_t old_state = *random_state;
-//	*random_state = old_state * 6364136223846793005u + 1442695040888963407u;
-//	old_state ^= old_state >> 18;
-//	const uint32_t word = rotr32((uint32_t)(old_state >> 27), (uint32_t)(old_state >> 59));
-//    return (float)(word >> 8) * (1.0f / (UINT32_C(1) << 24));
-//}
-//
-//inline __host__ __device__ void pcg_xsh_rr_init(const uint64_t seed, uint64_t* random_state)
-//{
-//	*random_state = seed + 1442695040888963407u;
-//	(void)pcg_xsh_rr(random_state);
-//}
+// xoshiro128+
+inline __host__ __device__ uint32_t xoshiro(uint4* random_state)
+{
+	const uint32_t result = random_state->x + random_state->w;
+	const uint32_t t = random_state->y << 9;
+
+    // xo
+	random_state->z ^= random_state->x;
+	random_state->w ^= random_state->y;
+	random_state->y ^= random_state->z;
+	random_state->x ^= random_state->w;
+
+    // shi
+	random_state->z ^= t;
+
+    // ro
+	random_state->w = rotl(random_state->w, 11);
+
+	return result;
+}
 
 inline __host__ __device__ float3 disk_random(uint32_t* random_state)
 {
 	float3 v;
 	do
 	{
-		v = 2.0f * make_float3(pcg_rxs_m_xs(random_state), pcg_rxs_m_xs(random_state), 0.0f) - make_float3(1.0f, 1.0f, 0.0f);
+		v = 2.0f * make_float3(pcg(random_state), pcg(random_state), 0.0f) - make_float3(1.0f, 1.0f, 0.0f);
 	} while (dot(v, v) >= 1.0f);
 	return v;
 }
@@ -375,7 +381,7 @@ inline __host__ __device__ float3 sphere_random(uint32_t* random_state)
 	float3 v;
 	do
 	{
-		v = make_float3(pcg_rxs_m_xs(random_state), pcg_rxs_m_xs(random_state), pcg_rxs_m_xs(random_state)) - make_float3(1.0f);
+		v = make_float3(pcg(random_state), pcg(random_state), pcg(random_state)) - make_float3(1.0f);
 	} while (dot(v, v) >= 1.0f);
 	return v;
 }

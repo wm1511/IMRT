@@ -1,8 +1,9 @@
 #pragma once
+#include <vector_types.h>
 
 struct TransformInfo
 {
-	float translation[3];
-	float scale[3];
-	float rotation[3];
+	float3 translation;
+	float3 scale;
+	float3 rotation;
 };

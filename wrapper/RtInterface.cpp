@@ -2,8 +2,11 @@
 #include "../cpu_renderer/CpuRenderer.hpp"
 #include "../cuda_renderer/CudaRenderer.cuh"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 #include "../imgui/imgui.h"
 
+#include <filesystem>
 #include <chrono>
 
 template <typename T>
@@ -13,7 +16,7 @@ static void extend_array(T**& array, const int32_t current_size, int32_t& curren
 	{
 		T** new_array = new T*[(uint64_t)2 * current_size];
 		current_capacity *= 2;
-		memcpy(new_array, array, current_size * sizeof(T*));
+		memcpy_s(new_array, current_capacity * sizeof(T*), array, current_size * sizeof(T*));
 		delete[] array;
 		array = new_array;
 	}
@@ -57,20 +60,14 @@ RtInterface::RtInterface()
 	render_info_.material_capacity = 4;
 	render_info_.material_data = new MaterialInfo*[render_info_.material_count];
 	render_info_.object_data = new ObjectInfo*[render_info_.object_count];
-	float left[3] = {1.0f, 0.0f, -1.0f};
-	float center[3] = {0.0f, 0.0f, -1.0f};
-	float right[3] = {-1.0f, 0.0f, -1.0f};
-	float ground[3] = {0.0f, -100.5f, -1.0f};
-	float gray[3] = {0.5f, 0.5f, 0.5f};
-	float blue[3] = {0.2f, 0.2f, 0.8f};
-	render_info_.material_data[0] = new DiffuseInfo(gray);
+	render_info_.material_data[0] = new DiffuseInfo({0.5f, 0.5f, 0.5f});
 	render_info_.material_data[1] = new RefractiveInfo(1.5f);
-	render_info_.material_data[2] = new SpecularInfo(gray, 0.1f);
-	render_info_.material_data[3] = new DiffuseInfo(blue);
-	render_info_.object_data[0] = new SphereInfo(left, 0.5f, 0);
-	render_info_.object_data[1] = new SphereInfo(center, 0.5f, 1);
-	render_info_.object_data[2] = new SphereInfo(right, 0.5f, 2);
-	render_info_.object_data[3] = new SphereInfo(ground, 100.0f, 3);
+	render_info_.material_data[2] = new SpecularInfo({0.5f, 0.5f, 0.5f}, 0.1f);
+	render_info_.material_data[3] = new DiffuseInfo({0.2f, 0.2f, 0.8f});
+	render_info_.object_data[0] = new SphereInfo({1.0f, 0.0f, -1.0f}, 0.5f, 0);
+	render_info_.object_data[1] = new SphereInfo({0.0f, 0.0f, -1.0f}, 0.5f, 1);
+	render_info_.object_data[2] = new SphereInfo({-1.0f, 0.0f, -1.0f}, 0.5f, 2);
+	render_info_.object_data[3] = new SphereInfo({0.0f, -100.5f, -1.0f}, 100.0f, 3);
 }
 
 RtInterface::~RtInterface()
@@ -81,12 +78,16 @@ RtInterface::~RtInterface()
 
 	for (int32_t i = 0; i < render_info_.material_data_count; i++)
 		delete render_info_.material_data[i];
-	delete[] render_info_.material_data; 
+	delete[] render_info_.material_data;
+
+	stbi_image_free(render_info_.hdr_data);
 }
 
 void RtInterface::draw()
 {
-	//ImGui::ShowDemoWindow();
+	ImGui::ShowDemoWindow();
+
+	const auto start = std::chrono::high_resolution_clock::now();
 	{
 		ImGui::Begin("Render settings");
 
@@ -96,6 +97,7 @@ void RtInterface::draw()
 		if (ImGui::Button("CPU render", {ImGui::GetContentRegionAvail().x / 3, 0}))
 		{
 			frames_rendered_ = 0;
+			render_info_.frames_since_refresh = 0;
 			is_rendering_ = true;
 			renderer_ = std::make_unique<CpuRenderer>(&render_info_);
 		}
@@ -103,6 +105,7 @@ void RtInterface::draw()
 		if (ImGui::Button("CUDA render", {ImGui::GetContentRegionAvail().x / 2, 0}))
 		{
 			frames_rendered_ = 0;
+			render_info_.frames_since_refresh = 0;
 			is_rendering_ = true;
 			renderer_ = std::make_unique<CudaRenderer>(&render_info_);
 		}
@@ -114,7 +117,7 @@ void RtInterface::draw()
 		if (starting_disabled)
 			ImGui::EndDisabled();
 
-		if (ImGui::Button("Stop rendering", {ImGui::GetContentRegionAvail().x, 0}))
+		if (ImGui::Button("Stop rendering", {ImGui::GetContentRegionAvail().x, 0}) || (render_info_.render_mode == STATIC && frames_rendered_ != 0))
 		{
 			renderer_.reset();
 			is_rendering_ = false;
@@ -129,18 +132,16 @@ void RtInterface::draw()
 				image_data_ = new float[(uint64_t)4 * render_info_.height * render_info_.width];
 				renderer_->recreate_image();
 				renderer_->recreate_camera();
+				renderer_->refresh_buffer();
+				render_info_.frames_since_refresh = 0;
 			}
 
-			const auto start = std::chrono::high_resolution_clock::now();
+			frames_rendered_++;
+			render_info_.frames_since_refresh++;
 
 			renderer_->render(image_data_);
 
-			const auto duration = std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - start);
-			render_time_ = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-
 			image_->SetData(image_data_);
-			frames_rendered_++;
-			render_info_.frames_since_refresh++;
 		}
 
 		ImGui::Text("Last render time: %llu ms", render_time_);
@@ -159,6 +160,7 @@ void RtInterface::draw()
 		add_material();
 		edit_object();
 		add_object();
+		edit_sky();
 		ImGui::End();
 	}
 
@@ -171,7 +173,73 @@ void RtInterface::draw()
 			ImGui::Image(reinterpret_cast<ImU64>(image_->GetDescriptorSet()),
 				{static_cast<float>(image_->GetWidth()), static_cast<float>(image_->GetHeight())},
 				ImVec2(1, 0), ImVec2(0, 1));
+
+		if (ImGui::IsWindowFocused())
+			move_camera();
+
 		ImGui::End();
+	}
+
+	const auto duration = std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - start);
+	render_time_ = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+}
+
+void RtInterface::move_camera()
+{
+	bool is_changed = false;
+
+	if (ImGui::IsKeyDown(ImGuiKey_W))
+	{
+		render_info_.camera_position -= render_info_.camera_direction * camera_movement_speed_;
+		is_changed = true;
+	}
+	if (ImGui::IsKeyDown(ImGuiKey_S))
+	{
+		render_info_.camera_position += render_info_.camera_direction * camera_movement_speed_;
+		is_changed = true;
+	}
+	if (ImGui::IsKeyDown(ImGuiKey_A))
+	{
+		const float3 displacement = normalize(cross(render_info_.camera_direction, make_float3(0.0f, -1.0f, 0.0f)));
+		render_info_.camera_position -= displacement * camera_movement_speed_;
+		is_changed = true;
+	}
+	if (ImGui::IsKeyDown(ImGuiKey_D))
+	{
+		const float3 displacement = normalize(cross(render_info_.camera_direction, make_float3(0.0f, -1.0f, 0.0f)));
+		render_info_.camera_position += displacement * camera_movement_speed_;
+		is_changed = true;
+	}
+	if (ImGui::IsKeyDown(ImGuiKey_E))
+	{
+		render_info_.camera_position.y += camera_movement_speed_;
+		is_changed = true;
+	}
+	if (ImGui::IsKeyDown(ImGuiKey_Q))
+	{
+		render_info_.camera_position.y -= camera_movement_speed_;
+		is_changed = true;
+	}
+
+	if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+	{
+		render_info_.angle_x += ImGui::GetMouseDragDelta().x * camera_rotation_speed_;
+		render_info_.angle_y += ImGui::GetMouseDragDelta().y * camera_rotation_speed_;
+		render_info_.angle_x = fmodf(render_info_.angle_x, kTwoPi);
+		render_info_.angle_y = clamp(render_info_.angle_y, -kHalfPi, kHalfPi);
+		render_info_.camera_direction = normalize(make_float3(
+			cos(render_info_.angle_y) * -sin(render_info_.angle_x),
+			-sin(render_info_.angle_y),
+			-cos(render_info_.angle_x) * cos(render_info_.angle_y)));
+		ImGui::ResetMouseDragDelta();
+		is_changed =  true;
+	}
+	
+	if (is_rendering_ && is_changed)
+	{
+		renderer_->refresh_camera();
+		renderer_->refresh_buffer();
+		render_info_.frames_since_refresh = 0;
 	}
 }
 
@@ -179,39 +247,63 @@ void RtInterface::edit_settings()
 {
 	if (ImGui::CollapsingHeader("Quality settings", ImGuiTreeNodeFlags_DefaultOpen))
     {
+		bool is_changed = false;
+		is_changed |= ImGui::RadioButton("Progressive render", &render_info_.render_mode, PROGRESSIVE); ImGui::SameLine();
+        is_changed |= ImGui::RadioButton("Static render", &render_info_.render_mode, STATIC);
+
+		if (render_info_.render_mode == PROGRESSIVE)
+			ImGui::BeginDisabled();
 		if (ImGui::TreeNode("Samples per pixel"))
 		{
-			ImGui::SliderInt("##SamplesPerPixel", &render_info_.samples_per_pixel, 1, 1024, "%d",
+			ImGui::SliderInt("##SamplesPerPixel", &render_info_.samples_per_pixel, 1, INT16_MAX, "%d",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			draw_help("Count of samples generated for each pixel");
 			ImGui::TreePop();
 		}
+		if (render_info_.render_mode == PROGRESSIVE)
+			ImGui::EndDisabled();
 
 		if (ImGui::TreeNode("Recursion depth"))
 		{
-			ImGui::SliderInt("##RecursionDepth", &render_info_.max_depth, 1, INT8_MAX, "%d", ImGuiSliderFlags_AlwaysClamp);
+			is_changed |= ImGui::SliderInt("##RecursionDepth", &render_info_.max_depth, 1, INT8_MAX, "%d", ImGuiSliderFlags_AlwaysClamp);
 			draw_help("Maximum depth, that recursion can achieve before being stopped");
 			ImGui::TreePop();
 		}
+		if (is_rendering_ && is_changed)
+		{
+			renderer_->refresh_buffer();
+			render_info_.frames_since_refresh = 0;
+		}
     }
 }
-
 
 void RtInterface::edit_camera()
 {
 	if (ImGui::CollapsingHeader("Camera settings", ImGuiTreeNodeFlags_DefaultOpen))
     {
 		bool is_changed = false;
-	    if (ImGui::TreeNode("Camera position"))
+	    if (ImGui::TreeNode("Position"))
 		{
-			is_changed |= ImGui::SliderFloat3("##LookOrigin", render_info_.look_origin, -UINT16_MAX, UINT16_MAX, "%.3f",
+			is_changed |= ImGui::SliderFloat("##CameraX", &render_info_.camera_position.x, -UINT16_MAX, UINT16_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SameLine(); ImGui::Text("x");
+	    	is_changed |= ImGui::SliderFloat("##CameraY", &render_info_.camera_position.y, -UINT16_MAX, UINT16_MAX, "%.3f",
+				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SameLine(); ImGui::Text("y");
+	    	is_changed |= ImGui::SliderFloat("##CameraZ", &render_info_.camera_position.z, -UINT16_MAX, UINT16_MAX, "%.3f",
+				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SameLine(); ImGui::Text("z");
 			ImGui::TreePop();
 		}
-		if (ImGui::TreeNode("Camera target point"))
+		if (ImGui::TreeNode("Angle offset"))
 		{
-			is_changed |= ImGui::SliderFloat3("##LookTarget", render_info_.look_target, -UINT16_MAX, UINT16_MAX, "%.3f",
-				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+			is_changed |= ImGui::SliderAngle("degrees x", &render_info_.angle_x, 0.0f, 360.0f, "%.3f");
+			is_changed |= ImGui::SliderAngle("degrees y", &render_info_.angle_y, -90.0f, 90.0f, "%.3f");
+
+			render_info_.camera_direction = normalize(make_float3(
+			cos(render_info_.angle_y) * -sin(render_info_.angle_x),
+			-sin(render_info_.angle_y),
+			-cos(render_info_.angle_x) * cos(render_info_.angle_y)));
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Vertical field of view"))
@@ -221,19 +313,31 @@ void RtInterface::edit_camera()
 		}
 		if (ImGui::TreeNode("Aperture"))
 		{
-			is_changed |= ImGui::SliderFloat("##Aperture", &render_info_.aperture, 0, UINT8_MAX, "%.3f",
+			is_changed |= ImGui::SliderFloat("##Aperture", &render_info_.aperture, 0.0f, UINT8_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Focus distance"))
 		{
-			is_changed |= ImGui::SliderFloat("##FocusDist", &render_info_.focus_distance, 0, UINT8_MAX, "%.3f",
+			is_changed |= ImGui::SliderFloat("##FocusDist", &render_info_.focus_distance, 0.0f, UINT8_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::TreePop();
 		}
+		if (ImGui::TreeNode("Movement speed"))
+		{
+			ImGui::SliderFloat("##MoveSpeed", &camera_movement_speed_, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::TreePop();
+		}
+		if (ImGui::TreeNode("Rotation speed"))
+		{
+			ImGui::SliderFloat("##RotateSpeed", &camera_rotation_speed_, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::TreePop();
+		}
+
 		if (is_rendering_ && is_changed)
 		{
-			renderer_->recreate_camera();
+			renderer_->refresh_camera();
+			renderer_->refresh_buffer();
 			render_info_.frames_since_refresh = 0;
 		}
 	}
@@ -266,7 +370,7 @@ void RtInterface::add_material()
 			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
 			{
 				extend_array(render_info_.material_data, render_info_.material_data_count, render_info_.material_capacity);
-				render_info_.material_data[render_info_.material_data_count] = new DiffuseInfo(new_diffuse_color);
+				render_info_.material_data[render_info_.material_data_count] = new DiffuseInfo(make_float3(new_diffuse_color));
 				render_info_.material_data_count++;
 				is_changed = true;
 			}
@@ -287,7 +391,7 @@ void RtInterface::add_material()
 			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
 			{
 				extend_array(render_info_.material_data, render_info_.material_data_count, render_info_.material_capacity);
-				render_info_.material_data[render_info_.material_data_count] = new SpecularInfo(new_specular_color, new_specular_fuzziness);
+				render_info_.material_data[render_info_.material_data_count] = new SpecularInfo(make_float3(new_specular_color), new_specular_fuzziness);
 				render_info_.material_data_count++;
 				is_changed = true;
 			}
@@ -314,6 +418,7 @@ void RtInterface::add_material()
 		if (is_rendering_ && is_changed)
 		{
 			renderer_->recreate_world();
+			renderer_->refresh_buffer();
 			render_info_.material_count++;
 			render_info_.frames_since_refresh = 0;
 		}
@@ -343,12 +448,12 @@ void RtInterface::edit_material()
 					else if (current_material->type == DIFFUSE)
 					{
 						const auto current_diffuse = (DiffuseInfo*)current_material;
-						is_changed |= ImGui::ColorEdit3("Color", current_diffuse->albedo, ImGuiColorEditFlags_Float);
+						is_changed |= ImGui::ColorEdit3("Color", current_diffuse->albedo_array, ImGuiColorEditFlags_Float);
 					}
 					else if (current_material->type == SPECULAR)
 					{
 						const auto current_specular = (SpecularInfo*)current_material;
-						is_changed |= ImGui::ColorEdit3("Color", current_specular->albedo, ImGuiColorEditFlags_Float);
+						is_changed |= ImGui::ColorEdit3("Color", current_specular->albedo_array, ImGuiColorEditFlags_Float);
 						is_changed |= ImGui::SliderFloat("Fuzziness", &current_specular->fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 						draw_help("Fuzziness of material reflection");
 					}
@@ -367,7 +472,8 @@ void RtInterface::edit_material()
 		}
 		if (is_rendering_ && is_changed)
 		{
-			renderer_->recreate_world();
+			renderer_->refresh_world();
+			renderer_->refresh_buffer();
 			render_info_.frames_since_refresh = 0;
 		}
 	}
@@ -410,7 +516,8 @@ void RtInterface::add_object()
 			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
 			{
 				extend_array(render_info_.object_data, render_info_.object_data_count, render_info_.object_capacity);
-				render_info_.object_data[render_info_.object_data_count] = new SphereInfo(new_sphere_center, new_sphere_radius, selected_material);
+				render_info_.object_data[render_info_.object_data_count] = new SphereInfo(
+					make_float3(new_sphere_center), new_sphere_radius, selected_material);
 				render_info_.object_data_count++;
 				is_changed = true;
 			}
@@ -437,7 +544,8 @@ void RtInterface::add_object()
 			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
 			{
 				extend_array(render_info_.object_data, render_info_.object_data_count, render_info_.object_capacity);
-				render_info_.object_data[render_info_.object_data_count] = new TriangleInfo(new_triangle_v0, new_triangle_v1, new_triangle_v2, selected_material);
+				render_info_.object_data[render_info_.object_data_count] = new TriangleInfo(
+					make_float3(new_triangle_v0), make_float3(new_triangle_v1), make_float3(new_triangle_v2), selected_material);
 				render_info_.object_data_count++;
 				is_changed = true;
 			}
@@ -449,6 +557,7 @@ void RtInterface::add_object()
 		if (is_rendering_ && is_changed)
 		{
 			renderer_->recreate_world();
+			renderer_->refresh_buffer();
 			render_info_.object_count++;
 			render_info_.frames_since_refresh = 0;
 		}
@@ -481,7 +590,7 @@ void RtInterface::edit_object()
 					{
 						const auto current_sphere = (SphereInfo*)current_object;
 
-						is_changed |= ImGui::SliderFloat3("Center", current_sphere->center, -UINT8_MAX, UINT8_MAX,"%.3f",
+						is_changed |= ImGui::SliderFloat3("Center", current_sphere->center_array, -UINT8_MAX, UINT8_MAX,"%.3f",
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 						is_changed |= ImGui::SliderFloat("Radius", &current_sphere->radius, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
@@ -491,17 +600,17 @@ void RtInterface::edit_object()
 					{
 						const auto current_triangle = (TriangleInfo*)current_object;
 
-						is_changed |= ImGui::SliderFloat3("Vertex 0", current_triangle->v0, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						is_changed |= ImGui::SliderFloat3("Vertex 0", current_triangle->v0_array, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_changed |= ImGui::SliderFloat3("Vertex 1", current_triangle->v1, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						is_changed |= ImGui::SliderFloat3("Vertex 1", current_triangle->v1_array, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_changed |= ImGui::SliderFloat3("Vertex 2", current_triangle->v2, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						is_changed |= ImGui::SliderFloat3("Vertex 2", current_triangle->v2_array, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 					}
 					ImGui::TreePop();
 				}
 
-				if (current_object->type == TRIANGLE_MESH)
+				/*if (current_object->type == TRIANGLE_MESH)
 				{
 					if (ImGui::TreeNode("Transform"))
 					{
@@ -519,7 +628,7 @@ void RtInterface::edit_object()
 								ImGuiSliderFlags_AlwaysClamp);
 						ImGui::TreePop();
 					}
-				}
+				}*/
 
 				if (ImGui::TreeNode("Material"))
 				{
@@ -551,8 +660,90 @@ void RtInterface::edit_object()
 		}
 		if (is_rendering_ && is_changed)
 		{
-			renderer_->recreate_world();
+			renderer_->refresh_world();
+			renderer_->refresh_buffer();
 			render_info_.frames_since_refresh = 0;
+		}
+	}
+}
+
+void RtInterface::edit_sky()
+{
+	if (ImGui::CollapsingHeader("Environment map"))
+	{
+		bool hdr_changed = false, exposure_changed = false;
+		static char selected_file_path[256];
+		static char file_label[128];
+		static wchar_t selected_file[128];
+
+		const auto iterator = std::filesystem::recursive_directory_iterator("hdr/");
+		uint64_t converted_count{};
+
+		ImGui::BeginChild("HDR Files", {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
+			ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
+		ImGui::Text("Choose HDR image");
+		draw_help("Choose file containing HDR image for environment map creation. New files can be added to \"hdr\" folder");
+
+		for (const auto& entry : iterator)
+		{
+			wcstombs_s(&converted_count, file_label, entry.path().filename().c_str(), 128);
+			if (ImGui::Selectable(file_label, wcscmp(entry.path().filename().c_str(), selected_file) == 0))
+			{
+				wcscpy_s(selected_file, 128, entry.path().filename().c_str());
+				const auto path = std::filesystem::current_path() / L"hdr" / entry.path().filename().c_str();
+				wcstombs_s(&converted_count, selected_file_path, path.c_str(), 256);
+			}
+		}
+		ImGui::EndChild();
+
+		exposure_changed |= ImGui::SliderFloat("Exposure", &render_info_.hdr_exposure, 0.0f, 16.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		draw_help("Adjust brightness of HDR environment map");
+
+		ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "Loading large files will take a while");
+
+		if (ImGui::Button("Set HDR", {ImGui::GetContentRegionAvail().x, 0}))
+		{
+			if (!stbi_info(selected_file_path, &render_info_.hdr_width, &render_info_.hdr_height, &render_info_.hdr_components))
+			{
+				ImGui::OpenPopup("HDR loading failed");
+			}
+			else
+			{
+				stbi_image_free(render_info_.hdr_data);
+				render_info_.hdr_data = stbi_loadf(selected_file_path, &render_info_.hdr_width, &render_info_.hdr_height, &render_info_.hdr_components, 0);
+				hdr_changed = true;
+			}
+		}
+
+		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
+		if (ImGui::BeginPopupModal("HDR loading failed", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			ImGui::Text("%s is not a valid HDR image file", selected_file_path);
+			if (ImGui::Button("OK", ImVec2(ImGui::GetContentRegionAvail().x, 0))) 
+				ImGui::CloseCurrentPopup();
+
+			ImGui::EndPopup();
+		}
+
+		if (ImGui::Button("Clear HDR", {ImGui::GetContentRegionAvail().x, 0}))
+		{
+			stbi_image_free(render_info_.hdr_data);
+			render_info_.hdr_data = nullptr;
+			hdr_changed = true;
+		}
+		if (is_rendering_)
+		{
+			if (exposure_changed)
+			{
+				renderer_->refresh_buffer();
+				render_info_.frames_since_refresh = 0;
+			}
+			else if (hdr_changed)
+			{
+				renderer_->recreate_sky();
+				renderer_->refresh_buffer();
+				render_info_.frames_since_refresh = 0;
+			}
 		}
 	}
 }

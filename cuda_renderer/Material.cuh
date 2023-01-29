@@ -13,13 +13,19 @@ public:
 class Diffuse final : public Material
 {
 public:
-	__device__ explicit Diffuse(const DiffuseInfo* diffuse_info) : albedo_(make_float3(diffuse_info->albedo)) {}
+	__device__ explicit Diffuse(const DiffuseInfo* diffuse_info) : albedo_(diffuse_info->albedo) {}
+
 	__device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const override
 	{
 		const float3 reflected_direction = intersection.point + intersection.normal + sphere_random(random_state);
 		ray_out = Ray(intersection.point, reflected_direction - intersection.point);
 		absorption = albedo_;
 		return true;
+	}
+
+	__device__ void update(const DiffuseInfo* diffuse_info)
+	{
+		albedo_ = diffuse_info->albedo;
 	}
 
 private:
@@ -29,13 +35,20 @@ private:
 class Specular final : public Material
 {
 public:
-	__device__ explicit Specular(const SpecularInfo* specular_info) : albedo_(make_float3(specular_info->albedo)), fuzziness_(specular_info->fuzziness) {}
+	__device__ explicit Specular(const SpecularInfo* specular_info) : albedo_(specular_info->albedo), fuzziness_(specular_info->fuzziness) {}
+
 	__device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const override
 	{
 		const float3 reflected_direction = reflect(versor(ray_in.direction()), intersection.normal);
 		ray_out = Ray(intersection.point, reflected_direction + fuzziness_ * sphere_random(random_state));
 		absorption = albedo_;
 		return dot(ray_out.direction(), intersection.normal) > 0.0f;
+	}
+
+	__device__ void update(const SpecularInfo* specular_info)
+	{
+		albedo_ = specular_info->albedo;
+		fuzziness_ = specular_info->fuzziness;
 	}
 
 private:
@@ -47,6 +60,7 @@ class Refractive final : public Material
 {
 public:
 	__device__ explicit Refractive(const RefractiveInfo* refractive_info) : refractive_index_(refractive_info->refractive_index) {}
+
 	__device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const override
 	{
 		bool refracted;
@@ -96,7 +110,7 @@ public:
 			reflection_probability = 1.0f;
 		}
 
-		if (pcg_rxs_m_xs(random_state) < reflection_probability)
+		if (pcg(random_state) < reflection_probability)
 		{
 			ray_out = Ray(intersection.point, reflected_direction);
 		}
@@ -105,6 +119,11 @@ public:
 			ray_out =  Ray(intersection.point, refracted_direction);
 		}
 		return true;
+	}
+
+	__device__ void update(const RefractiveInfo* refractive_info)
+	{
+		refractive_index_ = refractive_info->refractive_index;
 	}
 
 private:
