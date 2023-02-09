@@ -3,12 +3,12 @@
 
 #include <cstdint>
 
-class World final : public Primitive
+class World
 {
 public:
-	__device__ explicit World(Primitive** primitives, const uint32_t primitive_count)
-		: primitives_(primitives), primitive_count_(primitive_count) {}
-	__device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection) const override
+	__host__ __device__ explicit World(Primitive** primitives, const uint32_t primitive_count) : primitives_(primitives), primitive_count_(primitive_count) {}
+
+	__host__ __device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection) const
 	{
 		Intersection temp_intersection{};
 		bool intersected = false;
@@ -24,6 +24,11 @@ public:
 		}
 
 		return intersected;
+	}
+
+	__host__ __device__ void update(const uint32_t primitive_count)
+	{
+		primitive_count_ = primitive_count;
 	}
 
 private:

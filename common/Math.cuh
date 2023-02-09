@@ -258,15 +258,15 @@ inline __host__ __device__ float3 max(float3 a, float3 b)
 }
 
 // Clamp
-inline __device__ __host__ float clamp(float f, float a, float b)
+inline __host__ __device__ float clamp(float f, float a, float b)
 {
     return fmaxf(a, fminf(f, b));
 }
-inline __device__ __host__ float3 clamp(float3 v, float a, float b)
+inline __host__ __device__ float3 clamp(float3 v, float a, float b)
 {
     return make_float3(clamp(v.x, a, b), clamp(v.y, a, b), clamp(v.z, a, b));
 }
-inline __device__ __host__ float3 clamp(float3 v, float3 a, float3 b)
+inline __host__ __device__ float3 clamp(float3 v, float3 a, float3 b)
 {
     return make_float3(clamp(v.x, a.x, b.x), clamp(v.y, a.y, b.y), clamp(v.z, a.z, b.z));
 }

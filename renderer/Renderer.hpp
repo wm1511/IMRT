@@ -4,7 +4,7 @@
 #include "Scene.hpp"
 #include "Diffuse.hpp"
 
-#include "../scene/RtInfo.hpp"
+#include "../info/RenderInfo.hpp"
 #include "../abstract/IRenderer.hpp"
 
 class Renderer final : public IRenderer

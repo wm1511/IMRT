@@ -20,7 +20,7 @@ struct DiffuseInfo : MaterialInfo
 	union
 	{
 		float3 albedo;
-		float albedo_array[3];
+		float albedo_array[3]{};
 	};
 };
 
@@ -31,7 +31,7 @@ struct SpecularInfo : MaterialInfo
 	union
 	{
 		float3 albedo;
-		float albedo_array[3];
+		float albedo_array[3]{};
 	};
 	float fuzziness;
 };
@@ -40,5 +40,5 @@ struct RefractiveInfo : MaterialInfo
 {
 	explicit RefractiveInfo(const float refractive_index) : refractive_index(refractive_index) { type = REFRACTIVE; }
 
-	float refractive_index;
+	float refractive_index{};
 };

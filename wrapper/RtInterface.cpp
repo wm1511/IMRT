@@ -9,19 +9,6 @@
 #include <filesystem>
 #include <chrono>
 
-template <typename T>
-static void extend_array(T**& array, const int32_t current_size, int32_t& current_capacity)
-{
-	if (current_size == current_capacity)
-	{
-		T** new_array = new T*[(uint64_t)2 * current_size];
-		current_capacity *= 2;
-		memcpy_s(new_array, current_capacity * sizeof(T*), array, current_size * sizeof(T*));
-		delete[] array;
-		array = new_array;
-	}
-}
-
 static void draw_help(const char* text)
 {
 	ImGui::SameLine();
@@ -50,36 +37,8 @@ static void draw_material_list(MaterialInfo** material_data, const int32_t mater
 	ImGui::EndChild();
 }
 
-RtInterface::RtInterface()
-{
-	render_info_.material_data_count = 4;
-	render_info_.object_data_count = 4;
-	render_info_.material_count = 4;
-	render_info_.object_count = 4;
-	render_info_.object_capacity = 4;
-	render_info_.material_capacity = 4;
-	render_info_.material_data = new MaterialInfo*[render_info_.material_count];
-	render_info_.object_data = new ObjectInfo*[render_info_.object_count];
-	render_info_.material_data[0] = new DiffuseInfo({0.5f, 0.5f, 0.5f});
-	render_info_.material_data[1] = new RefractiveInfo(1.5f);
-	render_info_.material_data[2] = new SpecularInfo({0.5f, 0.5f, 0.5f}, 0.1f);
-	render_info_.material_data[3] = new DiffuseInfo({0.2f, 0.2f, 0.8f});
-	render_info_.object_data[0] = new SphereInfo({1.0f, 0.0f, -1.0f}, 0.5f, 0);
-	render_info_.object_data[1] = new SphereInfo({0.0f, 0.0f, -1.0f}, 0.5f, 1);
-	render_info_.object_data[2] = new SphereInfo({-1.0f, 0.0f, -1.0f}, 0.5f, 2);
-	render_info_.object_data[3] = new SphereInfo({0.0f, -100.5f, -1.0f}, 100.0f, 3);
-}
-
 RtInterface::~RtInterface()
 {
-	for (int32_t i = 0; i < render_info_.object_data_count; i++)
-		delete render_info_.object_data[i];
-	delete[] render_info_.object_data;
-
-	for (int32_t i = 0; i < render_info_.material_data_count; i++)
-		delete render_info_.material_data[i];
-	delete[] render_info_.material_data;
-
 	stbi_image_free(render_info_.hdr_data);
 }
 
@@ -88,6 +47,7 @@ void RtInterface::draw()
 	ImGui::ShowDemoWindow();
 
 	const auto start = std::chrono::high_resolution_clock::now();
+
 	{
 		ImGui::Begin("Render settings");
 
@@ -99,7 +59,7 @@ void RtInterface::draw()
 			frames_rendered_ = 0;
 			render_info_.frames_since_refresh = 0;
 			is_rendering_ = true;
-			renderer_ = std::make_unique<CpuRenderer>(&render_info_);
+			renderer_ = std::make_unique<CpuRenderer>(&render_info_, &world_info_);
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("CUDA render", {ImGui::GetContentRegionAvail().x / 2, 0}))
@@ -107,7 +67,7 @@ void RtInterface::draw()
 			frames_rendered_ = 0;
 			render_info_.frames_since_refresh = 0;
 			is_rendering_ = true;
-			renderer_ = std::make_unique<CudaRenderer>(&render_info_);
+			renderer_ = std::make_unique<CudaRenderer>(&render_info_, &world_info_);
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("OPTIX render", {ImGui::GetContentRegionAvail().x, 0}))
@@ -181,44 +141,45 @@ void RtInterface::draw()
 	}
 
 	const auto duration = std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - start);
-	render_time_ = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+	if (is_rendering_)
+		render_time_ = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
 }
 
 void RtInterface::move_camera()
 {
-	bool is_changed = false;
+	bool is_moved = false;
 
 	if (ImGui::IsKeyDown(ImGuiKey_W))
 	{
 		render_info_.camera_position -= render_info_.camera_direction * camera_movement_speed_;
-		is_changed = true;
+		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_S))
 	{
 		render_info_.camera_position += render_info_.camera_direction * camera_movement_speed_;
-		is_changed = true;
+		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_A))
 	{
 		const float3 displacement = normalize(cross(render_info_.camera_direction, make_float3(0.0f, -1.0f, 0.0f)));
 		render_info_.camera_position -= displacement * camera_movement_speed_;
-		is_changed = true;
+		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_D))
 	{
 		const float3 displacement = normalize(cross(render_info_.camera_direction, make_float3(0.0f, -1.0f, 0.0f)));
 		render_info_.camera_position += displacement * camera_movement_speed_;
-		is_changed = true;
+		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_E))
 	{
 		render_info_.camera_position.y += camera_movement_speed_;
-		is_changed = true;
+		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_Q))
 	{
 		render_info_.camera_position.y -= camera_movement_speed_;
-		is_changed = true;
+		is_moved = true;
 	}
 
 	if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
@@ -227,15 +188,15 @@ void RtInterface::move_camera()
 		render_info_.angle_y += ImGui::GetMouseDragDelta().y * camera_rotation_speed_;
 		render_info_.angle_x = fmodf(render_info_.angle_x, kTwoPi);
 		render_info_.angle_y = clamp(render_info_.angle_y, -kHalfPi, kHalfPi);
-		render_info_.camera_direction = normalize(make_float3(
+		render_info_.camera_direction = make_float3(
 			cos(render_info_.angle_y) * -sin(render_info_.angle_x),
 			-sin(render_info_.angle_y),
-			-cos(render_info_.angle_x) * cos(render_info_.angle_y)));
+			-cos(render_info_.angle_x) * cos(render_info_.angle_y));
 		ImGui::ResetMouseDragDelta();
-		is_changed =  true;
+		is_moved =  true;
 	}
 	
-	if (is_rendering_ && is_changed)
+	if (is_rendering_ && is_moved)
 	{
 		renderer_->refresh_camera();
 		renderer_->refresh_buffer();
@@ -247,9 +208,9 @@ void RtInterface::edit_settings()
 {
 	if (ImGui::CollapsingHeader("Quality settings", ImGuiTreeNodeFlags_DefaultOpen))
     {
-		bool is_changed = false;
-		is_changed |= ImGui::RadioButton("Progressive render", &render_info_.render_mode, PROGRESSIVE); ImGui::SameLine();
-        is_changed |= ImGui::RadioButton("Static render", &render_info_.render_mode, STATIC);
+		bool is_edited = false;
+		is_edited |= ImGui::RadioButton("Progressive render", &render_info_.render_mode, PROGRESSIVE); ImGui::SameLine();
+        is_edited |= ImGui::RadioButton("Static render", &render_info_.render_mode, STATIC);
 
 		if (render_info_.render_mode == PROGRESSIVE)
 			ImGui::BeginDisabled();
@@ -265,11 +226,11 @@ void RtInterface::edit_settings()
 
 		if (ImGui::TreeNode("Recursion depth"))
 		{
-			is_changed |= ImGui::SliderInt("##RecursionDepth", &render_info_.max_depth, 1, INT8_MAX, "%d", ImGuiSliderFlags_AlwaysClamp);
+			is_edited |= ImGui::SliderInt("##RecursionDepth", &render_info_.max_depth, 1, INT8_MAX, "%d", ImGuiSliderFlags_AlwaysClamp);
 			draw_help("Maximum depth, that recursion can achieve before being stopped");
 			ImGui::TreePop();
 		}
-		if (is_rendering_ && is_changed)
+		if (is_rendering_ && is_edited)
 		{
 			renderer_->refresh_buffer();
 			render_info_.frames_since_refresh = 0;
@@ -281,24 +242,24 @@ void RtInterface::edit_camera()
 {
 	if (ImGui::CollapsingHeader("Camera settings", ImGuiTreeNodeFlags_DefaultOpen))
     {
-		bool is_changed = false;
+		bool is_edited = false;
 	    if (ImGui::TreeNode("Position"))
 		{
-			is_changed |= ImGui::SliderFloat("##CameraX", &render_info_.camera_position.x, -UINT16_MAX, UINT16_MAX, "%.3f",
+			is_edited |= ImGui::SliderFloat("##CameraX", &render_info_.camera_position.x, -UINT16_MAX, UINT16_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SameLine(); ImGui::Text("x");
-	    	is_changed |= ImGui::SliderFloat("##CameraY", &render_info_.camera_position.y, -UINT16_MAX, UINT16_MAX, "%.3f",
+	    	is_edited |= ImGui::SliderFloat("##CameraY", &render_info_.camera_position.y, -UINT16_MAX, UINT16_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SameLine(); ImGui::Text("y");
-	    	is_changed |= ImGui::SliderFloat("##CameraZ", &render_info_.camera_position.z, -UINT16_MAX, UINT16_MAX, "%.3f",
+	    	is_edited |= ImGui::SliderFloat("##CameraZ", &render_info_.camera_position.z, -UINT16_MAX, UINT16_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SameLine(); ImGui::Text("z");
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Angle offset"))
 		{
-			is_changed |= ImGui::SliderAngle("degrees x", &render_info_.angle_x, 0.0f, 360.0f, "%.3f");
-			is_changed |= ImGui::SliderAngle("degrees y", &render_info_.angle_y, -90.0f, 90.0f, "%.3f");
+			is_edited |= ImGui::SliderAngle("degrees x", &render_info_.angle_x, 0.0f, 360.0f, "%.3f");
+			is_edited |= ImGui::SliderAngle("degrees y", &render_info_.angle_y, -90.0f, 90.0f, "%.3f");
 
 			render_info_.camera_direction = normalize(make_float3(
 			cos(render_info_.angle_y) * -sin(render_info_.angle_x),
@@ -308,18 +269,18 @@ void RtInterface::edit_camera()
 		}
 		if (ImGui::TreeNode("Vertical field of view"))
 		{
-			is_changed |= ImGui::SliderAngle("degrees", &render_info_.fov, 0.0f, 180.0f, "%.3f");
+			is_edited |= ImGui::SliderAngle("degrees", &render_info_.fov, 0.0f, 180.0f, "%.3f");
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Aperture"))
 		{
-			is_changed |= ImGui::SliderFloat("##Aperture", &render_info_.aperture, 0.0f, UINT8_MAX, "%.3f",
+			is_edited |= ImGui::SliderFloat("##Aperture", &render_info_.aperture, 0.0f, UINT8_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Focus distance"))
 		{
-			is_changed |= ImGui::SliderFloat("##FocusDist", &render_info_.focus_distance, 0.0f, UINT8_MAX, "%.3f",
+			is_edited |= ImGui::SliderFloat("##FocusDist", &render_info_.focus_distance, 0.0f, UINT8_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::TreePop();
 		}
@@ -334,7 +295,7 @@ void RtInterface::edit_camera()
 			ImGui::TreePop();
 		}
 
-		if (is_rendering_ && is_changed)
+		if (is_rendering_ && is_edited)
 		{
 			renderer_->refresh_camera();
 			renderer_->refresh_buffer();
@@ -349,7 +310,7 @@ void RtInterface::add_material()
 	
 	if (ImGui::CollapsingHeader("Add material"))
 	{
-		bool is_changed = false;
+		bool is_edited = false;
 		static int32_t material_type = UNKNOWN_MATERIAL;
 
 		ImGui::Combo("Material type", &material_type, material_types, IM_ARRAYSIZE(material_types));
@@ -369,10 +330,8 @@ void RtInterface::add_material()
 
 			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
 			{
-				extend_array(render_info_.material_data, render_info_.material_data_count, render_info_.material_capacity);
-				render_info_.material_data[render_info_.material_data_count] = new DiffuseInfo(make_float3(new_diffuse_color));
-				render_info_.material_data_count++;
-				is_changed = true;
+				world_info_.add_material(new DiffuseInfo(make_float3(new_diffuse_color)));
+				is_edited = true;
 			}
 		}
 		else if (material_type == SPECULAR)
@@ -390,10 +349,8 @@ void RtInterface::add_material()
 
 			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
 			{
-				extend_array(render_info_.material_data, render_info_.material_data_count, render_info_.material_capacity);
-				render_info_.material_data[render_info_.material_data_count] = new SpecularInfo(make_float3(new_specular_color), new_specular_fuzziness);
-				render_info_.material_data_count++;
-				is_changed = true;
+				world_info_.add_material(new SpecularInfo(make_float3(new_specular_color), new_specular_fuzziness));
+				is_edited = true;
 			}
 		}
 		else if (material_type == REFRACTIVE)
@@ -409,18 +366,19 @@ void RtInterface::add_material()
 
 			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
 			{
-				extend_array(render_info_.material_data, render_info_.material_data_count, render_info_.material_capacity);
-				render_info_.material_data[render_info_.material_data_count] = new RefractiveInfo(new_refractive_index_of_refraction);
-				render_info_.material_data_count++;
-				is_changed = true;
+				world_info_.add_material(new RefractiveInfo(new_refractive_index_of_refraction));
+				is_edited = true;
 			}
 		}
-		if (is_rendering_ && is_changed)
+		if (is_edited)
 		{
-			renderer_->recreate_world();
-			renderer_->refresh_buffer();
-			render_info_.material_count++;
-			render_info_.frames_since_refresh = 0;
+			if (is_rendering_)
+			{
+				renderer_->recreate_world();
+				renderer_->refresh_buffer();
+				render_info_.frames_since_refresh = 0;
+			}
+			world_info_.material_count++;
 		}
 	}
 }
@@ -431,10 +389,10 @@ void RtInterface::edit_material()
 
 	if (ImGui::CollapsingHeader("Material list"))
 	{
-		bool is_changed = false;
-		for (int32_t i = 0; i < render_info_.material_count; i++)
+		bool is_edited = false;
+		for (int32_t i = 0; i < world_info_.material_count; i++)
 		{
-			MaterialInfo* current_material = render_info_.material_data[i];
+			MaterialInfo* current_material = world_info_.material_data[i];
 			ImGui::PushID(i);
 			if (ImGui::TreeNode("Material", "%u-%s", i, material_types[current_material->type]))
 			{
@@ -448,19 +406,19 @@ void RtInterface::edit_material()
 					else if (current_material->type == DIFFUSE)
 					{
 						const auto current_diffuse = (DiffuseInfo*)current_material;
-						is_changed |= ImGui::ColorEdit3("Color", current_diffuse->albedo_array, ImGuiColorEditFlags_Float);
+						is_edited |= ImGui::ColorEdit3("Color", current_diffuse->albedo_array, ImGuiColorEditFlags_Float);
 					}
 					else if (current_material->type == SPECULAR)
 					{
 						const auto current_specular = (SpecularInfo*)current_material;
-						is_changed |= ImGui::ColorEdit3("Color", current_specular->albedo_array, ImGuiColorEditFlags_Float);
-						is_changed |= ImGui::SliderFloat("Fuzziness", &current_specular->fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+						is_edited |= ImGui::ColorEdit3("Color", current_specular->albedo_array, ImGuiColorEditFlags_Float);
+						is_edited |= ImGui::SliderFloat("Fuzziness", &current_specular->fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 						draw_help("Fuzziness of material reflection");
 					}
 					else if (current_material->type == REFRACTIVE)
 					{
 						const auto current_refractive = (RefractiveInfo*)current_material;
-						is_changed |= ImGui::SliderFloat("Refractive index", &current_refractive->refractive_index, 0.0f, 4.0f, "%.3f", 
+						is_edited |= ImGui::SliderFloat("Refractive index", &current_refractive->refractive_index, 0.0f, 4.0f, "%.3f", 
 							ImGuiSliderFlags_AlwaysClamp);
 						draw_help("Index of refraction between air and current material");
 					}
@@ -470,7 +428,7 @@ void RtInterface::edit_material()
 			}
 			ImGui::PopID();
 		}
-		if (is_rendering_ && is_changed)
+		if (is_rendering_ && is_edited)
 		{
 			renderer_->refresh_world();
 			renderer_->refresh_buffer();
@@ -486,7 +444,7 @@ void RtInterface::add_object()
 
 	if (ImGui::CollapsingHeader("Add object"))
 	{
-		bool is_changed = false;
+		bool is_added = false;
 		static int32_t object_type = UNKNOWN_OBJECT;
 		static int32_t selected_material = 0;
 
@@ -509,17 +467,14 @@ void RtInterface::add_object()
 			}
 			if (ImGui::TreeNode("Material"))
 			{
-				draw_material_list(render_info_.material_data, render_info_.material_count, material_types, selected_material);
+				draw_material_list(world_info_.material_data, world_info_.material_count, material_types, selected_material);
 				ImGui::TreePop();
 			}
 
 			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
 			{
-				extend_array(render_info_.object_data, render_info_.object_data_count, render_info_.object_capacity);
-				render_info_.object_data[render_info_.object_data_count] = new SphereInfo(
-					make_float3(new_sphere_center), new_sphere_radius, selected_material);
-				render_info_.object_data_count++;
-				is_changed = true;
+				world_info_.add_object(new SphereInfo(make_float3(new_sphere_center), new_sphere_radius, selected_material));
+				is_added = true;
 			}
 		}
 		else if (object_type == TRIANGLE)
@@ -537,29 +492,29 @@ void RtInterface::add_object()
 			}
 			if (ImGui::TreeNode("Material"))
 			{
-				draw_material_list(render_info_.material_data, render_info_.material_count, material_types, selected_material);
+				draw_material_list(world_info_.material_data, world_info_.material_count, material_types, selected_material);
 				ImGui::TreePop();
 			}
 
 			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
 			{
-				extend_array(render_info_.object_data, render_info_.object_data_count, render_info_.object_capacity);
-				render_info_.object_data[render_info_.object_data_count] = new TriangleInfo(
-					make_float3(new_triangle_v0), make_float3(new_triangle_v1), make_float3(new_triangle_v2), selected_material);
-				render_info_.object_data_count++;
-				is_changed = true;
+				world_info_.add_object(new TriangleInfo(make_float3(new_triangle_v0), make_float3(new_triangle_v1), make_float3(new_triangle_v2), selected_material));
+				is_added = true;
 			}
 		}
 		else if (object_type == TRIANGLE_MESH)
 		{
 			ImGui::Text("Not implemented");
 		}
-		if (is_rendering_ && is_changed)
+		if (is_added)
 		{
-			renderer_->recreate_world();
-			renderer_->refresh_buffer();
-			render_info_.object_count++;
-			render_info_.frames_since_refresh = 0;
+			if (is_rendering_)
+			{
+				renderer_->recreate_world();
+				renderer_->refresh_buffer();
+				render_info_.frames_since_refresh = 0;
+			}
+			world_info_.object_count++;
 		}
 	}
 }
@@ -571,13 +526,13 @@ void RtInterface::edit_object()
 
 	if (ImGui::CollapsingHeader("Object list"))
 	{
-		bool is_changed = false;
-		for (int32_t i = 0; i < render_info_.object_count; i++)
+		bool is_edited = false, is_deleted = false;
+		for (int32_t i = 0; i < world_info_.object_count; i++)
 		{
-			ObjectInfo* current_object = render_info_.object_data[i];
+			ObjectInfo* current_object = world_info_.object_data[i];
 
 			ImGui::PushID(i);
-			if (ImGui::TreeNode("Object", "%u-%s-%s", i, object_types[current_object->type], material_types[render_info_.material_data[current_object->material_id]->type]))
+			if (ImGui::TreeNode("Object", "%u-%s-%s", i, object_types[current_object->type], material_types[world_info_.material_data[current_object->material_id]->type]))
 			{
 				if (ImGui::TreeNode("Properties"))
 				{
@@ -590,9 +545,9 @@ void RtInterface::edit_object()
 					{
 						const auto current_sphere = (SphereInfo*)current_object;
 
-						is_changed |= ImGui::SliderFloat3("Center", current_sphere->center_array, -UINT8_MAX, UINT8_MAX,"%.3f",
+						is_edited |= ImGui::SliderFloat3("Center", current_sphere->center_array, -UINT8_MAX, UINT8_MAX,"%.3f",
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_changed |= ImGui::SliderFloat("Radius", &current_sphere->radius, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						is_edited |= ImGui::SliderFloat("Radius", &current_sphere->radius, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 						draw_help("Radius of sphere can be negative for refractive spheres to make sphere hollow");
 					}
@@ -600,11 +555,11 @@ void RtInterface::edit_object()
 					{
 						const auto current_triangle = (TriangleInfo*)current_object;
 
-						is_changed |= ImGui::SliderFloat3("Vertex 0", current_triangle->v0_array, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						is_edited |= ImGui::SliderFloat3("Vertex 0", current_triangle->v0_array, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_changed |= ImGui::SliderFloat3("Vertex 1", current_triangle->v1_array, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						is_edited |= ImGui::SliderFloat3("Vertex 1", current_triangle->v1_array, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_changed |= ImGui::SliderFloat3("Vertex 2", current_triangle->v2_array, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						is_edited |= ImGui::SliderFloat3("Vertex 2", current_triangle->v2_array, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 					}
 					ImGui::TreePop();
@@ -634,35 +589,40 @@ void RtInterface::edit_object()
 				{
 					ImGui::Text("Object's material id: %u", current_object->material_id);
 					static int32_t selected_material = 0;
-		            draw_material_list(render_info_.material_data, render_info_.material_count, material_types, selected_material);
+		            draw_material_list(world_info_.material_data, world_info_.material_count, material_types, selected_material);
 
 					if (ImGui::Button("Set material", {ImGui::GetContentRegionAvail().x, 0}))
 					{
 						current_object->material_id = selected_material;
-						is_changed = true;
+						is_edited = true;
 					}
 					ImGui::TreePop();
 				}
 
 				if (ImGui::Button("Delete object", {ImGui::GetContentRegionAvail().x, 0}))
 				{
-					delete render_info_.object_data[i];
-					if (render_info_.object_count > 1 && render_info_.object_data[render_info_.object_count - 1] != render_info_.object_data[i])
-						render_info_.object_data[i] = render_info_.object_data[render_info_.object_count - 1];
-					render_info_.object_count--;
-					render_info_.object_data_count--;
-					is_changed = true;
+					world_info_.remove_object(i);
+					is_deleted = true;
 				}
 
 				ImGui::TreePop();
 			}
 			ImGui::PopID();
 		}
-		if (is_rendering_ && is_changed)
+		if (is_rendering_)
 		{
-			renderer_->refresh_world();
-			renderer_->refresh_buffer();
-			render_info_.frames_since_refresh = 0;
+			if (is_edited)
+			{
+				renderer_->refresh_world();
+				renderer_->refresh_buffer();
+				render_info_.frames_since_refresh = 0;
+			}
+			else if (is_deleted)
+			{
+				renderer_->recreate_world();
+				renderer_->refresh_buffer();
+				render_info_.frames_since_refresh = 0;
+			}
 		}
 	}
 }
@@ -710,7 +670,7 @@ void RtInterface::edit_sky()
 			else
 			{
 				stbi_image_free(render_info_.hdr_data);
-				render_info_.hdr_data = stbi_loadf(selected_file_path, &render_info_.hdr_width, &render_info_.hdr_height, &render_info_.hdr_components, 0);
+				render_info_.hdr_data = stbi_loadf(selected_file_path, &render_info_.hdr_width, &render_info_.hdr_height, &render_info_.hdr_components, 3);
 				hdr_changed = true;
 			}
 		}

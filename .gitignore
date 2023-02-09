@@ -5,6 +5,7 @@
 
 # Custom
 hdr/
+imgui/
 
 # User-specific files
 *.rsuser

@@ -1,16 +1,15 @@
 #pragma once
 #include "../abstract/IRenderer.hpp"
-#include "../scene/RtInfo.hpp"
-#include "../scene/ObjectInfo.hpp"
-#include "../scene/MaterialInfo.hpp"
+#include "../info/RenderInfo.hpp"
+#include "../info/WorldInfo.hpp"
 
-#include "World.cuh"
-#include "Camera.cuh"
+#include "../common/Camera.cuh"
+#include "../common/Color.cuh"
 
 class CudaRenderer final : public IRenderer
 {
 public:
-	explicit CudaRenderer(const RenderInfo* render_info);
+	CudaRenderer(const RenderInfo* render_info, const WorldInfo* world_info);
 	~CudaRenderer() override;
 
 	CudaRenderer(const CudaRenderer&) = delete;
@@ -33,6 +32,7 @@ private:
 	void reload_world() const;
 
 	const RenderInfo* render_info_;
+	const WorldInfo* world_info_;
 	dim3 blocks_;
 	dim3 threads_;
 

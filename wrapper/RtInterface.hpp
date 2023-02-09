@@ -1,14 +1,21 @@
 #pragma once
 #include "../abstract/IDrawable.hpp"
 #include "../abstract/IRenderer.hpp"
-#include "../scene/RtInfo.hpp"
+#include "../info/RenderInfo.hpp"
+#include "../info/WorldInfo.hpp"
 #include "Image.hpp"
 
 class RtInterface final : public IDrawable
 {
 public:
-	RtInterface();
+	RtInterface() = default;
 	~RtInterface() override;
+
+	RtInterface(const RtInterface&) = delete;
+	RtInterface(RtInterface&&) = delete;
+	RtInterface operator=(const RtInterface&) = delete;
+	RtInterface operator=(RtInterface&&) = delete;
+
 	void draw() override;
 
 private:
@@ -24,9 +31,10 @@ private:
 	std::unique_ptr<Image> image_ = nullptr;
 	std::unique_ptr<IRenderer> renderer_ = nullptr;
 	RenderInfo render_info_{};
+	WorldInfo world_info_{};
 
 	float* image_data_ = nullptr;
-	float camera_movement_speed_ = 0.02f, camera_rotation_speed_ = 0.002f;
+	float camera_movement_speed_ = 0.04f, camera_rotation_speed_ = 0.002f;
 	uint64_t render_time_ = 0, frames_rendered_ = 0;
 	bool is_rendering_ = false;
 };

@@ -1,21 +1,21 @@
 #pragma once
-#include "../scene/MaterialInfo.hpp"
+#include "../info/MaterialInfo.hpp"
 #include "Intersection.cuh"
 #include "Ray.cuh"
 
 class Material
 {
 public:
-	__device__ virtual bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const = 0;
+	__host__ __device__ virtual bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const = 0;
 	virtual ~Material() = default;
 };
 
 class Diffuse final : public Material
 {
 public:
-	__device__ explicit Diffuse(const DiffuseInfo* diffuse_info) : albedo_(diffuse_info->albedo) {}
+	__host__ __device__ explicit Diffuse(const DiffuseInfo* diffuse_info) : albedo_(diffuse_info->albedo) {}
 
-	__device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const override
+	__host__ __device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const override
 	{
 		const float3 reflected_direction = intersection.point + intersection.normal + sphere_random(random_state);
 		ray_out = Ray(intersection.point, reflected_direction - intersection.point);
@@ -23,7 +23,7 @@ public:
 		return true;
 	}
 
-	__device__ void update(const DiffuseInfo* diffuse_info)
+	__host__ __device__ void update(const DiffuseInfo* diffuse_info)
 	{
 		albedo_ = diffuse_info->albedo;
 	}
@@ -35,9 +35,9 @@ private:
 class Specular final : public Material
 {
 public:
-	__device__ explicit Specular(const SpecularInfo* specular_info) : albedo_(specular_info->albedo), fuzziness_(specular_info->fuzziness) {}
+	__host__ __device__ explicit Specular(const SpecularInfo* specular_info) : albedo_(specular_info->albedo), fuzziness_(specular_info->fuzziness) {}
 
-	__device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const override
+	__host__ __device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const override
 	{
 		const float3 reflected_direction = reflect(versor(ray_in.direction()), intersection.normal);
 		ray_out = Ray(intersection.point, reflected_direction + fuzziness_ * sphere_random(random_state));
@@ -45,7 +45,7 @@ public:
 		return dot(ray_out.direction(), intersection.normal) > 0.0f;
 	}
 
-	__device__ void update(const SpecularInfo* specular_info)
+	__host__ __device__ void update(const SpecularInfo* specular_info)
 	{
 		albedo_ = specular_info->albedo;
 		fuzziness_ = specular_info->fuzziness;
@@ -59,9 +59,9 @@ private:
 class Refractive final : public Material
 {
 public:
-	__device__ explicit Refractive(const RefractiveInfo* refractive_info) : refractive_index_(refractive_info->refractive_index) {}
+	__host__ __device__ explicit Refractive(const RefractiveInfo* refractive_info) : refractive_index_(refractive_info->refractive_index) {}
 
-	__device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const override
+	__host__ __device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const override
 	{
 		bool refracted;
 		float ior;
@@ -121,7 +121,7 @@ public:
 		return true;
 	}
 
-	__device__ void update(const RefractiveInfo* refractive_info)
+	__host__ __device__ void update(const RefractiveInfo* refractive_info)
 	{
 		refractive_index_ = refractive_info->refractive_index;
 	}

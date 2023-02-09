@@ -1,12 +1,12 @@
 #pragma once
-#include "../scene/ObjectInfo.hpp"
+#include "../info/ObjectInfo.hpp"
 #include "Intersection.cuh"
 #include "Ray.cuh"
 
 class Primitive
 {
 public:
-	__device__ virtual bool intersect(const Ray& ray, float t_min, float t_max, Intersection& intersection) const = 0;
+	__host__ __device__ virtual bool intersect(const Ray& ray, float t_min, float t_max, Intersection& intersection) const = 0;
 	virtual ~Primitive() = default;
 
 	Material* material_ = nullptr;
@@ -15,12 +15,12 @@ public:
 class Sphere final : public Primitive
 {
 public:
-	__device__ explicit Sphere(const SphereInfo* sphere_info, Material* material) : center_(sphere_info->center), radius_(sphere_info->radius)
+	__host__ __device__ explicit Sphere(const SphereInfo* sphere_info, Material* material) : center_(sphere_info->center), radius_(sphere_info->radius)
 	{
 		material_ = material;
 	}
 
-	__device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection) const override
+	__host__ __device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection) const override
 	{
 		const float3 oc = ray.origin() - center_;
 		const float a = dot(ray.direction(), ray.direction());
@@ -52,7 +52,7 @@ public:
 		return false;
 	}
 
-	__device__ void update(const SphereInfo* sphere_info, Material* material)
+	__host__ __device__ void update(const SphereInfo* sphere_info, Material* material)
 	{
 		center_ = sphere_info->center;
 		radius_ = sphere_info->radius;
@@ -67,12 +67,12 @@ private:
 class Triangle final : public Primitive																																																																						
 {
 public:
-	__device__ explicit Triangle(const TriangleInfo* triangle_info, Material* material) : v0_(triangle_info->v0), v1_(triangle_info->v1), v2_(triangle_info->v1)
+	__host__ __device__ explicit Triangle(const TriangleInfo* triangle_info, Material* material) : v0_(triangle_info->v0), v1_(triangle_info->v1), v2_(triangle_info->v1)
 	{
 		material_ = material;
 	}
 
-	__device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection) const override
+	__host__ __device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection) const override
 	{
 		const float3 v0_v1 = v1_ - v0_;
 		const float3 v0_v2 = v2_ - v0_;
@@ -103,7 +103,7 @@ public:
 		return true;
 	}
 
-	__device__ void update(const TriangleInfo* triangle_info, Material* material)
+	__host__ __device__ void update(const TriangleInfo* triangle_info, Material* material)
 	{
 		v0_ = triangle_info->v0;
 		v1_ = triangle_info->v1;
