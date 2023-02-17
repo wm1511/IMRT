@@ -17,14 +17,12 @@ static void extend_array(T**& array, const int32_t current_size, int32_t& curren
 
 struct WorldInfo
 {
-	int32_t object_data_count{0}, material_data_count{0}, object_count{0}, material_count{0}, object_capacity{0}, material_capacity{0};
+	int32_t object_count{0}, material_count{0}, object_capacity{0}, material_capacity{0};
 	ObjectInfo** object_data = nullptr;
 	MaterialInfo** material_data = nullptr;
 
 	WorldInfo()
 	{
-		material_data_count = 4;
-		object_data_count = 4;
 		material_count = 4;
 		object_count = 4;
 		object_capacity = 4;
@@ -43,27 +41,27 @@ struct WorldInfo
 
 	~WorldInfo()
 	{
-		for (int32_t i = 0; i < object_data_count; i++)
+		for (int32_t i = 0; i < object_count; i++)
 			delete object_data[i];
 		delete[] object_data;
 
-		for (int32_t i = 0; i < material_data_count; i++)
+		for (int32_t i = 0; i < material_count; i++)
 			delete material_data[i];
 		delete[] material_data;
 	}
 
 	void add_object(ObjectInfo* new_object)
 	{
-		extend_array(object_data, object_data_count, object_capacity);
-		object_data[object_data_count] = new_object;
-		object_data_count++;
+		extend_array(object_data, object_count, object_capacity);
+		object_data[object_count] = new_object;
+		object_count++;
 	}
 
 	void add_material(MaterialInfo* new_material)
 	{
-		extend_array(material_data, material_data_count, material_capacity);
-		material_data[material_data_count] = new_material;
-		material_data_count++;
+		extend_array(material_data, material_count, material_capacity);
+		material_data[material_count] = new_material;
+		material_count++;
 	}
 
 	void remove_object(const int32_t object_index)
@@ -72,6 +70,5 @@ struct WorldInfo
 		if (object_count > 1 && object_data[object_count - 1] != object_data[object_index])
 			object_data[object_index] = object_data[object_count - 1];
 		object_count--;
-		object_data_count--;
 	}
 };

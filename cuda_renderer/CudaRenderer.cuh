@@ -23,14 +23,11 @@ public:
 	void refresh_world() override;
 	void recreate_camera() override;
 	void recreate_image() override;
-	void recreate_world() override;
 	void recreate_sky() override;
+	void allocate_world() override;
+	void deallocate_world() const override;
 
 private:
-	void allocate_world();
-	void deallocate_world() const;
-	void reload_world() const;
-
 	const RenderInfo* render_info_;
 	const WorldInfo* world_info_;
 	dim3 blocks_;
@@ -45,4 +42,6 @@ private:
     Primitive** primitives_list_ = nullptr;
     World** world_ = nullptr;
     Camera** camera_ = nullptr;
+
+	void reload_world() const;
 };

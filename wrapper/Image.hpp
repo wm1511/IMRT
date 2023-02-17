@@ -11,16 +11,16 @@ public:
 	Image operator= (Image&&) = delete;
 	~Image();
 
-	void SetData(const void* data);
+	void set_data(const void* data);
 
-	[[nodiscard]] VkDescriptorSet GetDescriptorSet() const { return descriptor_set_; }
+	[[nodiscard]] VkDescriptorSet get_descriptor_set() const { return descriptor_set_; }
 
-	[[nodiscard]] uint32_t GetWidth() const { return width_; }
-	[[nodiscard]] uint32_t GetHeight() const { return height_; }
+	[[nodiscard]] uint32_t get_width() const { return width_; }
+	[[nodiscard]] uint32_t get_height() const { return height_; }
 
 private:
-	void AllocateMemory();
-	void ReleaseMemory();
+	void allocate_memory();
+	void release_memory();
 
 	uint32_t width_ = 0, height_ = 0;
 

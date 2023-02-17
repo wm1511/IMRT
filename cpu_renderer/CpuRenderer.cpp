@@ -163,12 +163,6 @@ void CpuRenderer::recreate_image()
 	xoshiro_state_ = new uint4[image_size];
 }
 
-void CpuRenderer::recreate_world()
-{
-	deallocate_world();
-	allocate_world();
-}
-
 void CpuRenderer::recreate_sky()
 {
 	delete[] hdr_data_;
@@ -201,14 +195,14 @@ void CpuRenderer::random_init() const
 
 void CpuRenderer::allocate_world()
 {
-	primitives_list_ = new Primitive*[world_info_->object_data_count];
-	materials_list_ = new Material*[world_info_->material_data_count];
+	primitives_list_ = new Primitive*[world_info_->object_count];
+	materials_list_ = new Material*[world_info_->material_count];
 	world_ = new World*;
 
 	MaterialInfo** material_data = world_info_->material_data;
     ObjectInfo** object_data = world_info_->object_data;
 
-	for (int32_t i = 0; i < world_info_->material_data_count; i++)
+	for (int32_t i = 0; i < world_info_->material_count; i++)
 	{
 		if (material_data[i]->type == DIFFUSE)
 			materials_list_[i] = new Diffuse((DiffuseInfo*)material_data[i]);
@@ -218,7 +212,7 @@ void CpuRenderer::allocate_world()
 			materials_list_[i] = new Refractive((RefractiveInfo*)material_data[i]);
 	}
 
-	 for (int32_t i = 0; i < world_info_->object_data_count; i++)
+	 for (int32_t i = 0; i < world_info_->object_count; i++)
 	 {
 		if (object_data[i]->type == SPHERE)
 			primitives_list_[i] = new Sphere((SphereInfo*)object_data[i], materials_list_[object_data[i]->material_id]);
@@ -231,7 +225,7 @@ void CpuRenderer::allocate_world()
 
 void CpuRenderer::deallocate_world() const
 {
-	for (int32_t i = 0; i < world_info_->material_count; i++)
+	for (int32_t i = 0; i < world_info_->object_count; i++)
 		delete materials_list_[i];
 
 	for (int32_t i = 0; i < world_info_->object_count; i++)

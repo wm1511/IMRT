@@ -27,6 +27,7 @@ private:
 	void add_object();
 	void edit_object();
 	void edit_sky();
+	void save_image() const;
 
 	std::unique_ptr<Image> image_ = nullptr;
 	std::unique_ptr<IRenderer> renderer_ = nullptr;

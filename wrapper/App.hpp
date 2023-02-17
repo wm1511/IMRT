@@ -7,10 +7,6 @@
 
 #include <vulkan/vulkan.h>
 
-#include <string>
-#include <memory>
-#include <stdexcept>
-
 struct AppInfo
 {
 	std::string name = "Default window name";
@@ -28,7 +24,7 @@ public:
 	void run() const;
 
 	template <typename T>
-	void SetInterface()
+	void set_interface()
 	{
 		if (!std::is_base_of_v<IDrawable, T>)
 			throw std::invalid_argument("Passed class is not a class derived of IDrawable");
@@ -41,12 +37,11 @@ public:
 	App operator= (const App&) = delete;
 	App operator= (App&&) = delete;
 
-	static VkInstance GetInstance();
-	static VkPhysicalDevice GetPhysicalDevice();
-	static VkDevice GetDevice();
-
-	static VkCommandBuffer GetCommandBuffer();
-	static void FlushCommandBuffer(VkCommandBuffer command_buffer);
+	static VkInstance get_instance();
+	static VkPhysicalDevice get_physical_device();
+	static VkDevice get_device();
+	static VkCommandBuffer get_command_buffer();
+	static void flush_command_buffer(VkCommandBuffer command_buffer);
 
 private:
 	void initialize();

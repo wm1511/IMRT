@@ -3,6 +3,8 @@
 #include "Intersection.cuh"
 #include "Ray.cuh"
 
+#include <cfloat>
+
 class Primitive
 {
 public:
@@ -28,26 +30,26 @@ public:
 		const float c = dot(oc, oc) - radius_ * radius_;
 		const float discriminant = b * b - a * c;
 
-		if (discriminant > 0)
+		if (discriminant < 0)
+			return false;
+
+		float temp = (-b - sqrt(discriminant)) / a;
+		if (temp < t_max && temp > t_min)
 		{
-			float temp = (-b - sqrt(discriminant)) / a;
-			if (temp < t_max && temp > t_min)
-			{
-				intersection.t = temp;
-				intersection.point = ray.position(intersection.t);
-				intersection.normal = (intersection.point - center_) / radius_;
-				intersection.material = material_;
-				return true;
-			}
-			temp = (-b + sqrt(discriminant)) / a;
-			if (temp < t_max && temp > t_min)
-			{
-				intersection.t = temp;
-				intersection.point = ray.position(intersection.t);
-				intersection.normal = (intersection.point - center_) / radius_;
-				intersection.material = material_;
-				return true;
-			}
+			intersection.t = temp;
+			intersection.point = ray.position(intersection.t);
+			intersection.normal = (intersection.point - center_) / radius_;
+			intersection.material = material_;
+			return true;
+		}
+		temp = (-b + sqrt(discriminant)) / a;
+		if (temp < t_max && temp > t_min)
+		{
+			intersection.t = temp;
+			intersection.point = ray.position(intersection.t);
+			intersection.normal = (intersection.point - center_) / radius_;
+			intersection.material = material_;
+			return true;
 		}
 		return false;
 	}
@@ -78,10 +80,9 @@ public:
 		const float3 v0_v2 = v2_ - v0_;
 
 		const float3 p_vec = cross(ray.direction(), v0_v2);
-
 		const float determinant = dot(p_vec, v0_v1);
 
-		if (determinant < t_min || determinant > t_max)
+		if (determinant < FLT_MIN)
 			return false;
 
 		const float inverse_determinant = 1.0f / determinant;
@@ -97,6 +98,10 @@ public:
 			return false;
 
 		intersection.t = dot(q_vec, v0_v2) * inverse_determinant;
+
+		if (intersection.t < t_min || intersection.t > t_max)
+			return false;
+
 		intersection.point = ray.position(intersection.t);
 		intersection.normal = cross(v1_ - v0_, v2_ - v0_);
 		intersection.material = material_;

@@ -1,6 +1,7 @@
 #include "CudaRenderer.cuh"
 
 #include <device_launch_parameters.h>
+
 #include <cstdio>
 
 #define CCE(val) check_cuda( (val), #val, __FILE__, __LINE__ )
@@ -9,7 +10,7 @@ __host__ void check_cuda(const cudaError_t result, char const* const func, const
 {
     if (result)
     {
-	    fprintf_s(stderr, "CUDA error = %u at %s: %i '%s' \n", (int32_t)result, file, line, func);
+	    printf("CUDA error = %u at %s: %i '%s' \n", (int32_t)result, file, line, func);
         cudaDeviceReset();
         abort();
     }
@@ -217,7 +218,8 @@ void CudaRenderer::render(float* image_data)
 	CCE(cudaGetLastError());
     CCE(cudaDeviceSynchronize());
 
-    CCE(cudaMemcpy(image_data, frame_buffer_, sizeof(float4) * width * height, cudaMemcpyDeviceToHost));
+    if (render_info_->frame_needs_display)
+		CCE(cudaMemcpy(image_data, frame_buffer_, sizeof(float4) * width * height, cudaMemcpyDeviceToHost));
 }
 
 void CudaRenderer::refresh_buffer()
@@ -242,7 +244,7 @@ void CudaRenderer::refresh_world()
 {
     reload_world();
 
-    update_world<<<1, 1>>>(world_info_->material_data_count, world_info_->object_data_count, device_material_data_, materials_list_, device_object_data_, primitives_list_, world_);
+    update_world<<<1, 1>>>(world_info_->material_count, world_info_->object_count, device_material_data_, materials_list_, device_object_data_, primitives_list_, world_);
     CCE(cudaGetLastError());
     CCE(cudaDeviceSynchronize());
 }
@@ -275,12 +277,6 @@ void CudaRenderer::recreate_image()
     CCE(cudaMalloc((void**)&frame_buffer_, sizeof(float4) * width * height));
 }
 
-void CudaRenderer::recreate_world()
-{
-    deallocate_world();
-    allocate_world();
-}
-
 void CudaRenderer::recreate_sky()
 {
     CCE(cudaFree(device_hdr_data_));
@@ -299,10 +295,10 @@ void CudaRenderer::allocate_world()
 {
     MaterialInfo** material_data = world_info_->material_data;
     ObjectInfo** object_data = world_info_->object_data;
-    host_material_data_ = new MaterialInfo*[world_info_->material_data_count];
-    host_object_data_ = new ObjectInfo*[world_info_->object_data_count];
+    host_material_data_ = new MaterialInfo*[world_info_->material_count];
+    host_object_data_ = new ObjectInfo*[world_info_->object_count];
 
-    for (int32_t i = 0; i < world_info_->material_data_count; i++)
+    for (int32_t i = 0; i < world_info_->material_count; i++)
     {
         if (material_data[i]->type == DIFFUSE)
         {
@@ -320,7 +316,7 @@ void CudaRenderer::allocate_world()
 			CCE(cudaMemcpy(host_material_data_[i], material_data[i], sizeof(RefractiveInfo), cudaMemcpyHostToDevice));
         }
     }
-    for (int32_t i = 0; i < world_info_->object_data_count; i++)
+    for (int32_t i = 0; i < world_info_->object_count; i++)
     {
         if (object_data[i]->type == SPHERE)
         {
@@ -334,16 +330,16 @@ void CudaRenderer::allocate_world()
         }
     }
 
-    CCE(cudaMalloc((void**)&device_material_data_, world_info_->material_data_count * sizeof(MaterialInfo*)));
-    CCE(cudaMalloc((void**)&device_object_data_, world_info_->object_data_count * sizeof(ObjectInfo*)));
-	CCE(cudaMemcpy(device_material_data_, host_material_data_, world_info_->material_data_count * sizeof(MaterialInfo*), cudaMemcpyHostToDevice));
-	CCE(cudaMemcpy(device_object_data_, host_object_data_, world_info_->object_data_count * sizeof(ObjectInfo*), cudaMemcpyHostToDevice));
+    CCE(cudaMalloc((void**)&device_material_data_, world_info_->material_count * sizeof(MaterialInfo*)));
+    CCE(cudaMalloc((void**)&device_object_data_, world_info_->object_count * sizeof(ObjectInfo*)));
+	CCE(cudaMemcpy(device_material_data_, host_material_data_, world_info_->material_count * sizeof(MaterialInfo*), cudaMemcpyHostToDevice));
+	CCE(cudaMemcpy(device_object_data_, host_object_data_, world_info_->object_count * sizeof(ObjectInfo*), cudaMemcpyHostToDevice));
 
-    CCE(cudaMalloc((void**)&primitives_list_, world_info_->object_data_count * sizeof(Primitive*)));
-    CCE(cudaMalloc((void**)&materials_list_, world_info_->material_data_count * sizeof(Material*)));
+    CCE(cudaMalloc((void**)&primitives_list_, world_info_->object_count * sizeof(Primitive*)));
+    CCE(cudaMalloc((void**)&materials_list_, world_info_->material_count * sizeof(Material*)));
     CCE(cudaMalloc((void**)&world_, sizeof(World*)));
 
-    create_world<<<1, 1>>>(world_info_->material_data_count, world_info_->object_data_count, device_material_data_, device_object_data_, materials_list_, primitives_list_, world_);
+    create_world<<<1, 1>>>(world_info_->material_count, world_info_->object_count, device_material_data_, device_object_data_, materials_list_, primitives_list_, world_);
     CCE(cudaGetLastError());
     CCE(cudaDeviceSynchronize());
 }
@@ -351,7 +347,7 @@ void CudaRenderer::allocate_world()
 void CudaRenderer::deallocate_world() const
 {
     CCE(cudaDeviceSynchronize());
-    //delete_world<<<1, 1>>>(materials_list_, primitives_list_, world_, render_info_->material_count, render_info_->object_count);
+	//delete_world<<<1, 1>>>(materials_list_, primitives_list_, world_, world_info_->material_count, world_info_->object_count);
     CCE(cudaGetLastError());
     CCE(cudaFree(world_));
 
@@ -374,7 +370,7 @@ void CudaRenderer::reload_world() const
     MaterialInfo** material_data = world_info_->material_data;
     ObjectInfo** object_data = world_info_->object_data;
 
-    for (int32_t i = 0; i < world_info_->material_data_count; i++)
+    for (int32_t i = 0; i < world_info_->material_count; i++)
     {
         if (material_data[i]->type == DIFFUSE)
 			CCE(cudaMemcpy(host_material_data_[i], material_data[i], sizeof(DiffuseInfo), cudaMemcpyHostToDevice));
@@ -384,7 +380,7 @@ void CudaRenderer::reload_world() const
 			CCE(cudaMemcpy(host_material_data_[i], material_data[i], sizeof(RefractiveInfo), cudaMemcpyHostToDevice));
     }
 
-    for (int32_t i = 0; i < world_info_->object_data_count; i++)
+    for (int32_t i = 0; i < world_info_->object_count; i++)
     {
         if (object_data[i]->type == SPHERE)
 			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(SphereInfo), cudaMemcpyHostToDevice));
@@ -392,6 +388,6 @@ void CudaRenderer::reload_world() const
 			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(TriangleInfo), cudaMemcpyHostToDevice));
     }
 
-	CCE(cudaMemcpy(device_material_data_, host_material_data_, world_info_->material_data_count * sizeof(MaterialInfo*), cudaMemcpyHostToDevice));
-	CCE(cudaMemcpy(device_object_data_, host_object_data_, world_info_->object_data_count * sizeof(ObjectInfo*), cudaMemcpyHostToDevice));
+	CCE(cudaMemcpy(device_material_data_, host_material_data_, world_info_->material_count * sizeof(MaterialInfo*), cudaMemcpyHostToDevice));
+	CCE(cudaMemcpy(device_object_data_, host_object_data_, world_info_->object_count * sizeof(ObjectInfo*), cudaMemcpyHostToDevice));
 }

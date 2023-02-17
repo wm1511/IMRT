@@ -14,15 +14,16 @@ public:
 		const float3 up = make_float3(0.0f, -1.0f, 0.0f);
 		const float viewport_height = 2.0f * tan(fov * 0.5f);
 		const float viewport_width = viewport_height * aspect_ratio_;
+		const float3 target = normalize(camera_direction);
 
 		origin_ = camera_position;
-		target_ = normalize(camera_direction);
-		lens_radius_ = aperture / 2.0f;
-		u_ = versor(cross(up, target_));
-		v_ = cross(target_, u_);
+		lens_radius_ = aperture * 0.5f;
+
+		u_ = versor(cross(up, target));
+		v_ = cross(target, u_);
 		horizontal_map_ = focus_distance * viewport_width * u_;
 		vertical_map_ = focus_distance * viewport_height * v_;
-		starting_point_ = origin_ - horizontal_map_ / 2.0f - vertical_map_ / 2.0f - focus_distance * target_;
+		starting_point_ = origin_ - horizontal_map_ * 0.5f - vertical_map_ * 0.5f - focus_distance * target;
 	}
 
 	__host__ __device__ Ray cast_ray(uint32_t* random_state, const float screen_x, const float screen_y) const
@@ -34,7 +35,6 @@ public:
 
 private:
 	float3 origin_{};
-	float3 target_{};
 	float3 starting_point_{};
 	float3 horizontal_map_{}, vertical_map_{};
 	float3 u_{}, v_{};

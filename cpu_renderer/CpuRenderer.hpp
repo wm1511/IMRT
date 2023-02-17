@@ -23,16 +23,13 @@ public:
 	void refresh_world() override;
 	void recreate_camera() override;
 	void recreate_image() override;
-	void recreate_world() override;
 	void recreate_sky() override;
+	void allocate_world() override;
+	void deallocate_world() const override;
 
 private:
 	const RenderInfo* render_info_;
 	const WorldInfo* world_info_;
-
-	void random_init() const;
-	void allocate_world();
-	void deallocate_world() const;
 
 	uint4* xoshiro_state_ = nullptr;
     float4* accumulation_buffer_ = nullptr;
@@ -41,4 +38,6 @@ private:
     Primitive** primitives_list_ = nullptr;
     World** world_ = nullptr;
     Camera** camera_ = nullptr;
+
+	void random_init() const;
 };

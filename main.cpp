@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "wrapper/RtInterface.hpp"
 #include "wrapper/App.hpp"
 
@@ -12,12 +13,12 @@ int main()
 	try
 	{
 		App app(app_info);
-		app.SetInterface<RtInterface>();
+		app.set_interface<RtInterface>();
 		app.run();
 	}
 	catch (const std::exception& e)
 	{
-		fprintf(stderr, e.what());
+		printf(e.what());
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "Image.hpp"
 
 #include "../imgui/imgui_impl_vulkan.h"
@@ -5,7 +6,7 @@
 static uint32_t GetDeviceMemoryType(const VkMemoryPropertyFlags properties, const uint32_t type_bits)
 {
 	VkPhysicalDeviceMemoryProperties device_memory_properties;
-	vkGetPhysicalDeviceMemoryProperties(App::GetPhysicalDevice(), &device_memory_properties);
+	vkGetPhysicalDeviceMemoryProperties(App::get_physical_device(), &device_memory_properties);
 	for (uint32_t i = 0; i < device_memory_properties.memoryTypeCount; i++)
 	{
 		if ((device_memory_properties.memoryTypes[i].propertyFlags & properties) == properties && type_bits & 1 << i)
@@ -17,19 +18,19 @@ static uint32_t GetDeviceMemoryType(const VkMemoryPropertyFlags properties, cons
 
 Image::Image(const uint32_t width, const uint32_t height, const void* data): width_(width), height_(height)
 {
-	AllocateMemory();
+	allocate_memory();
 	if (data)
-		SetData(data);
+		set_data(data);
 }
 
 Image::~Image()
 {
-	ReleaseMemory();
+	release_memory();
 }
 
-void Image::AllocateMemory()
+void Image::allocate_memory()
 {
-	const VkDevice device = App::GetDevice();
+	const VkDevice device = App::get_device();
 	constexpr VkFormat image_format = VK_FORMAT_R32G32B32A32_SFLOAT;
 
 	VkImageCreateInfo image_info = {};
@@ -88,9 +89,9 @@ void Image::AllocateMemory()
 	descriptor_set_ = ImGui_ImplVulkan_AddTexture(sampler_, image_view_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
-void Image::ReleaseMemory()
+void Image::release_memory()
 {
-	const VkDevice device = App::GetDevice();
+	const VkDevice device = App::get_device();
 	vkDeviceWaitIdle(device);
 
 	vkDestroySampler(device, sampler_, nullptr);
@@ -108,9 +109,9 @@ void Image::ReleaseMemory()
 	staging_buffer_memory_ = nullptr;
 }
 
-void Image::SetData(const void* data)
+void Image::set_data(const void* data)
 {
-	const VkDevice device = App::GetDevice();
+	const VkDevice device = App::get_device();
 	const uint64_t staging_buffer_size = static_cast<uint64_t>(16) * width_ * height_;
 
 	if (!staging_buffer_)
@@ -147,7 +148,7 @@ void Image::SetData(const void* data)
 		throw std::runtime_error("Failed to flush mapped memory to GPU");
 	vkUnmapMemory(device, staging_buffer_memory_);
 
-	const VkCommandBuffer command_buffer = App::GetCommandBuffer();
+	const VkCommandBuffer command_buffer = App::get_command_buffer();
 
 	VkImageMemoryBarrier copy_barrier = {};
 	copy_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -186,5 +187,5 @@ void Image::SetData(const void* data)
 	vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 	                     0, 0, nullptr, 0, nullptr, 1, &usage_barrier);
 
-	App::FlushCommandBuffer(command_buffer);
+	App::flush_command_buffer(command_buffer);
 }

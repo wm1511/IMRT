@@ -1,13 +1,11 @@
+#include "stdafx.h"
 #include "RtInterface.hpp"
 #include "../cpu_renderer/CpuRenderer.hpp"
 #include "../cuda_renderer/CudaRenderer.cuh"
 
-#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include "stb_image_write.h"
 #include "../imgui/imgui.h"
-
-#include <filesystem>
-#include <chrono>
 
 static void draw_help(const char* text)
 {
@@ -30,9 +28,13 @@ static void draw_material_list(MaterialInfo** material_data, const int32_t mater
 	for (int32_t n = 0; n < material_count; n++)
 	{
 		static char buffer[16]{};
-		sprintf_s(buffer, "%u-%s", n, material_types[material_data[n]->type]);
-		if (ImGui::Selectable(buffer, selected_material == n))
-			selected_material = n;
+		if (sprintf_s(buffer, "%u-%s", n, material_types[material_data[n]->type]) > 0)
+		{
+			if (ImGui::Selectable(buffer, selected_material == n))
+				selected_material = n;
+		}
+		else
+			ImGui::Text("Failed to print material identifier");
 	}
 	ImGui::EndChild();
 }
@@ -85,7 +87,7 @@ void RtInterface::draw()
 
 		if (is_rendering_)
 		{
-			if (!image_ || render_info_.width != image_->GetWidth() || render_info_.height != image_->GetHeight())
+			if (!image_ || render_info_.width != image_->get_width() || render_info_.height != image_->get_height())
 			{
 				image_ = std::make_unique<Image>(render_info_.width, render_info_.height);
 				delete[] image_data_;
@@ -99,9 +101,12 @@ void RtInterface::draw()
 			frames_rendered_++;
 			render_info_.frames_since_refresh++;
 
+			render_info_.frame_needs_display = fmod(log2f((float)render_info_.frames_since_refresh), 1) == 0.0f;
+
 			renderer_->render(image_data_);
 
-			image_->SetData(image_data_);
+			if (render_info_.frame_needs_display)
+				image_->set_data(image_data_);
 		}
 
 		ImGui::Text("Last render time: %llu ms", render_time_);
@@ -111,6 +116,7 @@ void RtInterface::draw()
 		ImGui::Separator();
 		edit_settings();
 		edit_camera();
+		save_image();
 		ImGui::End();
 	}
 
@@ -130,8 +136,8 @@ void RtInterface::draw()
 		render_info_.height = static_cast<uint32_t>(ImGui::GetContentRegionAvail().y);
 
 		if (image_) 
-			ImGui::Image(reinterpret_cast<ImU64>(image_->GetDescriptorSet()),
-				{static_cast<float>(image_->GetWidth()), static_cast<float>(image_->GetHeight())},
+			ImGui::Image(reinterpret_cast<ImU64>(image_->get_descriptor_set()),
+				{static_cast<float>(image_->get_width()), static_cast<float>(image_->get_height())},
 				ImVec2(1, 0), ImVec2(0, 1));
 
 		if (ImGui::IsWindowFocused())
@@ -230,6 +236,7 @@ void RtInterface::edit_settings()
 			draw_help("Maximum depth, that recursion can achieve before being stopped");
 			ImGui::TreePop();
 		}
+
 		if (is_rendering_ && is_edited)
 		{
 			renderer_->refresh_buffer();
@@ -310,7 +317,7 @@ void RtInterface::add_material()
 	
 	if (ImGui::CollapsingHeader("Add material"))
 	{
-		bool is_edited = false;
+		bool is_added = false;
 		static int32_t material_type = UNKNOWN_MATERIAL;
 
 		ImGui::Combo("Material type", &material_type, material_types, IM_ARRAYSIZE(material_types));
@@ -330,8 +337,10 @@ void RtInterface::add_material()
 
 			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
 			{
+				if (is_rendering_)
+					renderer_->deallocate_world();
 				world_info_.add_material(new DiffuseInfo(make_float3(new_diffuse_color)));
-				is_edited = true;
+				is_added = true;
 			}
 		}
 		else if (material_type == SPECULAR)
@@ -349,8 +358,10 @@ void RtInterface::add_material()
 
 			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
 			{
+				if (is_rendering_)
+					renderer_->deallocate_world();
 				world_info_.add_material(new SpecularInfo(make_float3(new_specular_color), new_specular_fuzziness));
-				is_edited = true;
+				is_added = true;
 			}
 		}
 		else if (material_type == REFRACTIVE)
@@ -366,19 +377,18 @@ void RtInterface::add_material()
 
 			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
 			{
+				if (is_rendering_)
+					renderer_->deallocate_world();
 				world_info_.add_material(new RefractiveInfo(new_refractive_index_of_refraction));
-				is_edited = true;
+				is_added = true;
 			}
 		}
-		if (is_edited)
+
+		if (is_rendering_ && is_added)
 		{
-			if (is_rendering_)
-			{
-				renderer_->recreate_world();
-				renderer_->refresh_buffer();
-				render_info_.frames_since_refresh = 0;
-			}
-			world_info_.material_count++;
+			renderer_->allocate_world();
+			renderer_->refresh_buffer();
+			render_info_.frames_since_refresh = 0;
 		}
 	}
 }
@@ -428,6 +438,7 @@ void RtInterface::edit_material()
 			}
 			ImGui::PopID();
 		}
+
 		if (is_rendering_ && is_edited)
 		{
 			renderer_->refresh_world();
@@ -473,6 +484,8 @@ void RtInterface::add_object()
 
 			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
 			{
+				if (is_rendering_)
+					renderer_->deallocate_world();
 				world_info_.add_object(new SphereInfo(make_float3(new_sphere_center), new_sphere_radius, selected_material));
 				is_added = true;
 			}
@@ -498,6 +511,8 @@ void RtInterface::add_object()
 
 			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
 			{
+				if (is_rendering_)
+					renderer_->deallocate_world();
 				world_info_.add_object(new TriangleInfo(make_float3(new_triangle_v0), make_float3(new_triangle_v1), make_float3(new_triangle_v2), selected_material));
 				is_added = true;
 			}
@@ -506,15 +521,12 @@ void RtInterface::add_object()
 		{
 			ImGui::Text("Not implemented");
 		}
-		if (is_added)
+
+		if (is_rendering_ && is_added)
 		{
-			if (is_rendering_)
-			{
-				renderer_->recreate_world();
-				renderer_->refresh_buffer();
-				render_info_.frames_since_refresh = 0;
-			}
-			world_info_.object_count++;
+			renderer_->allocate_world();
+			renderer_->refresh_buffer();
+			render_info_.frames_since_refresh = 0;
 		}
 	}
 }
@@ -601,6 +613,8 @@ void RtInterface::edit_object()
 
 				if (ImGui::Button("Delete object", {ImGui::GetContentRegionAvail().x, 0}))
 				{
+					if (is_rendering_)
+						renderer_->deallocate_world();
 					world_info_.remove_object(i);
 					is_deleted = true;
 				}
@@ -609,20 +623,19 @@ void RtInterface::edit_object()
 			}
 			ImGui::PopID();
 		}
-		if (is_rendering_)
+
+		if (!is_rendering_)
+			return;
+
+		if (is_edited || is_deleted)
 		{
 			if (is_edited)
-			{
 				renderer_->refresh_world();
-				renderer_->refresh_buffer();
-				render_info_.frames_since_refresh = 0;
-			}
 			else if (is_deleted)
-			{
-				renderer_->recreate_world();
-				renderer_->refresh_buffer();
-				render_info_.frames_since_refresh = 0;
-			}
+				renderer_->allocate_world();
+
+			renderer_->refresh_buffer();
+			render_info_.frames_since_refresh = 0;
 		}
 	}
 }
@@ -632,28 +645,18 @@ void RtInterface::edit_sky()
 	if (ImGui::CollapsingHeader("Environment map"))
 	{
 		bool hdr_changed = false, exposure_changed = false;
-		static char selected_file_path[256];
-		static char file_label[128];
-		static wchar_t selected_file[128];
-
-		const auto iterator = std::filesystem::recursive_directory_iterator("hdr/");
-		uint64_t converted_count{};
+		static std::filesystem::path selected_file;
+		const auto iterator = std::filesystem::recursive_directory_iterator("assets/hdr/");
 
 		ImGui::BeginChild("HDR Files", {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
 			ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
 		ImGui::Text("Choose HDR image");
-		draw_help("Choose file containing HDR image for environment map creation. New files can be added to \"hdr\" folder");
+		draw_help("Choose file containing HDR image for environment map creation. New files can be added to \"assets/hdr\" folder");
 
 		for (const auto& entry : iterator)
-		{
-			wcstombs_s(&converted_count, file_label, entry.path().filename().c_str(), 128);
-			if (ImGui::Selectable(file_label, wcscmp(entry.path().filename().c_str(), selected_file) == 0))
-			{
-				wcscpy_s(selected_file, 128, entry.path().filename().c_str());
-				const auto path = std::filesystem::current_path() / L"hdr" / entry.path().filename().c_str();
-				wcstombs_s(&converted_count, selected_file_path, path.c_str(), 256);
-			}
-		}
+			if (ImGui::Selectable(entry.path().filename().u8string().c_str(), entry.path() == selected_file))
+				selected_file = entry.path();
+		
 		ImGui::EndChild();
 
 		exposure_changed |= ImGui::SliderFloat("Exposure", &render_info_.hdr_exposure, 0.0f, 16.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
@@ -663,14 +666,14 @@ void RtInterface::edit_sky()
 
 		if (ImGui::Button("Set HDR", {ImGui::GetContentRegionAvail().x, 0}))
 		{
-			if (!stbi_info(selected_file_path, &render_info_.hdr_width, &render_info_.hdr_height, &render_info_.hdr_components))
+			if (!stbi_info(selected_file.u8string().c_str(), &render_info_.hdr_width, &render_info_.hdr_height, &render_info_.hdr_components))
 			{
 				ImGui::OpenPopup("HDR loading failed");
 			}
 			else
 			{
 				stbi_image_free(render_info_.hdr_data);
-				render_info_.hdr_data = stbi_loadf(selected_file_path, &render_info_.hdr_width, &render_info_.hdr_height, &render_info_.hdr_components, 3);
+				render_info_.hdr_data = stbi_loadf(selected_file.u8string().c_str(), &render_info_.hdr_width, &render_info_.hdr_height, &render_info_.hdr_components, 3);
 				hdr_changed = true;
 			}
 		}
@@ -678,7 +681,7 @@ void RtInterface::edit_sky()
 		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
 		if (ImGui::BeginPopupModal("HDR loading failed", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			ImGui::Text("%s is not a valid HDR image file", selected_file_path);
+			ImGui::Text("%s is not a valid HDR image file", selected_file.u8string().c_str());
 			if (ImGui::Button("OK", ImVec2(ImGui::GetContentRegionAvail().x, 0))) 
 				ImGui::CloseCurrentPopup();
 
@@ -691,19 +694,70 @@ void RtInterface::edit_sky()
 			render_info_.hdr_data = nullptr;
 			hdr_changed = true;
 		}
-		if (is_rendering_)
+
+		if (!is_rendering_)
+			return;
+		
+		if (exposure_changed || hdr_changed)
 		{
-			if (exposure_changed)
-			{
-				renderer_->refresh_buffer();
-				render_info_.frames_since_refresh = 0;
-			}
-			else if (hdr_changed)
-			{
+			if (hdr_changed)
 				renderer_->recreate_sky();
-				renderer_->refresh_buffer();
-				render_info_.frames_since_refresh = 0;
+
+			renderer_->refresh_buffer();
+			render_info_.frames_since_refresh = 0;
+		}
+	}
+}
+
+void RtInterface::save_image() const
+{
+	if (ImGui::CollapsingHeader("Save image"))
+	{
+		static const char* image_formats[]{"HDR", "PNG", "BMP", "TGA", "JPG"};
+		static int32_t format = 0;
+		static char buffer[128];
+		ImGui::Combo("Image format", &format, image_formats, IM_ARRAYSIZE(image_formats));
+		ImGui::InputText("Filename", buffer, sizeof buffer);
+
+		if (ImGui::Button("Save", {ImGui::GetContentRegionAvail().x, 0}))
+		{
+			if (image_data_)
+			{
+				const auto output_path = std::filesystem::path("output") / buffer;
+
+				if (format == 0)
+					stbi_write_hdr((output_path.u8string() + ".hdr").c_str(), (int)render_info_.width, (int)render_info_.height, 4, image_data_);
+				else
+				{
+					const uint32_t image_size = 4 * render_info_.width * render_info_.height;
+					const auto data = new uint8_t[image_size];
+					for (uint32_t i = 0; i <= image_size; i++)
+						data[i] = (uint8_t)(clamp(image_data_[i], 0.0f, 1.0f) * 255.99f);
+
+					if (format == 1)
+						stbi_write_png((output_path.u8string() + ".png").c_str(), (int)render_info_.width, (int)render_info_.height, 4, data, 4 * render_info_.width);
+					else if (format == 2)
+						stbi_write_bmp((output_path.u8string() + ".bmp").c_str(), (int)render_info_.width, (int)render_info_.height, 4, data);
+					else if (format == 3)
+						stbi_write_tga((output_path.u8string() + ".tga").c_str(), (int)render_info_.width, (int)render_info_.height, 4, data);
+					else if (format == 4)
+						stbi_write_jpg((output_path.u8string() + ".jpg").c_str(), (int)render_info_.width, (int)render_info_.height, 4, data, 90);
+
+					delete[] data;
+				}
 			}
+			else
+				ImGui::OpenPopup("Saving failed");
+		}
+
+		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
+		if (ImGui::BeginPopupModal("Saving failed", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			ImGui::Text("Image was not rendered yet");
+			if (ImGui::Button("OK", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+				ImGui::CloseCurrentPopup();
+
+			ImGui::EndPopup();
 		}
 	}
 }

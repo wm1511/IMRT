@@ -1,8 +1,6 @@
 #pragma once
 #include "Primitive.cuh"
 
-#include <cstdint>
-
 class World
 {
 public:

@@ -17,8 +17,8 @@ public:
 
 	__host__ __device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const override
 	{
-		const float3 reflected_direction = intersection.point + intersection.normal + sphere_random(random_state);
-		ray_out = Ray(intersection.point, reflected_direction - intersection.point);
+		const float3 reflected_direction = intersection.normal + sphere_random(random_state);
+		ray_out = Ray(intersection.point, reflected_direction);
 		absorption = albedo_;
 		return true;
 	}

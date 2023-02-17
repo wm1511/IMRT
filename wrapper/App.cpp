@@ -1,14 +1,10 @@
 // Mainly based on ImGui GLFW + Vulkan example
-
+#include "stdafx.h"
 #include "App.hpp"
 
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_impl_glfw.h"
 #include "../imgui/imgui_impl_vulkan.h"
-
-#include <cstdio>          // printf, fprintf
-#include <cstdlib>         // abort
-#include <vector>
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
 // To link with VS2010-era libraries, VS2015+ requires linking with legacy_stdio_definitions.lib, which we do using this pragma.
@@ -611,22 +607,22 @@ void App::run() const
     }
 }
 
-VkInstance App::GetInstance()
+VkInstance App::get_instance()
 {
 	return g_Instance;
 }
 
-VkPhysicalDevice App::GetPhysicalDevice()
+VkPhysicalDevice App::get_physical_device()
 {
 	return g_PhysicalDevice;
 }
 
-VkDevice App::GetDevice()
+VkDevice App::get_device()
 {
 	return g_Device;
 }
 
-VkCommandBuffer App::GetCommandBuffer()
+VkCommandBuffer App::get_command_buffer()
 {
 	ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
 	VkCommandPool command_pool = wd->Frames[wd->FrameIndex].CommandPool;
@@ -649,7 +645,7 @@ VkCommandBuffer App::GetCommandBuffer()
 	return command_buffer;
 }
 
-void App::FlushCommandBuffer(const VkCommandBuffer command_buffer)
+void App::flush_command_buffer(const VkCommandBuffer command_buffer)
 {
 	VkSubmitInfo submit_info = {};
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
