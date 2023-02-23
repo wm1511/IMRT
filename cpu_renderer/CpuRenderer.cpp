@@ -12,8 +12,7 @@ CpuRenderer::CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_i
 	random_init();
 	allocate_world();
 
-	camera_ = new Camera*;
-	*camera_ = new Camera(
+	camera_ = new Camera(
 			render_info_->camera_position,
 			render_info_->camera_direction,
 			render_info_->fov,
@@ -33,7 +32,6 @@ CpuRenderer::~CpuRenderer()
 {
 	delete[] hdr_data_;
 
-	delete *camera_;
 	delete camera_;
 
 	deallocate_world();
@@ -61,8 +59,8 @@ void CpuRenderer::render(float* image_data)
 
 				const float u = ((float)x + pcg(&local_random_state)) / (float)width;
 				const float v = ((float)y + pcg(&local_random_state)) / (float)height;
-				const Ray ray = (*camera_)->cast_ray(&local_random_state, u, v);
-				const float3 color = sqrt(calculate_color(ray, world_, hdr_data_, *render_info_, &local_random_state));
+				const Ray ray = camera_->cast_ray(&local_random_state, u, v);
+				const float3 color = sqrt(calculate_color(ray, &world_, hdr_data_, *render_info_, &local_random_state));
 
 				accumulation_buffer_[pixel_index] += make_float4(color, 1.0f);
 				image_data[pixel_index << 2] = accumulation_buffer_[pixel_index].x / (float)render_info_->frames_since_refresh;
@@ -86,8 +84,8 @@ void CpuRenderer::render(float* image_data)
 
 					const float u = ((float)x + pcg(&local_random_state)) / (float)width;
 					const float v = ((float)y + pcg(&local_random_state)) / (float)height;
-					const Ray ray = (*camera_)->cast_ray(&local_random_state, u, v);
-					const float3 color = sqrt(calculate_color(ray, world_, hdr_data_, *render_info_, &local_random_state));
+					const Ray ray = camera_->cast_ray(&local_random_state, u, v);
+					const float3 color = sqrt(calculate_color(ray, &world_, hdr_data_, *render_info_, &local_random_state));
 
 					image_data[pixel_index << 2] += color.x / (float)render_info_->samples_per_pixel;
 					image_data[(pixel_index << 2) + 1] += color.y / (float)render_info_->samples_per_pixel;
@@ -110,7 +108,7 @@ void CpuRenderer::refresh_buffer()
 
 void CpuRenderer::refresh_camera()
 {
-	(*camera_)->update(
+	camera_->update(
 		render_info_->camera_position,
 		render_info_->camera_direction,
 		render_info_->fov,
@@ -118,33 +116,20 @@ void CpuRenderer::refresh_camera()
 		render_info_->focus_distance);
 }
 
-void CpuRenderer::refresh_world()
+void CpuRenderer::refresh_object(const int32_t index) const
 {
-	for (int32_t i = 0; i < world_info_->material_count; i++)
-	{
-	   if (world_info_->material_data[i]->type == DIFFUSE)
-		   ((Diffuse*)materials_list_[i])->update((DiffuseInfo*)world_info_->material_data[i]);
-	   else if (world_info_->material_data[i]->type == SPECULAR)
-		   ((Specular*)materials_list_[i])->update((SpecularInfo*)world_info_->material_data[i]);
-	   else if (world_info_->material_data[i]->type == REFRACTIVE)
-		   ((Refractive*)materials_list_[i])->update((RefractiveInfo*)world_info_->material_data[i]);
-	}
-	
-	for (int32_t i = 0; i < world_info_->object_count; i++)
-	{
-	   if (world_info_->object_data[i]->type == SPHERE)
-		   ((Sphere*)primitives_list_[i])->update((SphereInfo*)world_info_->object_data[i], materials_list_[world_info_->object_data[i]->material_id]);
-	   else if (world_info_->object_data[i]->type == TRIANGLE)
-		   ((Triangle*)primitives_list_[i])->update((TriangleInfo*)world_info_->object_data[i], materials_list_[world_info_->object_data[i]->material_id]);
-	}
+	world_->update_object(index, world_info_->objects_[index]);
+}
 
-	(*world_)->update(world_info_->object_count);
+void CpuRenderer::refresh_material(const int32_t index) const
+{
+	world_->update_material(index, world_info_->materials_[index]);
 }
 
 void CpuRenderer::recreate_camera()
 {
-	delete *camera_;
-	*camera_ = new Camera(
+	delete camera_;
+	camera_ = new Camera(
 			render_info_->camera_position,
 			render_info_->camera_direction,
 			render_info_->fov,
@@ -195,43 +180,23 @@ void CpuRenderer::random_init() const
 
 void CpuRenderer::allocate_world()
 {
-	primitives_list_ = new Primitive*[world_info_->object_count];
-	materials_list_ = new Material*[world_info_->material_count];
-	world_ = new World*;
+	const auto material_data = world_info_->materials_;
+    const auto object_data = world_info_->objects_;
+	const auto object_count = object_data.size();
+	const auto material_count = material_data.size();
 
-	MaterialInfo** material_data = world_info_->material_data;
-    ObjectInfo** object_data = world_info_->object_data;
+	material_data_ = new MaterialInfo*[material_count];
+	object_data_ = new ObjectInfo*[object_count];
 
-	for (int32_t i = 0; i < world_info_->material_count; i++)
-	{
-		if (material_data[i]->type == DIFFUSE)
-			materials_list_[i] = new Diffuse((DiffuseInfo*)material_data[i]);
-		else if (material_data[i]->type == SPECULAR)
-			materials_list_[i] = new Specular((SpecularInfo*)material_data[i]);
-		else if (material_data[i]->type == REFRACTIVE)
-			materials_list_[i] = new Refractive((RefractiveInfo*)material_data[i]);
-	}
+	memcpy_s(material_data_, material_count * sizeof(MaterialInfo*), material_data.data(), material_count * sizeof(MaterialInfo*));
+	memcpy_s(object_data_, object_count * sizeof(ObjectInfo*), object_data.data(), object_count * sizeof(ObjectInfo*));
 
-	 for (int32_t i = 0; i < world_info_->object_count; i++)
-	 {
-		if (object_data[i]->type == SPHERE)
-			primitives_list_[i] = new Sphere((SphereInfo*)object_data[i], materials_list_[object_data[i]->material_id]);
-		else if (object_data[i]->type == TRIANGLE)
-			primitives_list_[i] = new Triangle((TriangleInfo*)object_data[i], materials_list_[object_data[i]->material_id]);
-	 }
-
-	*world_ = new World(primitives_list_, world_info_->object_count);
+	world_ = new World(object_data_, material_data_, (int32_t)object_count, (int32_t)material_count);
 }
 
 void CpuRenderer::deallocate_world() const
 {
-	for (int32_t i = 0; i < world_info_->object_count; i++)
-		delete materials_list_[i];
-
-	for (int32_t i = 0; i < world_info_->object_count; i++)
-		delete primitives_list_[i];
-
 	delete world_;
-	delete[] primitives_list_;
-	delete[] materials_list_;
+	delete[] object_data_;
+	delete[] material_data_;
 }

@@ -14,13 +14,14 @@ public:
 
 	CudaRenderer(const CudaRenderer&) = delete;
 	CudaRenderer(CudaRenderer&&) = delete;
-	CudaRenderer operator=(const CudaRenderer&) = delete;
-	CudaRenderer operator=(CudaRenderer&&) = delete;
+	CudaRenderer& operator=(const CudaRenderer&) = delete;
+	CudaRenderer& operator=(CudaRenderer&&) = delete;
 
 	void render(float* image_data) override;
 	void refresh_buffer() override;
 	void refresh_camera() override;
-	void refresh_world() override;
+	void refresh_material(int32_t index) const override;
+	void refresh_object(int32_t index) const override;
 	void recreate_camera() override;
 	void recreate_image() override;
 	void recreate_sky() override;
@@ -34,14 +35,11 @@ private:
 	dim3 threads_;
 
 	uint4* xoshiro_state_ = nullptr;
-	MaterialInfo** device_material_data_ = nullptr, ** host_material_data_ = nullptr;
-	ObjectInfo** device_object_data_ = nullptr, ** host_object_data_ = nullptr;
     float4* frame_buffer_ = nullptr, * accumulation_buffer_ = nullptr;
 	float3* device_hdr_data_ = nullptr;
-    Material** materials_list_ = nullptr;
-    Primitive** primitives_list_ = nullptr;
+    MaterialInfo** device_material_data_ = nullptr, ** host_material_data_ = nullptr;
+    ObjectInfo** device_object_data_ = nullptr, ** host_object_data_ = nullptr;
+	TriangleInfo** host_triangle_data_ = nullptr;
     World** world_ = nullptr;
     Camera** camera_ = nullptr;
-
-	void reload_world() const;
 };

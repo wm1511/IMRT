@@ -34,8 +34,8 @@ public:
 
 	explicit App(const App&) = delete;
 	explicit App(App&&) = delete;
-	App operator= (const App&) = delete;
-	App operator= (App&&) = delete;
+	App& operator= (const App&) = delete;
+	App& operator= (App&&) = delete;
 
 	static VkInstance get_instance();
 	static VkPhysicalDevice get_physical_device();

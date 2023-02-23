@@ -7,8 +7,8 @@ public:
 	Image(uint32_t width, uint32_t height, const void* data = nullptr);
 	Image(const Image&) = delete;
 	Image(Image&&) = delete;
-	Image operator= (const Image&) = delete;
-	Image operator= (Image&&) = delete;
+	Image& operator= (const Image&) = delete;
+	Image& operator= (Image&&) = delete;
 	~Image();
 
 	void set_data(const void* data);

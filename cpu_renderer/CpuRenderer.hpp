@@ -14,13 +14,14 @@ public:
 
 	CpuRenderer(const CpuRenderer&) = delete;
 	CpuRenderer(CpuRenderer&&) = delete;
-	CpuRenderer operator=(const CpuRenderer&) = delete;
-	CpuRenderer operator=(CpuRenderer&&) = delete;
+	CpuRenderer& operator=(const CpuRenderer&) = delete;
+	CpuRenderer& operator=(CpuRenderer&&) = delete;
 
 	void render(float* image_data) override;
 	void refresh_buffer() override;
 	void refresh_camera() override;
-	void refresh_world() override;
+	void refresh_object(int32_t index) const override;
+	void refresh_material(int32_t index) const override;
 	void recreate_camera() override;
 	void recreate_image() override;
 	void recreate_sky() override;
@@ -34,10 +35,10 @@ private:
 	uint4* xoshiro_state_ = nullptr;
     float4* accumulation_buffer_ = nullptr;
 	float3* hdr_data_ = nullptr;
-    Material** materials_list_ = nullptr;
-    Primitive** primitives_list_ = nullptr;
-    World** world_ = nullptr;
-    Camera** camera_ = nullptr;
+    MaterialInfo** material_data_ = nullptr;
+    ObjectInfo** object_data_ = nullptr;
+    World* world_ = nullptr;
+    Camera* camera_ = nullptr;
 
 	void random_init() const;
 };

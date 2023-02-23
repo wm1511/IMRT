@@ -1,3 +1,4 @@
+//#include "stdafx.h"
 #include "CudaRenderer.cuh"
 
 #include <device_launch_parameters.h>
@@ -55,75 +56,38 @@ __global__ void random_init(const uint32_t max_x, const uint32_t max_y, uint4* x
         pixel_index + 30027051);
 }
 
-__global__ void update_world(const int32_t material_count, const int32_t object_count, MaterialInfo** material_data, Material** materials_list, ObjectInfo** object_data, Primitive** primitives_list, World** world)
-{
-    if (threadIdx.x == 0 && blockIdx.x == 0) 
-    {
-        for (int32_t i = 0; i < material_count; i++)
-        {
-           if (material_data[i]->type == DIFFUSE)
-               ((Diffuse*)materials_list[i])->update((DiffuseInfo*)material_data[i]);
-           else if (material_data[i]->type == SPECULAR)
-               ((Specular*)materials_list[i])->update((SpecularInfo*)material_data[i]);
-           else if (material_data[i]->type == REFRACTIVE)
-    		((Specular*)materials_list[i])->update((SpecularInfo*)material_data[i]);
-        }
-    
-		for (int32_t i = 0; i < object_count; i++)
-        {
-           if (object_data[i]->type == SPHERE)
-               ((Sphere*)primitives_list[i])->update((SphereInfo*)object_data[i], materials_list[object_data[i]->material_id]);
-           else if (object_data[i]->type == TRIANGLE)
-               ((Triangle*)primitives_list[i])->update((TriangleInfo*)object_data[i], materials_list[object_data[i]->material_id]);
-        }
-
-        (*world)->update(object_count);
-    }
-}
-
 __global__ void update_camera(Camera** camera, const RenderInfo render_info)
 {
     if (threadIdx.x == 0 && blockIdx.x == 0) 
-    {
 		(*camera)->update(
 			render_info.camera_position,
 	        render_info.camera_direction,
 	        render_info.fov,
 			render_info.aperture,
 	        render_info.focus_distance);
-    }
 }
 
-__global__ void create_world(const int32_t material_count, const int32_t object_count, MaterialInfo** material_data, ObjectInfo** object_data, Material** materials_list, Primitive** primitives_list, World** world)
+__global__ void update_material(World** world, const int32_t index, MaterialInfo** material_data)
 {
-	 if (threadIdx.x == 0 && blockIdx.x == 0) 
-     {
-         for (int32_t i = 0; i < material_count; i++)
-         {
-            if (material_data[i]->type == DIFFUSE)
-            	materials_list[i] = new Diffuse((DiffuseInfo*)material_data[i]);
-            else if (material_data[i]->type == SPECULAR)
-            	materials_list[i] = new Specular((SpecularInfo*)material_data[i]);
-            else if (material_data[i]->type == REFRACTIVE)
-				materials_list[i] = new Refractive((RefractiveInfo*)material_data[i]);
-         }
+    if (threadIdx.x == 0 && blockIdx.x == 0)
+		(*world)->update_material(index, material_data[index]);
+}
 
-         for (int32_t i = 0; i < object_count; i++)
-         {
-            if (object_data[i]->type == SPHERE)
-            	primitives_list[i] = new Sphere((SphereInfo*)object_data[i], materials_list[object_data[i]->material_id]);
-            else if (object_data[i]->type == TRIANGLE)
-            	primitives_list[i] = new Triangle((TriangleInfo*)object_data[i], materials_list[object_data[i]->material_id]);
-         }
+__global__ void update_object(World** world, const int32_t index, ObjectInfo** object_data)
+{
+    if (threadIdx.x == 0 && blockIdx.x == 0) 
+		(*world)->update_object(index, object_data[index]);
+}
 
-        *world = new World(primitives_list, object_count);
-     }
+__global__ void create_world(ObjectInfo** object_data, MaterialInfo** material_data, const int32_t object_count, const int32_t material_count, World** world)
+{
+    if (threadIdx.x == 0 && blockIdx.x == 0) 
+       *world = new World(object_data, material_data, object_count, material_count);
 }
 
 __global__ void create_camera(Camera** camera, const RenderInfo render_info)
 {
     if (threadIdx.x == 0 && blockIdx.x == 0) 
-    {
 		*camera = new Camera(
 	            render_info.camera_position,
 	            render_info.camera_direction,
@@ -131,21 +95,12 @@ __global__ void create_camera(Camera** camera, const RenderInfo render_info)
 	            (float)render_info.width / (float)render_info.height,
 	            render_info.aperture,
 	            render_info.focus_distance);
-    }
 }
 
-__global__ void delete_world(Material** materials_list, Primitive** primitives_list, World** world, const uint32_t material_count, const uint32_t primitive_count)
+__global__ void delete_world(World** world)
 {
     if (threadIdx.x == 0 && blockIdx.x == 0)
-    {
-	    for (uint32_t i = 0; i < material_count; i++)
-	    	delete materials_list[i];
-
-    	for (uint32_t i = 0; i < primitive_count; i++)
-    		delete primitives_list[i];
-    	
     	delete *world;
-    }
 }
 
 __global__ void delete_camera(Camera** camera)
@@ -240,11 +195,45 @@ void CudaRenderer::refresh_camera()
     CCE(cudaDeviceSynchronize());
 }
 
-void CudaRenderer::refresh_world()
+void CudaRenderer::refresh_material(const int32_t index) const
 {
-    reload_world();
+	const MaterialInfo* material = world_info_->materials_[index];
 
-    update_world<<<1, 1>>>(world_info_->material_count, world_info_->object_count, device_material_data_, materials_list_, device_object_data_, primitives_list_, world_);
+    if (material->type == DIFFUSE)
+		CCE(cudaMemcpy(host_material_data_[index], material, sizeof(DiffuseInfo), cudaMemcpyHostToDevice));
+    else if (material->type == SPECULAR)
+		CCE(cudaMemcpy(host_material_data_[index], material, sizeof(SpecularInfo), cudaMemcpyHostToDevice));
+    else if (material->type == REFRACTIVE)
+		CCE(cudaMemcpy(host_material_data_[index], material, sizeof(RefractiveInfo), cudaMemcpyHostToDevice));
+
+    CCE(cudaMemcpy(&device_material_data_[index], &host_material_data_[index], sizeof(MaterialInfo*), cudaMemcpyHostToDevice));
+
+    update_material<<<1, 1>>>(world_, index, device_material_data_);
+    CCE(cudaGetLastError());
+    CCE(cudaDeviceSynchronize());
+}
+
+void CudaRenderer::refresh_object(const int32_t index) const
+{
+	ObjectInfo* object = world_info_->objects_[index];
+
+    if (object->type == SPHERE)
+		CCE(cudaMemcpy(host_object_data_[index], object, sizeof(SphereInfo), cudaMemcpyHostToDevice));
+    else if (object->type == TRIANGLE)
+		CCE(cudaMemcpy(host_object_data_[index], object, sizeof(TriangleInfo), cudaMemcpyHostToDevice));
+	else if (object->type == PLANE)
+		CCE(cudaMemcpy(host_object_data_[index], object, sizeof(PlaneInfo), cudaMemcpyHostToDevice));
+    else if (object->type == MODEL)
+    {
+        TriangleInfo* triangle_data = ((ModelInfo*)object)->triangles;
+        ((ModelInfo*)object)->triangles = host_triangle_data_[index]; 
+	    CCE(cudaMemcpy(host_object_data_[index], object, sizeof(ModelInfo), cudaMemcpyHostToDevice));
+        ((ModelInfo*)world_info_->objects_[index])->triangles = triangle_data;
+    }
+
+    CCE(cudaMemcpy(&device_object_data_[index], &host_object_data_[index], sizeof(ObjectInfo*), cudaMemcpyHostToDevice));
+
+    update_object<<<1, 1>>>(world_, index, device_object_data_);
     CCE(cudaGetLastError());
     CCE(cudaDeviceSynchronize());
 }
@@ -293,12 +282,15 @@ void CudaRenderer::recreate_sky()
 
 void CudaRenderer::allocate_world()
 {
-    MaterialInfo** material_data = world_info_->material_data;
-    ObjectInfo** object_data = world_info_->object_data;
-    host_material_data_ = new MaterialInfo*[world_info_->material_count];
-    host_object_data_ = new ObjectInfo*[world_info_->object_count];
+	const std::vector<MaterialInfo*> material_data = world_info_->materials_;
+	const std::vector<ObjectInfo*> object_data = world_info_->objects_;
+    const auto material_count = material_data.size();
+    const auto object_count = object_data.size();
+    host_material_data_ = new MaterialInfo*[material_count];
+    host_object_data_ = new ObjectInfo*[object_count];
+    host_triangle_data_ = new TriangleInfo*[object_count];
 
-    for (int32_t i = 0; i < world_info_->material_count; i++)
+    for (uint64_t i = 0; i < material_count; i++)
     {
         if (material_data[i]->type == DIFFUSE)
         {
@@ -316,7 +308,7 @@ void CudaRenderer::allocate_world()
 			CCE(cudaMemcpy(host_material_data_[i], material_data[i], sizeof(RefractiveInfo), cudaMemcpyHostToDevice));
         }
     }
-    for (int32_t i = 0; i < world_info_->object_count; i++)
+    for (uint64_t i = 0; i < object_count; i++)
     {
         if (object_data[i]->type == SPHERE)
         {
@@ -328,18 +320,33 @@ void CudaRenderer::allocate_world()
 	        CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(TriangleInfo)));
 			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(TriangleInfo), cudaMemcpyHostToDevice));
         }
+    	else if (object_data[i]->type == PLANE)
+        {
+	        CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(PlaneInfo)));
+			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(PlaneInfo), cudaMemcpyHostToDevice));
+        }
+        else if (object_data[i]->type == MODEL)
+        {
+	        const auto model_data = (ModelInfo*)object_data[i];
+            TriangleInfo* triangle_data = model_data->triangles;
+
+            CCE(cudaMalloc((void**)&host_triangle_data_[i], model_data->triangle_count * sizeof(TriangleInfo)));
+			CCE(cudaMemcpy(host_triangle_data_[i], model_data->triangles, model_data->triangle_count * sizeof(TriangleInfo), cudaMemcpyHostToDevice));
+            model_data->triangles = host_triangle_data_[i];
+
+            CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(ModelInfo)));
+			CCE(cudaMemcpy(host_object_data_[i], model_data, sizeof(ModelInfo), cudaMemcpyHostToDevice));
+            ((ModelInfo*)world_info_->objects_[i])->triangles = triangle_data;
+        }
     }
 
-    CCE(cudaMalloc((void**)&device_material_data_, world_info_->material_count * sizeof(MaterialInfo*)));
-    CCE(cudaMalloc((void**)&device_object_data_, world_info_->object_count * sizeof(ObjectInfo*)));
-	CCE(cudaMemcpy(device_material_data_, host_material_data_, world_info_->material_count * sizeof(MaterialInfo*), cudaMemcpyHostToDevice));
-	CCE(cudaMemcpy(device_object_data_, host_object_data_, world_info_->object_count * sizeof(ObjectInfo*), cudaMemcpyHostToDevice));
+    CCE(cudaMalloc((void**)&device_material_data_, material_count * sizeof(MaterialInfo*)));
+    CCE(cudaMalloc((void**)&device_object_data_, object_count * sizeof(ObjectInfo*)));
+	CCE(cudaMemcpy(device_material_data_, host_material_data_, material_count * sizeof(MaterialInfo*), cudaMemcpyHostToDevice));
+	CCE(cudaMemcpy(device_object_data_, host_object_data_, object_count * sizeof(ObjectInfo*), cudaMemcpyHostToDevice));
 
-    CCE(cudaMalloc((void**)&primitives_list_, world_info_->object_count * sizeof(Primitive*)));
-    CCE(cudaMalloc((void**)&materials_list_, world_info_->material_count * sizeof(Material*)));
     CCE(cudaMalloc((void**)&world_, sizeof(World*)));
-
-    create_world<<<1, 1>>>(world_info_->material_count, world_info_->object_count, device_material_data_, device_object_data_, materials_list_, primitives_list_, world_);
+    create_world<<<1, 1>>>(device_object_data_, device_material_data_, (int32_t)object_count, (int32_t)material_count, world_);
     CCE(cudaGetLastError());
     CCE(cudaDeviceSynchronize());
 }
@@ -347,47 +354,25 @@ void CudaRenderer::allocate_world()
 void CudaRenderer::deallocate_world() const
 {
     CCE(cudaDeviceSynchronize());
-	//delete_world<<<1, 1>>>(materials_list_, primitives_list_, world_, world_info_->material_count, world_info_->object_count);
+	//delete_world<<<1, 1>>>(world_);
     CCE(cudaGetLastError());
     CCE(cudaFree(world_));
 
-    CCE(cudaFree(primitives_list_));
-    CCE(cudaFree(materials_list_));
-
-    for (int32_t i = 0; i < world_info_->object_count; i++)
-	    CCE(cudaFree(host_object_data_[i]));
-    for (int32_t i = 0; i < world_info_->material_count; i++)
-		CCE(cudaFree(host_material_data_[i]));
     CCE(cudaFree(device_object_data_));
     CCE(cudaFree(device_material_data_));
 
+    for (uint64_t i = 0; i < world_info_->objects_.size(); i++)
+    {
+        if (world_info_->objects_[i]->type == MODEL)
+            CCE(cudaFree(host_triangle_data_[i]));
+
+	    CCE(cudaFree(host_object_data_[i]));
+    }
+    
+    for (uint64_t i = 0; i < world_info_->materials_.size(); i++)
+		CCE(cudaFree(host_material_data_[i]));
+
+    delete[] host_triangle_data_;
     delete[] host_object_data_;
     delete[] host_material_data_;
-}
-
-void CudaRenderer::reload_world() const
-{
-    MaterialInfo** material_data = world_info_->material_data;
-    ObjectInfo** object_data = world_info_->object_data;
-
-    for (int32_t i = 0; i < world_info_->material_count; i++)
-    {
-        if (material_data[i]->type == DIFFUSE)
-			CCE(cudaMemcpy(host_material_data_[i], material_data[i], sizeof(DiffuseInfo), cudaMemcpyHostToDevice));
-        else if (material_data[i]->type == SPECULAR)
-			CCE(cudaMemcpy(host_material_data_[i], material_data[i], sizeof(SpecularInfo), cudaMemcpyHostToDevice));
-        else if (material_data[i]->type == REFRACTIVE)
-			CCE(cudaMemcpy(host_material_data_[i], material_data[i], sizeof(RefractiveInfo), cudaMemcpyHostToDevice));
-    }
-
-    for (int32_t i = 0; i < world_info_->object_count; i++)
-    {
-        if (object_data[i]->type == SPHERE)
-			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(SphereInfo), cudaMemcpyHostToDevice));
-        else if (object_data[i]->type == TRIANGLE)
-			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(TriangleInfo), cudaMemcpyHostToDevice));
-    }
-
-	CCE(cudaMemcpy(device_material_data_, host_material_data_, world_info_->material_count * sizeof(MaterialInfo*), cudaMemcpyHostToDevice));
-	CCE(cudaMemcpy(device_object_data_, host_object_data_, world_info_->object_count * sizeof(ObjectInfo*), cudaMemcpyHostToDevice));
 }

@@ -19,7 +19,7 @@ static void draw_help(const char* text)
     }
 }
 
-static void draw_material_list(MaterialInfo** material_data, const int32_t material_count, const char* material_types[], int32_t& selected_material)
+static void draw_material_list(const std::vector<MaterialInfo*>& material_data, const int32_t material_count, const char* material_types[], int32_t& selected_material)
 {
 	ImGui::BeginChild("Materials", {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
 		ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
@@ -28,7 +28,7 @@ static void draw_material_list(MaterialInfo** material_data, const int32_t mater
 	for (int32_t n = 0; n < material_count; n++)
 	{
 		static char buffer[16]{};
-		if (sprintf_s(buffer, "%u-%s", n, material_types[material_data[n]->type]) > 0)
+		if (sprintf_s(buffer, "%i-%s", n, material_types[material_data[n]->type]) > 0)
 		{
 			if (ImGui::Selectable(buffer, selected_material == n))
 				selected_material = n;
@@ -56,7 +56,7 @@ void RtInterface::draw()
 		const bool starting_disabled = is_rendering_;
 		if (starting_disabled)
 			ImGui::BeginDisabled();
-		if (ImGui::Button("CPU render", {ImGui::GetContentRegionAvail().x / 3, 0}))
+		if (ImGui::Button("CPU render", {ImGui::GetContentRegionAvail().x / 2, 0}))
 		{
 			frames_rendered_ = 0;
 			render_info_.frames_since_refresh = 0;
@@ -64,17 +64,12 @@ void RtInterface::draw()
 			renderer_ = std::make_unique<CpuRenderer>(&render_info_, &world_info_);
 		}
 		ImGui::SameLine();
-		if (ImGui::Button("CUDA render", {ImGui::GetContentRegionAvail().x / 2, 0}))
+		if (ImGui::Button("CUDA render", {ImGui::GetContentRegionAvail().x, 0}))
 		{
 			frames_rendered_ = 0;
 			render_info_.frames_since_refresh = 0;
 			is_rendering_ = true;
 			renderer_ = std::make_unique<CudaRenderer>(&render_info_, &world_info_);
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("OPTIX render", {ImGui::GetContentRegionAvail().x, 0}))
-		{
-
 		}
 		if (starting_disabled)
 			ImGui::EndDisabled();
@@ -400,15 +395,16 @@ void RtInterface::edit_material()
 	if (ImGui::CollapsingHeader("Material list"))
 	{
 		bool is_edited = false;
-		for (int32_t i = 0; i < world_info_.material_count; i++)
+		for (int32_t i = 0; i < world_info_.materials_.size(); i++)
 		{
-			MaterialInfo* current_material = world_info_.material_data[i];
+			MaterialInfo* current_material = world_info_.materials_[i];
 			ImGui::PushID(i);
 			if (ImGui::TreeNode("Material", "%u-%s", i, material_types[current_material->type]))
 			{
+				ImGui::Text("Material type: %s", material_types[current_material->type]);
+
 				if (ImGui::TreeNode("Properties"))
 				{
-					ImGui::Text("Material type: %s", material_types[current_material->type]);
 					if (current_material->type == UNKNOWN_MATERIAL)
 					{
 						ImGui::Text("Material properties can't be set for type Unknown_Material");
@@ -416,12 +412,12 @@ void RtInterface::edit_material()
 					else if (current_material->type == DIFFUSE)
 					{
 						const auto current_diffuse = (DiffuseInfo*)current_material;
-						is_edited |= ImGui::ColorEdit3("Color", current_diffuse->albedo_array, ImGuiColorEditFlags_Float);
+						is_edited |= ImGui::ColorEdit3("Color", current_diffuse->albedo.arr, ImGuiColorEditFlags_Float);
 					}
 					else if (current_material->type == SPECULAR)
 					{
 						const auto current_specular = (SpecularInfo*)current_material;
-						is_edited |= ImGui::ColorEdit3("Color", current_specular->albedo_array, ImGuiColorEditFlags_Float);
+						is_edited |= ImGui::ColorEdit3("Color", current_specular->albedo.arr, ImGuiColorEditFlags_Float);
 						is_edited |= ImGui::SliderFloat("Fuzziness", &current_specular->fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 						draw_help("Fuzziness of material reflection");
 					}
@@ -437,20 +433,20 @@ void RtInterface::edit_material()
 				ImGui::TreePop();
 			}
 			ImGui::PopID();
-		}
 
-		if (is_rendering_ && is_edited)
-		{
-			renderer_->refresh_world();
-			renderer_->refresh_buffer();
-			render_info_.frames_since_refresh = 0;
+			if (is_rendering_ && is_edited)
+			{
+				renderer_->refresh_material(i);
+				renderer_->refresh_buffer();
+				render_info_.frames_since_refresh = 0;
+			}
 		}
 	}
 }
 
 void RtInterface::add_object()
 {
-	static const char* object_types[]{"Unknown_Object", "Sphere", "Triangle", "Triangle_Mesh"};
+	static const char* object_types[]{"Unknown_Object", "Sphere", "Triangle", "Plane", "Model"};
 	static const char* material_types[]{"Unknown_Material", "Diffuse", "Specular", "Refractive"};
 
 	if (ImGui::CollapsingHeader("Add object"))
@@ -460,6 +456,13 @@ void RtInterface::add_object()
 		static int32_t selected_material = 0;
 
 		ImGui::Combo("Object type", &object_type, object_types, IM_ARRAYSIZE(object_types));
+
+		if (ImGui::TreeNode("Material"))
+		{
+			draw_material_list(world_info_.materials_, (int32_t)world_info_.materials_.size(), material_types, selected_material);
+			ImGui::TreePop();
+		}
+
 		if (object_type == UNKNOWN_OBJECT)
 		{
 			ImGui::Text("Object of type Unknown_Object can't be instantiated");
@@ -474,11 +477,6 @@ void RtInterface::add_object()
 				ImGui::SliderFloat3("Center", new_sphere_center, -UINT16_MAX, UINT16_MAX,"%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				ImGui::SliderFloat("Radius", &new_sphere_radius, -UINT8_MAX, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				draw_help("Radius of sphere can be negative for refractive spheres to make sphere hollow");
-				ImGui::TreePop();
-			}
-			if (ImGui::TreeNode("Material"))
-			{
-				draw_material_list(world_info_.material_data, world_info_.material_count, material_types, selected_material);
 				ImGui::TreePop();
 			}
 
@@ -503,9 +501,25 @@ void RtInterface::add_object()
 				ImGui::SliderFloat3("Vertex 2", new_triangle_v2, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				ImGui::TreePop();
 			}
-			if (ImGui::TreeNode("Material"))
+
+			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
 			{
-				draw_material_list(world_info_.material_data, world_info_.material_count, material_types, selected_material);
+				if (is_rendering_)
+					renderer_->deallocate_world();
+				world_info_.add_object(new TriangleInfo(make_float3(new_triangle_v0), make_float3(new_triangle_v1), make_float3(new_triangle_v2), selected_material, make_float3(0.0f, 0.0f, 0.0f), make_float2(0.0f, 0.0f), make_float2(1.0f, 1.0f)));
+				is_added = true;
+			}
+		}
+		else if (object_type == PLANE)
+		{
+			static float new_plane_normal[3]{0.0f, -1.0f, 0.0f};
+			static float new_plane_offset{0.0f};
+
+			if (ImGui::TreeNode("Properties"))
+			{
+				ImGui::SliderFloat3("Normal", new_plane_normal, -1.0f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat("Offset", &new_plane_offset, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				draw_help("Displacement from center position along normal");
 				ImGui::TreePop();
 			}
 
@@ -513,13 +527,55 @@ void RtInterface::add_object()
 			{
 				if (is_rendering_)
 					renderer_->deallocate_world();
-				world_info_.add_object(new TriangleInfo(make_float3(new_triangle_v0), make_float3(new_triangle_v1), make_float3(new_triangle_v2), selected_material));
+				world_info_.add_object(new PlaneInfo(make_float3(new_plane_normal), new_plane_offset, selected_material));
 				is_added = true;
 			}
 		}
-		else if (object_type == TRIANGLE_MESH)
+		else if (object_type == MODEL)
 		{
-			ImGui::Text("Not implemented");
+			const auto iterator = std::filesystem::recursive_directory_iterator("assets/obj/");
+			static std::filesystem::path selected_file;
+
+			ImGui::BeginChild("3D Models", {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
+				ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
+			ImGui::Text("Choose 3D Model");
+			draw_help("Choose .obj file containing 3D model to load. New files can be added to \"assets/obj\" folder");
+
+			for (const auto& entry : iterator)
+				if (entry.path().extension() == ".obj")
+					if (ImGui::Selectable(entry.path().filename().u8string().c_str(), entry.path() == selected_file))
+						selected_file = entry.path();
+		
+			ImGui::EndChild();
+
+			ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "Loading large files will take a while");
+
+			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
+			{
+				TriangleInfo* triangle_list = nullptr;
+				uint64_t triangle_count = 0;
+				world_info_.load_model(selected_file.u8string(), selected_material, triangle_list, triangle_count);
+
+				if (triangle_count == 0)
+					ImGui::OpenPopup("3D model loading failed");
+				else
+				{
+					if (is_rendering_)
+						renderer_->deallocate_world();
+					world_info_.add_object(new ModelInfo(triangle_list, triangle_count, selected_material));
+					is_added = true;
+				}
+			}
+
+			ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
+			if (ImGui::BeginPopupModal("3D model loading failed", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+			{
+				ImGui::Text("File %s can't be loaded as 3D model", selected_file.u8string().c_str());
+				if (ImGui::Button("OK", ImVec2(ImGui::GetContentRegionAvail().x, 0))) 
+					ImGui::CloseCurrentPopup();
+
+				ImGui::EndPopup();
+			}
 		}
 
 		if (is_rendering_ && is_added)
@@ -534,21 +590,41 @@ void RtInterface::add_object()
 void RtInterface::edit_object()
 {
 	static const char* material_types[]{"Unknown_Material", "Diffuse", "Specular", "Refractive"};
-	static const char* object_types[]{"Unknown_Object", "Sphere", "Triangle", "Triangle_Mesh"};
+	static const char* object_types[]{"Unknown_Object", "Sphere", "Triangle", "Plane", "Model"};
 
 	if (ImGui::CollapsingHeader("Object list"))
 	{
 		bool is_edited = false, is_deleted = false;
-		for (int32_t i = 0; i < world_info_.object_count; i++)
+		for (int32_t i = 0; i < world_info_.objects_.size(); i++)
 		{
-			ObjectInfo* current_object = world_info_.object_data[i];
+			ObjectInfo* current_object = world_info_.objects_[i];
 
 			ImGui::PushID(i);
-			if (ImGui::TreeNode("Object", "%u-%s-%s", i, object_types[current_object->type], material_types[world_info_.material_data[current_object->material_id]->type]))
+			if (ImGui::TreeNode("Object", "%u-%s-%s", i, object_types[current_object->type], material_types[world_info_.materials_[current_object->material_id]->type]))
 			{
+				ImGui::Text("Object type: %s", object_types[current_object->type]);
+
+				if (current_object->type == MODEL)
+				{
+					ImGui::Text("Triangle count: %llu", ((ModelInfo*)current_object)->triangle_count);
+				}
+
+				if (ImGui::TreeNode("Material"))
+				{
+					ImGui::Text("Object's material id: %u", current_object->material_id);
+					static int32_t selected_material = 0;
+					draw_material_list(world_info_.materials_, (int32_t)world_info_.materials_.size(), material_types, selected_material);
+
+					if (ImGui::Button("Set material", {ImGui::GetContentRegionAvail().x, 0}))
+					{
+						current_object->material_id = selected_material;
+						is_edited = true;
+					}
+					ImGui::TreePop();
+				}
+
 				if (ImGui::TreeNode("Properties"))
 				{
-					ImGui::Text("Object type: %s", object_types[current_object->type]);
 					if (current_object->type == UNKNOWN_OBJECT)
 					{
 						ImGui::Text("Object properties can't be set for type Unknown_Object");
@@ -557,7 +633,7 @@ void RtInterface::edit_object()
 					{
 						const auto current_sphere = (SphereInfo*)current_object;
 
-						is_edited |= ImGui::SliderFloat3("Center", current_sphere->center_array, -UINT8_MAX, UINT8_MAX,"%.3f",
+						is_edited |= ImGui::SliderFloat3("Center", current_sphere->center.arr, -UINT8_MAX, UINT8_MAX,"%.3f",
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 						is_edited |= ImGui::SliderFloat("Radius", &current_sphere->radius, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
@@ -567,46 +643,37 @@ void RtInterface::edit_object()
 					{
 						const auto current_triangle = (TriangleInfo*)current_object;
 
-						is_edited |= ImGui::SliderFloat3("Vertex 0", current_triangle->v0_array, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						is_edited |= ImGui::SliderFloat3("Vertex 0", current_triangle->v0.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat3("Vertex 1", current_triangle->v1_array, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						is_edited |= ImGui::SliderFloat3("Vertex 1", current_triangle->v1.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat3("Vertex 2", current_triangle->v2_array, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						is_edited |= ImGui::SliderFloat3("Vertex 2", current_triangle->v2.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 					}
-					ImGui::TreePop();
-				}
-
-				/*if (current_object->type == TRIANGLE_MESH)
-				{
-					if (ImGui::TreeNode("Transform"))
+					else if (current_object->type == PLANE)
 					{
-						const auto current_triangle_mesh = (TriangleMeshInfo*)current_object;
+						const auto current_plane = (PlaneInfo*)current_object;
 
-						is_changed |= ImGui::SliderFloat3("Translation", current_triangle_mesh->transform.translation, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						is_edited |= ImGui::SliderFloat3("Normal", current_plane->normal.arr, -1.0f, 1.0f, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+						is_edited |= ImGui::SliderFloat("Offset", &current_plane->offset, -UINT16_MAX, UINT16_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+						draw_help("Displacement from center position along normal");
+					}
+					else if (current_object->type == MODEL)
+					{
+						const auto current_model = (ModelInfo*)current_object;
+
+						is_edited |= ImGui::SliderFloat3("Translation", current_model->translation.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
 								ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
-						is_changed |= ImGui::SliderFloat3("Scale", current_triangle_mesh->transform.scale, 0.0f, UINT8_MAX, "%.3f", 
+						is_edited |= ImGui::SliderFloat3("Scale", current_model->scale.arr, 0.001f, UINT8_MAX, "%.3f", 
 								ImGuiSliderFlags_AlwaysClamp);
-						is_changed |= ImGui::SliderAngle("Rotation x", &current_triangle_mesh->transform.rotation[0], 0.0f, 360.0f, "%.3f", 
+						is_edited |= ImGui::SliderAngle("Rotation x", &current_model->rotation.arr[0], 0.0f, 360.0f, "%.3f", 
 								ImGuiSliderFlags_AlwaysClamp);
-						is_changed |= ImGui::SliderAngle("Rotation y", &current_triangle_mesh->transform.rotation[1], 0.0f, 360.0f, "%.3f", 
+						is_edited |= ImGui::SliderAngle("Rotation y", &current_model->rotation.arr[1], 0.0f, 360.0f, "%.3f", 
 								ImGuiSliderFlags_AlwaysClamp);
-						is_changed |= ImGui::SliderAngle("Rotation z", &current_triangle_mesh->transform.rotation[2], 0.0f, 360.0f, "%.3f", 
+						is_edited |= ImGui::SliderAngle("Rotation z", &current_model->rotation.arr[2], 0.0f, 360.0f, "%.3f", 
 								ImGuiSliderFlags_AlwaysClamp);
-						ImGui::TreePop();
-					}
-				}*/
-
-				if (ImGui::TreeNode("Material"))
-				{
-					ImGui::Text("Object's material id: %u", current_object->material_id);
-					static int32_t selected_material = 0;
-		            draw_material_list(world_info_.material_data, world_info_.material_count, material_types, selected_material);
-
-					if (ImGui::Button("Set material", {ImGui::GetContentRegionAvail().x, 0}))
-					{
-						current_object->material_id = selected_material;
-						is_edited = true;
 					}
 					ImGui::TreePop();
 				}
@@ -622,20 +689,20 @@ void RtInterface::edit_object()
 				ImGui::TreePop();
 			}
 			ImGui::PopID();
-		}
 
-		if (!is_rendering_)
-			return;
+			if (is_rendering_)
+			{
+				if (is_edited || is_deleted)
+				{
+					if (is_edited)
+						renderer_->refresh_object(i);
+					else if (is_deleted)
+						renderer_->allocate_world();
 
-		if (is_edited || is_deleted)
-		{
-			if (is_edited)
-				renderer_->refresh_world();
-			else if (is_deleted)
-				renderer_->allocate_world();
-
-			renderer_->refresh_buffer();
-			render_info_.frames_since_refresh = 0;
+					renderer_->refresh_buffer();
+					render_info_.frames_since_refresh = 0;
+				}
+			}
 		}
 	}
 }
@@ -654,8 +721,9 @@ void RtInterface::edit_sky()
 		draw_help("Choose file containing HDR image for environment map creation. New files can be added to \"assets/hdr\" folder");
 
 		for (const auto& entry : iterator)
-			if (ImGui::Selectable(entry.path().filename().u8string().c_str(), entry.path() == selected_file))
-				selected_file = entry.path();
+			if (entry.path().extension() == ".hdr")
+				if (ImGui::Selectable(entry.path().filename().u8string().c_str(), entry.path() == selected_file))
+					selected_file = entry.path();
 		
 		ImGui::EndChild();
 
@@ -726,7 +794,7 @@ void RtInterface::save_image() const
 				const auto output_path = std::filesystem::path("output") / buffer;
 
 				if (format == 0)
-					stbi_write_hdr((output_path.u8string() + ".hdr").c_str(), (int)render_info_.width, (int)render_info_.height, 4, image_data_);
+					stbi_write_hdr((output_path.u8string() + ".hdr").c_str(), (int32_t)render_info_.width, (int32_t)render_info_.height, 4, image_data_);
 				else
 				{
 					const uint32_t image_size = 4 * render_info_.width * render_info_.height;
@@ -735,13 +803,13 @@ void RtInterface::save_image() const
 						data[i] = (uint8_t)(clamp(image_data_[i], 0.0f, 1.0f) * 255.99f);
 
 					if (format == 1)
-						stbi_write_png((output_path.u8string() + ".png").c_str(), (int)render_info_.width, (int)render_info_.height, 4, data, 4 * render_info_.width);
+						stbi_write_png((output_path.u8string() + ".png").c_str(), (int32_t)render_info_.width, (int32_t)render_info_.height, 4, data, 4 * render_info_.width);
 					else if (format == 2)
-						stbi_write_bmp((output_path.u8string() + ".bmp").c_str(), (int)render_info_.width, (int)render_info_.height, 4, data);
+						stbi_write_bmp((output_path.u8string() + ".bmp").c_str(), (int32_t)render_info_.width, (int32_t)render_info_.height, 4, data);
 					else if (format == 3)
-						stbi_write_tga((output_path.u8string() + ".tga").c_str(), (int)render_info_.width, (int)render_info_.height, 4, data);
+						stbi_write_tga((output_path.u8string() + ".tga").c_str(), (int32_t)render_info_.width, (int32_t)render_info_.height, 4, data);
 					else if (format == 4)
-						stbi_write_jpg((output_path.u8string() + ".jpg").c_str(), (int)render_info_.width, (int)render_info_.height, 4, data, 90);
+						stbi_write_jpg((output_path.u8string() + ".jpg").c_str(), (int32_t)render_info_.width, (int32_t)render_info_.height, 4, data, 90);
 
 					delete[] data;
 				}

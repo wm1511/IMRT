@@ -1,4 +1,5 @@
 #pragma once
+#include "Unions.hpp"
 
 enum MaterialType
 {
@@ -10,35 +11,39 @@ enum MaterialType
 
 struct MaterialInfo
 {
+	MaterialInfo() = default;
+	explicit MaterialInfo(const MaterialType type) : type(type) {}
+	virtual ~MaterialInfo() = default;
+
+	MaterialInfo(const MaterialInfo&) = delete;
+	MaterialInfo(MaterialInfo&&) = default;
+	MaterialInfo& operator=(const MaterialInfo&) = delete;
+	MaterialInfo& operator=(MaterialInfo&&) = default;
+
 	MaterialType type{UNKNOWN_MATERIAL};
 };
 
-struct DiffuseInfo : MaterialInfo
+struct DiffuseInfo final : MaterialInfo
 {
-	explicit DiffuseInfo(float3 albedo) : albedo{albedo} { type = DIFFUSE; }
+	DiffuseInfo() = default;
+	explicit DiffuseInfo(const float3 albedo) : MaterialInfo(DIFFUSE), albedo{albedo} {}
 
-	union
-	{
-		float3 albedo;
-		float albedo_array[3]{};
-	};
+	Float3 albedo{};
 };
 
-struct SpecularInfo : MaterialInfo
+struct SpecularInfo final : MaterialInfo
 {
-	SpecularInfo(float3 albedo, const float fuzziness) : albedo{albedo}, fuzziness(fuzziness) { type = SPECULAR; }
+	SpecularInfo() = default;
+	SpecularInfo(const float3 albedo, const float fuzziness) : MaterialInfo(SPECULAR), albedo{albedo}, fuzziness(fuzziness) {}
 
-	union
-	{
-		float3 albedo;
-		float albedo_array[3]{};
-	};
-	float fuzziness;
+	Float3 albedo{};
+	float fuzziness{};
 };
 
-struct RefractiveInfo : MaterialInfo
+struct RefractiveInfo final : MaterialInfo
 {
-	explicit RefractiveInfo(const float refractive_index) : refractive_index(refractive_index) { type = REFRACTIVE; }
+	RefractiveInfo() = default;
+	explicit RefractiveInfo(const float refractive_index) : MaterialInfo(REFRACTIVE), refractive_index(refractive_index) {}
 
 	float refractive_index{};
 };

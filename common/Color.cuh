@@ -35,8 +35,8 @@ __host__ __device__ inline float3 calculate_color(const Ray& ray, World** world,
 			    const float u = longitude * kInv2Pi;
 			    const float v = latitude * kInvPi;
 
-	            const int32_t x = (int32_t)(u * (float)render_info.hdr_width);
-	            const int32_t y = (int32_t)(v * (float)render_info.hdr_height);
+	            const auto x = (int32_t)(u * (float)render_info.hdr_width);
+	            const auto y = (int32_t)(v * (float)render_info.hdr_height);
 
 	            const int32_t hdr_texel_index = x + y * render_info.hdr_width;
 	            const float3 hdr_color = clamp(hdr_data[hdr_texel_index], 0.0f, 1.0f);

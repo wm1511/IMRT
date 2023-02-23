@@ -1,19 +1,21 @@
 #pragma once
-#include "../info/MaterialInfo.hpp"
 #include "Intersection.cuh"
 #include "Ray.cuh"
+#include "../info/MaterialInfo.hpp"
 
 class Material
 {
 public:
-	__host__ __device__ virtual bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const = 0;
 	virtual ~Material() = default;
+
+	__host__ __device__ virtual bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const = 0;
+	__host__ __device__ virtual void update(MaterialInfo* material_info) = 0;
 };
 
 class Diffuse final : public Material
 {
 public:
-	__host__ __device__ explicit Diffuse(const DiffuseInfo* diffuse_info) : albedo_(diffuse_info->albedo) {}
+	__host__ __device__ explicit Diffuse(const DiffuseInfo* diffuse_info) : albedo_(diffuse_info->albedo.str) {}
 
 	__host__ __device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const override
 	{
@@ -23,19 +25,20 @@ public:
 		return true;
 	}
 
-	__host__ __device__ void update(const DiffuseInfo* diffuse_info)
+	__host__ __device__ void update(MaterialInfo* material) override
 	{
-		albedo_ = diffuse_info->albedo;
+		const DiffuseInfo* diffuse_info = (DiffuseInfo*)material;
+		albedo_ = diffuse_info->albedo.str;
 	}
 
 private:
-	float3 albedo_;
+	float3 albedo_{};
 };
 
 class Specular final : public Material
 {
 public:
-	__host__ __device__ explicit Specular(const SpecularInfo* specular_info) : albedo_(specular_info->albedo), fuzziness_(specular_info->fuzziness) {}
+	__host__ __device__ explicit Specular(const SpecularInfo* specular_info) : albedo_(specular_info->albedo.str), fuzziness_(specular_info->fuzziness) {}
 
 	__host__ __device__ bool scatter(const Ray& ray_in, const Intersection& intersection, float3& absorption, Ray& ray_out, uint32_t* random_state) const override
 	{
@@ -45,15 +48,16 @@ public:
 		return dot(ray_out.direction(), intersection.normal) > 0.0f;
 	}
 
-	__host__ __device__ void update(const SpecularInfo* specular_info)
+	__host__ __device__ void update(MaterialInfo* material) override
 	{
-		albedo_ = specular_info->albedo;
+		const SpecularInfo* specular_info = (SpecularInfo*)material;
+		albedo_ = specular_info->albedo.str;
 		fuzziness_ = specular_info->fuzziness;
 	}
 
 private:
-	float3 albedo_;
-	float fuzziness_;
+	float3 albedo_{};
+	float fuzziness_{};
 };
 
 class Refractive final : public Material
@@ -121,11 +125,12 @@ public:
 		return true;
 	}
 
-	__host__ __device__ void update(const RefractiveInfo* refractive_info)
+	__host__ __device__ void update(MaterialInfo* material) override
 	{
+		const RefractiveInfo* refractive_info = (RefractiveInfo*)material;
 		refractive_index_ = refractive_info->refractive_index;
 	}
 
 private:
-	float refractive_index_;
+	float refractive_index_{};
 };

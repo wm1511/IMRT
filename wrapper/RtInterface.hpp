@@ -13,8 +13,8 @@ public:
 
 	RtInterface(const RtInterface&) = delete;
 	RtInterface(RtInterface&&) = delete;
-	RtInterface operator=(const RtInterface&) = delete;
-	RtInterface operator=(RtInterface&&) = delete;
+	RtInterface& operator=(const RtInterface&) = delete;
+	RtInterface& operator=(RtInterface&&) = delete;
 
 	void draw() override;
 
@@ -35,7 +35,7 @@ private:
 	WorldInfo world_info_{};
 
 	float* image_data_ = nullptr;
-	float camera_movement_speed_ = 0.04f, camera_rotation_speed_ = 0.002f;
+	float camera_movement_speed_ = 0.08f, camera_rotation_speed_ = 0.002f;
 	uint64_t render_time_ = 0, frames_rendered_ = 0;
 	bool is_rendering_ = false;
 };
