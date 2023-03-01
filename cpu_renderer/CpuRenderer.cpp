@@ -2,7 +2,8 @@
 
 #include <cstring>
 
-CpuRenderer::CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_info) : render_info_(render_info), world_info_(world_info)
+CpuRenderer::CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_info, SkyInfo* sky_info)
+	: render_info_(render_info), world_info_(world_info), sky_info_(sky_info)
 {
 	const uint64_t image_size = (uint64_t)render_info_->width * render_info_->height;
 
@@ -20,17 +21,18 @@ CpuRenderer::CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_i
 			render_info_->aperture,
 			render_info_->focus_distance);
 
-	if (render_info_->hdr_data)
+	if (sky_info_->buffered_hdr_data)
 	{
-		const uint64_t hdr_size = sizeof(float3) * render_info_->hdr_width * render_info_->hdr_height;
-		hdr_data_ = new float3[hdr_size];
-		memcpy_s(hdr_data_, hdr_size, render_info_->hdr_data, hdr_size);
+		const uint64_t hdr_size = sizeof(float3) * sky_info_->hdr_width * sky_info_->hdr_height;
+		sky_info_->usable_hdr_data = new float3[hdr_size];
+		memcpy_s(sky_info_->usable_hdr_data, hdr_size, sky_info_->buffered_hdr_data, hdr_size);
 	}
 }
 
 CpuRenderer::~CpuRenderer()
 {
-	delete[] hdr_data_;
+	delete[] sky_info_->usable_hdr_data;
+	sky_info_->usable_hdr_data = nullptr;
 
 	delete camera_;
 
@@ -60,7 +62,7 @@ void CpuRenderer::render(float* image_data)
 				const float u = ((float)x + pcg(&local_random_state)) / (float)width;
 				const float v = ((float)y + pcg(&local_random_state)) / (float)height;
 				const Ray ray = camera_->cast_ray(&local_random_state, u, v);
-				const float3 color = sqrt(calculate_color(ray, &world_, hdr_data_, *render_info_, &local_random_state));
+				const float3 color = sqrt(calculate_color(ray, &world_, *sky_info_, render_info_->max_depth, &local_random_state));
 
 				accumulation_buffer_[pixel_index] += make_float4(color, 1.0f);
 				image_data[pixel_index << 2] = accumulation_buffer_[pixel_index].x / (float)render_info_->frames_since_refresh;
@@ -85,7 +87,7 @@ void CpuRenderer::render(float* image_data)
 					const float u = ((float)x + pcg(&local_random_state)) / (float)width;
 					const float v = ((float)y + pcg(&local_random_state)) / (float)height;
 					const Ray ray = camera_->cast_ray(&local_random_state, u, v);
-					const float3 color = sqrt(calculate_color(ray, &world_, hdr_data_, *render_info_, &local_random_state));
+					const float3 color = sqrt(calculate_color(ray, &world_, *sky_info_, render_info_->max_depth, &local_random_state));
 
 					image_data[pixel_index << 2] += color.x / (float)render_info_->samples_per_pixel;
 					image_data[(pixel_index << 2) + 1] += color.y / (float)render_info_->samples_per_pixel;
@@ -150,16 +152,17 @@ void CpuRenderer::recreate_image()
 
 void CpuRenderer::recreate_sky()
 {
-	delete[] hdr_data_;
+	delete[] sky_info_->usable_hdr_data;
+	
 
-	if (render_info_->hdr_data)
+	if (sky_info_->buffered_hdr_data)
 	{
-		const uint64_t hdr_size = sizeof(float3) * render_info_->hdr_width * render_info_->hdr_height;
-		hdr_data_ = new float3[hdr_size];
-		memcpy_s(hdr_data_, hdr_size, render_info_->hdr_data, hdr_size);
+		const uint64_t hdr_size = sizeof(float3) * sky_info_->hdr_width * sky_info_->hdr_height;
+		sky_info_->usable_hdr_data = new float3[hdr_size];
+		memcpy_s(sky_info_->usable_hdr_data, hdr_size, sky_info_->buffered_hdr_data, hdr_size);
 	}
 	else
-		hdr_data_ = nullptr;
+		sky_info_->usable_hdr_data = nullptr;
 }
 
 void CpuRenderer::random_init() const
@@ -190,6 +193,24 @@ void CpuRenderer::allocate_world()
 
 	memcpy_s(material_data_, material_count * sizeof(MaterialInfo*), material_data.data(), material_count * sizeof(MaterialInfo*));
 	memcpy_s(object_data_, object_count * sizeof(ObjectInfo*), object_data.data(), object_count * sizeof(ObjectInfo*));
+
+	for (int32_t i = 0; i < (int32_t)material_count; i++)
+	{
+		if (material_data_[i]->type == TEXTURE)
+		{
+			const auto texture_data = (TextureInfo*)material_data[i];
+			texture_data->usable_data = texture_data->buffered_data;
+		}
+	}
+
+	for (int32_t i = 0; i < (int32_t)object_count; i++)
+	{
+		if (object_data_[i]->type == MODEL)
+		{
+			const auto model_data = (ModelInfo*)object_data_[i];
+			model_data->usable_triangles = model_data->buffered_triangles;
+		}
+	}
 
 	world_ = new World(object_data_, material_data_, (int32_t)object_count, (int32_t)material_count);
 }

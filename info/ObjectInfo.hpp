@@ -9,6 +9,10 @@ enum ObjectType
 	SPHERE,
 	TRIANGLE,
 	PLANE,
+	VOLUMETRIC_SPHERE,
+	CYLINDER,
+	CONE,
+	TORUS,
 	MODEL
 };
 
@@ -58,15 +62,55 @@ struct PlaneInfo final : ObjectInfo
 	float offset{};
 };
 
+struct VolumetricSphereInfo final : ObjectInfo
+{
+	VolumetricSphereInfo() = default;
+	VolumetricSphereInfo(const float3 center, const float radius, const float density, const int32_t material_info)
+		: ObjectInfo(VOLUMETRIC_SPHERE, material_info), boundary(center, radius, material_info), density(density) {}
+
+	SphereInfo boundary{};
+	float density{};
+};
+
+struct CylinderInfo final : ObjectInfo
+{
+	CylinderInfo() = default;
+	CylinderInfo(const float3 extreme_a, const float3 extreme_b, const float3 center, const float radius, const int32_t material_info)
+		: ObjectInfo(CYLINDER, material_info), extreme_a{extreme_a}, extreme_b{extreme_b}, center{center}, radius(radius) {}
+
+	Float3 extreme_a{}, extreme_b{}, center{};
+	float radius{};
+};
+
+struct ConeInfo final : ObjectInfo
+{
+	ConeInfo() = default;
+	ConeInfo(const float3 extreme_a, const float3 extreme_b, const float3 center, const float radius_a, const float radius_b, const int32_t material_info)
+		: ObjectInfo(CONE, material_info), extreme_a{extreme_a}, extreme_b{extreme_b}, center{center}, radius_a(radius_a), radius_b(radius_b) {}
+
+	Float3 extreme_a{}, extreme_b{}, center{};
+	float radius_a{}, radius_b{};
+};
+
+struct TorusInfo final : ObjectInfo
+{
+	TorusInfo() = default;
+	TorusInfo(const float3 center, const float radius_a, const float radius_b, const int32_t material_info)
+		: ObjectInfo(TORUS, material_info), center{center}, radius_a(radius_a), radius_b(radius_b) {}
+
+	Float3 center{};
+	float radius_a{}, radius_b{};
+};
+
 struct ModelInfo final : ObjectInfo
 {
 	ModelInfo() = default;
 	ModelInfo(TriangleInfo* triangles, const uint64_t triangle_count, const int32_t material_info)
-		: ObjectInfo(MODEL, material_info), triangles(triangles), triangle_count(triangle_count) {}
+		: ObjectInfo(MODEL, material_info), buffered_triangles(triangles), triangle_count(triangle_count) {}
 
 	~ModelInfo() override
 	{
-		delete[] triangles;
+		delete[] buffered_triangles;
 	}
 
 	ModelInfo(const ModelInfo&) = delete;
@@ -77,6 +121,7 @@ struct ModelInfo final : ObjectInfo
 	Float3 translation{{0.0f, 0.0f, 0.0f}};
 	Float3 scale{{1.0f, 1.0f, 1.0f}};
 	Float3 rotation{{0.0f, 0.0f, 0.0f}};
-	TriangleInfo* triangles = nullptr;
+	TriangleInfo* buffered_triangles = nullptr;
+	TriangleInfo* usable_triangles = nullptr;
 	uint64_t triangle_count{};
 };

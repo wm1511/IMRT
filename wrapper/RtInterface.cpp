@@ -7,6 +7,9 @@
 #include "stb_image_write.h"
 #include "../imgui/imgui.h"
 
+static const char* object_types[]{"Unknown Object", "Sphere", "Triangle", "Plane", "Volumetric Sphere", "Cylinder", "Cone", "Torus", "Model"};
+static const char* material_types[]{"Unknown Material", "Diffuse", "Specular", "Refractive", "Isotropic", "Texture"};
+
 static void draw_help(const char* text)
 {
 	ImGui::SameLine();
@@ -19,7 +22,7 @@ static void draw_help(const char* text)
     }
 }
 
-static void draw_material_list(const std::vector<MaterialInfo*>& material_data, const int32_t material_count, const char* material_types[], int32_t& selected_material)
+static void draw_materials(MaterialInfo** material_data, const int32_t material_count, int32_t& selected_material)
 {
 	ImGui::BeginChild("Materials", {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
 		ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
@@ -39,9 +42,43 @@ static void draw_material_list(const std::vector<MaterialInfo*>& material_data, 
 	ImGui::EndChild();
 }
 
+static void draw_files(std::filesystem::path& selected_file, const char* id, const char* directory)
+{
+	ImGui::BeginChild(id, {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
+			ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
+	const auto iterator = std::filesystem::recursive_directory_iterator(directory);
+
+	for (const auto& entry : iterator)
+		if (ImGui::Selectable(entry.path().filename().u8string().c_str(), entry.path() == selected_file))
+			selected_file = entry.path();
+			
+	ImGui::EndChild();
+
+	ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "Loading large files will take a while");
+}
+
+static void draw_modal(const char* id, const char* message)
+{
+	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
+	if (ImGui::BeginPopupModal(id, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::Text(message);
+		if (ImGui::Button("OK", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+			ImGui::CloseCurrentPopup();
+
+		ImGui::EndPopup();
+	}
+}
+
+RtInterface::RtInterface()
+{
+	float albedo[3] = {0.5f, 0.5f, 0.5f};
+	sky_info_.create_sky(0.1f, albedo, 0.5f);
+}
+
 RtInterface::~RtInterface()
 {
-	stbi_image_free(render_info_.hdr_data);
+	sky_info_.clear_hdr();
 }
 
 void RtInterface::draw()
@@ -61,7 +98,7 @@ void RtInterface::draw()
 			frames_rendered_ = 0;
 			render_info_.frames_since_refresh = 0;
 			is_rendering_ = true;
-			renderer_ = std::make_unique<CpuRenderer>(&render_info_, &world_info_);
+			renderer_ = std::make_unique<CpuRenderer>(&render_info_, &world_info_, &sky_info_);
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("CUDA render", {ImGui::GetContentRegionAvail().x, 0}))
@@ -69,7 +106,7 @@ void RtInterface::draw()
 			frames_rendered_ = 0;
 			render_info_.frames_since_refresh = 0;
 			is_rendering_ = true;
-			renderer_ = std::make_unique<CudaRenderer>(&render_info_, &world_info_);
+			renderer_ = std::make_unique<CudaRenderer>(&render_info_, &world_info_, &sky_info_);
 		}
 		if (starting_disabled)
 			ImGui::EndDisabled();
@@ -135,7 +172,7 @@ void RtInterface::draw()
 				{static_cast<float>(image_->get_width()), static_cast<float>(image_->get_height())},
 				ImVec2(1, 0), ImVec2(0, 1));
 
-		if (ImGui::IsWindowFocused())
+		if (is_rendering_ && ImGui::IsWindowFocused())
 			move_camera();
 
 		ImGui::End();
@@ -152,34 +189,34 @@ void RtInterface::move_camera()
 
 	if (ImGui::IsKeyDown(ImGuiKey_W))
 	{
-		render_info_.camera_position -= render_info_.camera_direction * camera_movement_speed_;
+		render_info_.camera_position -= render_info_.camera_direction * camera_movement_speed_ * (float)render_time_;
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_S))
 	{
-		render_info_.camera_position += render_info_.camera_direction * camera_movement_speed_;
+		render_info_.camera_position += render_info_.camera_direction * camera_movement_speed_ * (float)render_time_;
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_A))
 	{
 		const float3 displacement = normalize(cross(render_info_.camera_direction, make_float3(0.0f, -1.0f, 0.0f)));
-		render_info_.camera_position -= displacement * camera_movement_speed_;
+		render_info_.camera_position -= displacement * camera_movement_speed_ * (float)render_time_;
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_D))
 	{
 		const float3 displacement = normalize(cross(render_info_.camera_direction, make_float3(0.0f, -1.0f, 0.0f)));
-		render_info_.camera_position += displacement * camera_movement_speed_;
+		render_info_.camera_position += displacement * camera_movement_speed_ * (float)render_time_;
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_E))
 	{
-		render_info_.camera_position.y += camera_movement_speed_;
+		render_info_.camera_position.y += camera_movement_speed_ * (float)render_time_;
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_Q))
 	{
-		render_info_.camera_position.y -= camera_movement_speed_;
+		render_info_.camera_position.y -= camera_movement_speed_ * (float)render_time_;
 		is_moved = true;
 	}
 
@@ -197,7 +234,7 @@ void RtInterface::move_camera()
 		is_moved =  true;
 	}
 	
-	if (is_rendering_ && is_moved)
+	if (is_moved)
 	{
 		renderer_->refresh_camera();
 		renderer_->refresh_buffer();
@@ -308,8 +345,6 @@ void RtInterface::edit_camera()
 
 void RtInterface::add_material()
 {
-	static const char* material_types[]{"Unknown_Material", "Diffuse", "Specular", "Refractive"};
-	
 	if (ImGui::CollapsingHeader("Add material"))
 	{
 		bool is_added = false;
@@ -322,11 +357,11 @@ void RtInterface::add_material()
 		}
 		else if (material_type == DIFFUSE)
 		{
-			static float new_diffuse_color[3]{0.0f, 0.0f, 0.0f};
+			static Float3 new_diffuse_color{0.0f, 0.0f, 0.0f};
 
 			if (ImGui::TreeNode("Properties"))
 			{
-				ImGui::ColorEdit3("Color", new_diffuse_color, ImGuiColorEditFlags_Float);
+				ImGui::ColorEdit3("Color", new_diffuse_color.arr, ImGuiColorEditFlags_Float);
 				ImGui::TreePop();
 			}
 
@@ -334,18 +369,18 @@ void RtInterface::add_material()
 			{
 				if (is_rendering_)
 					renderer_->deallocate_world();
-				world_info_.add_material(new DiffuseInfo(make_float3(new_diffuse_color)));
+				world_info_.add_material(new DiffuseInfo(new_diffuse_color.str));
 				is_added = true;
 			}
 		}
 		else if (material_type == SPECULAR)
 		{
-			static float new_specular_color[3]{0.0f, 0.0f, 0.0f};
+			static Float3 new_specular_color{0.0f, 0.0f, 0.0f};
 			static float new_specular_fuzziness{0.0f};
 
 			if (ImGui::TreeNode("Properties"))
 			{
-				ImGui::ColorEdit3("Color", new_specular_color, ImGuiColorEditFlags_Float);
+				ImGui::ColorEdit3("Color", new_specular_color.arr, ImGuiColorEditFlags_Float);
 				ImGui::SliderFloat("Fuzziness", &new_specular_fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 				draw_help("Fuzziness of material reflection");
 				ImGui::TreePop();
@@ -355,7 +390,7 @@ void RtInterface::add_material()
 			{
 				if (is_rendering_)
 					renderer_->deallocate_world();
-				world_info_.add_material(new SpecularInfo(make_float3(new_specular_color), new_specular_fuzziness));
+				world_info_.add_material(new SpecularInfo(new_specular_color.str, new_specular_fuzziness));
 				is_added = true;
 			}
 		}
@@ -378,6 +413,52 @@ void RtInterface::add_material()
 				is_added = true;
 			}
 		}
+		else if (material_type == ISOTROPIC)
+		{
+			static Float3 new_isotropic_color{0.0f, 0.0f, 0.0f};
+
+			if (ImGui::TreeNode("Properties"))
+			{
+				ImGui::ColorEdit3("Color", new_isotropic_color.arr, ImGuiColorEditFlags_Float);
+				ImGui::TreePop();
+			}
+
+			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
+			{
+				if (is_rendering_)
+					renderer_->deallocate_world();
+				world_info_.add_material(new IsotropicInfo(new_isotropic_color.str));
+				is_added = true;
+			}
+		}
+		else if (material_type == TEXTURE)
+		{
+			static int32_t new_texture_width{0}, new_texture_height{0}, new_texture_components{0};
+			static std::filesystem::path selected_file;
+
+			ImGui::Text("Choose texture image");
+			draw_help("Choose image file for texture creation. New files can be added to \"assets/tex\" folder");
+
+			draw_files(selected_file, "Texture files", "assets/tex/");
+
+			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
+			{
+				if (!stbi_info(selected_file.u8string().c_str(), &new_texture_width, &new_texture_height, &new_texture_components))
+				{
+					ImGui::OpenPopup("Texture loading failed");
+				}
+				else
+				{
+					float* new_texture_data = stbi_loadf(selected_file.u8string().c_str(), &new_texture_width, &new_texture_height, &new_texture_components, 3);
+					if (is_rendering_)
+						renderer_->deallocate_world();
+					world_info_.add_material(new TextureInfo(new_texture_data, new_texture_width, new_texture_height));
+					is_added = true;
+				}
+			}
+
+			draw_modal("Texture loading failed", "This file can't be loaded as image");
+		}
 
 		if (is_rendering_ && is_added)
 		{
@@ -390,8 +471,6 @@ void RtInterface::add_material()
 
 void RtInterface::edit_material()
 {
-	static const char* material_types[]{"Unknown_Material", "Diffuse", "Specular", "Refractive"};
-
 	if (ImGui::CollapsingHeader("Material list"))
 	{
 		bool is_edited = false;
@@ -428,6 +507,15 @@ void RtInterface::edit_material()
 							ImGuiSliderFlags_AlwaysClamp);
 						draw_help("Index of refraction between air and current material");
 					}
+					else if (current_material->type == ISOTROPIC)
+					{
+						const auto current_isotropic = (IsotropicInfo*)current_material;
+						is_edited |= ImGui::ColorEdit3("Color", current_isotropic->albedo.arr, ImGuiColorEditFlags_Float);
+					}
+					else if (current_material->type == TEXTURE)
+					{
+						ImGui::Text("Texture's properties can't be edited");
+					}
 					ImGui::TreePop();
 				}
 				ImGui::TreePop();
@@ -446,9 +534,6 @@ void RtInterface::edit_material()
 
 void RtInterface::add_object()
 {
-	static const char* object_types[]{"Unknown_Object", "Sphere", "Triangle", "Plane", "Model"};
-	static const char* material_types[]{"Unknown_Material", "Diffuse", "Specular", "Refractive"};
-
 	if (ImGui::CollapsingHeader("Add object"))
 	{
 		bool is_added = false;
@@ -459,7 +544,7 @@ void RtInterface::add_object()
 
 		if (ImGui::TreeNode("Material"))
 		{
-			draw_material_list(world_info_.materials_, (int32_t)world_info_.materials_.size(), material_types, selected_material);
+			draw_materials(world_info_.materials_.data(), (int32_t)world_info_.materials_.size(), selected_material);
 			ImGui::TreePop();
 		}
 
@@ -469,12 +554,12 @@ void RtInterface::add_object()
 		}
 		else if (object_type == SPHERE)
 		{
-			static float new_sphere_center[3]{0.0f, 0.0f, 0.0f};
+			static Float3 new_sphere_center{0.0f, 0.0f, 0.0f};
 			static float new_sphere_radius{1.0f};
 
 			if (ImGui::TreeNode("Properties"))
 			{
-				ImGui::SliderFloat3("Center", new_sphere_center, -UINT16_MAX, UINT16_MAX,"%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat3("Center", new_sphere_center.arr, -UINT16_MAX, UINT16_MAX,"%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				ImGui::SliderFloat("Radius", &new_sphere_radius, -UINT8_MAX, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				draw_help("Radius of sphere can be negative for refractive spheres to make sphere hollow");
 				ImGui::TreePop();
@@ -484,21 +569,21 @@ void RtInterface::add_object()
 			{
 				if (is_rendering_)
 					renderer_->deallocate_world();
-				world_info_.add_object(new SphereInfo(make_float3(new_sphere_center), new_sphere_radius, selected_material));
+				world_info_.add_object(new SphereInfo(new_sphere_center.str, new_sphere_radius, selected_material));
 				is_added = true;
 			}
 		}
 		else if (object_type == TRIANGLE)
 		{
-			static float new_triangle_v0[3]{-1.0f, 0.0f, 0.0f};
-			static float new_triangle_v1[3]{0.0f, 1.0f, 0.0f};
-			static float new_triangle_v2[3]{1.0f, 0.0f, 0.0f};
+			static Float3 new_triangle_v0{-1.0f, 0.0f, 0.0f};
+			static Float3 new_triangle_v1{0.0f, 1.0f, 0.0f};
+			static Float3 new_triangle_v2{1.0f, 0.0f, 0.0f};
 
 			if (ImGui::TreeNode("Properties"))
 			{
-				ImGui::SliderFloat3("Vertex 0", new_triangle_v0, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat3("Vertex 1", new_triangle_v1, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat3("Vertex 2", new_triangle_v2, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat3("Vertex 0", new_triangle_v0.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat3("Vertex 1", new_triangle_v1.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat3("Vertex 2", new_triangle_v2.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				ImGui::TreePop();
 			}
 
@@ -506,18 +591,19 @@ void RtInterface::add_object()
 			{
 				if (is_rendering_)
 					renderer_->deallocate_world();
-				world_info_.add_object(new TriangleInfo(make_float3(new_triangle_v0), make_float3(new_triangle_v1), make_float3(new_triangle_v2), selected_material, make_float3(0.0f, 0.0f, 0.0f), make_float2(0.0f, 0.0f), make_float2(1.0f, 1.0f)));
+				const float3 normal = cross(new_triangle_v1.str - new_triangle_v0.str, new_triangle_v2.str - new_triangle_v0.str);
+				world_info_.add_object(new TriangleInfo(new_triangle_v0.str, new_triangle_v1.str, new_triangle_v2.str, selected_material, normal, make_float2(0.0f, 0.0f), make_float2(1.0f, 1.0f)));
 				is_added = true;
 			}
 		}
 		else if (object_type == PLANE)
 		{
-			static float new_plane_normal[3]{0.0f, -1.0f, 0.0f};
+			static Float3 new_plane_normal{0.0f, -1.0f, 0.0f};
 			static float new_plane_offset{0.0f};
 
 			if (ImGui::TreeNode("Properties"))
 			{
-				ImGui::SliderFloat3("Normal", new_plane_normal, -1.0f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat3("Normal", new_plane_normal.arr, -1.0f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				ImGui::SliderFloat("Offset", &new_plane_offset, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				draw_help("Displacement from center position along normal");
 				ImGui::TreePop();
@@ -527,28 +613,113 @@ void RtInterface::add_object()
 			{
 				if (is_rendering_)
 					renderer_->deallocate_world();
-				world_info_.add_object(new PlaneInfo(make_float3(new_plane_normal), new_plane_offset, selected_material));
+				world_info_.add_object(new PlaneInfo(new_plane_normal.str, new_plane_offset, selected_material));
+				is_added = true;
+			}
+		}
+		else if (object_type == VOLUMETRIC_SPHERE)
+		{
+			static Float3 new_volumetric_sphere_center{0.0f, 0.0f, 0.0f};
+			static float new_volumetric_sphere_radius{1.0f};
+			static float new_volumetric_sphere_density{0.1f};
+
+			if (ImGui::TreeNode("Properties"))
+			{
+				ImGui::SliderFloat3("Center", new_volumetric_sphere_center.arr, -UINT16_MAX, UINT16_MAX,"%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat("Radius", &new_volumetric_sphere_radius, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat("Density", &new_volumetric_sphere_density, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				draw_help("Density of volume contained within sphere");
+				ImGui::TreePop();
+			}
+
+			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
+			{
+				if (is_rendering_)
+					renderer_->deallocate_world();
+				world_info_.add_object(new VolumetricSphereInfo(new_volumetric_sphere_center.str, new_volumetric_sphere_radius, new_volumetric_sphere_density, selected_material));
+				is_added = true;
+			}
+		}
+		else if (object_type == CYLINDER)
+		{
+			static Float3 new_cylinder_extreme_a{0.0f, 0.5f, 0.0f};
+			static Float3 new_cylinder_extreme_b{0.0f, -0.5f, 0.0f};
+			static Float3 new_cylinder_center{0.0f, 0.0f, 0.0f};
+			static float new_cylinder_radius{0.5f};
+
+			if (ImGui::TreeNode("Properties"))
+			{
+				ImGui::SliderFloat3("Extreme 1", new_cylinder_extreme_a.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat3("Extreme 2", new_cylinder_extreme_b.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat3("Center", new_cylinder_center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat("Radius", &new_cylinder_radius, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::TreePop();
+			}
+
+			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
+			{
+				if (is_rendering_)
+					renderer_->deallocate_world();
+				world_info_.add_object(new CylinderInfo(new_cylinder_extreme_a.str, new_cylinder_extreme_b.str, new_cylinder_center.str, new_cylinder_radius, selected_material));
+				is_added = true;
+			}
+		}
+		else if (object_type == CONE)
+		{
+			static Float3 new_cone_extreme_a{0.0f, 1.0f, 0.0f};
+			static Float3 new_cone_extreme_b{0.0f, -1.0f, 0.0f};
+			static Float3 new_cone_center{0.0f, -1.0f, 0.0f};
+			static float new_cone_radius_a{0.5f};
+			static float new_cone_radius_b{0.2f};
+
+			if (ImGui::TreeNode("Properties"))
+			{
+				ImGui::SliderFloat3("Extreme 1", new_cone_extreme_a.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat3("Extreme 2", new_cone_extreme_b.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat3("Center", new_cone_center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat("Radius 1", &new_cone_radius_a, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat("Radius 2", &new_cone_radius_b, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::TreePop();
+			}
+
+			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
+			{
+				if (is_rendering_)
+					renderer_->deallocate_world();
+				world_info_.add_object(new ConeInfo(new_cone_extreme_a.str, new_cone_extreme_b.str, new_cone_center.str, new_cone_radius_a, new_cone_radius_b, selected_material));
+				is_added = true;
+			}
+		}
+		else if (object_type == TORUS)
+		{
+			static Float3 new_torus_center{0.0f, 0.0f, 0.0f};
+			static float new_torus_radius_a{0.5f};
+			static float new_torus_radius_b{0.2f};
+
+			if (ImGui::TreeNode("Properties"))
+			{
+				ImGui::SliderFloat3("Center", new_torus_center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat("Radius 1", &new_torus_radius_a, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat("Radius 2", &new_torus_radius_b, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::TreePop();
+			}
+
+			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
+			{
+				if (is_rendering_)
+					renderer_->deallocate_world();
+				world_info_.add_object(new TorusInfo(new_torus_center.str, new_torus_radius_a, new_torus_radius_b, selected_material));
 				is_added = true;
 			}
 		}
 		else if (object_type == MODEL)
 		{
-			const auto iterator = std::filesystem::recursive_directory_iterator("assets/obj/");
 			static std::filesystem::path selected_file;
 
-			ImGui::BeginChild("3D Models", {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
-				ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
 			ImGui::Text("Choose 3D Model");
 			draw_help("Choose .obj file containing 3D model to load. New files can be added to \"assets/obj\" folder");
 
-			for (const auto& entry : iterator)
-				if (entry.path().extension() == ".obj")
-					if (ImGui::Selectable(entry.path().filename().u8string().c_str(), entry.path() == selected_file))
-						selected_file = entry.path();
-		
-			ImGui::EndChild();
-
-			ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "Loading large files will take a while");
+			draw_files(selected_file, "3D Models", "assets/obj/");
 
 			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
 			{
@@ -567,15 +738,7 @@ void RtInterface::add_object()
 				}
 			}
 
-			ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
-			if (ImGui::BeginPopupModal("3D model loading failed", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-			{
-				ImGui::Text("File %s can't be loaded as 3D model", selected_file.u8string().c_str());
-				if (ImGui::Button("OK", ImVec2(ImGui::GetContentRegionAvail().x, 0))) 
-					ImGui::CloseCurrentPopup();
-
-				ImGui::EndPopup();
-			}
+			draw_modal("3D model loading failed", "This file can't be loaded as 3D obj model");
 		}
 
 		if (is_rendering_ && is_added)
@@ -589,9 +752,6 @@ void RtInterface::add_object()
 
 void RtInterface::edit_object()
 {
-	static const char* material_types[]{"Unknown_Material", "Diffuse", "Specular", "Refractive"};
-	static const char* object_types[]{"Unknown_Object", "Sphere", "Triangle", "Plane", "Model"};
-
 	if (ImGui::CollapsingHeader("Object list"))
 	{
 		bool is_edited = false, is_deleted = false;
@@ -613,7 +773,7 @@ void RtInterface::edit_object()
 				{
 					ImGui::Text("Object's material id: %u", current_object->material_id);
 					static int32_t selected_material = 0;
-					draw_material_list(world_info_.materials_, (int32_t)world_info_.materials_.size(), material_types, selected_material);
+					draw_materials(world_info_.materials_.data(), (int32_t)world_info_.materials_.size(), selected_material);
 
 					if (ImGui::Button("Set material", {ImGui::GetContentRegionAvail().x, 0}))
 					{
@@ -659,6 +819,57 @@ void RtInterface::edit_object()
 						is_edited |= ImGui::SliderFloat("Offset", &current_plane->offset, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 						draw_help("Displacement from center position along normal");
+					}
+					else if (current_object->type == VOLUMETRIC_SPHERE)
+					{
+						const auto current_volumetric_sphere = (VolumetricSphereInfo*)current_object;
+
+						is_edited |= ImGui::SliderFloat3("Normal", current_volumetric_sphere->boundary.center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+						is_edited |= ImGui::SliderFloat("Radius", &current_volumetric_sphere->boundary.radius, 0.0f, UINT8_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+						is_edited |= ImGui::SliderFloat("Density", &current_volumetric_sphere->density, 0.0f, UINT8_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+						draw_help("Density of volume contained within sphere");
+					}
+					else if (current_object->type == CYLINDER)
+					{
+						const auto current_cylinder = (CylinderInfo*)current_object;
+
+						is_edited |= ImGui::SliderFloat3("Extreme 1", current_cylinder->extreme_a.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+						is_edited |= ImGui::SliderFloat3("Extreme 2", current_cylinder->extreme_b.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+						is_edited |= ImGui::SliderFloat3("Center", current_cylinder->center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+						is_edited |= ImGui::SliderFloat("Radius", &current_cylinder->radius, 0.0f, UINT8_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+					}
+					else if (current_object->type == CONE)
+					{
+						const auto current_cone = (ConeInfo*)current_object;
+
+						is_edited |= ImGui::SliderFloat3("Extreme 1", current_cone->extreme_a.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+						is_edited |= ImGui::SliderFloat3("Extreme 2", current_cone->extreme_a.arr, -UINT16_MAX, UINT8_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+						is_edited |= ImGui::SliderFloat3("Center", current_cone->center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+						is_edited |= ImGui::SliderFloat("Radius 1", &current_cone->radius_a, 0.0f, UINT8_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+						is_edited |= ImGui::SliderFloat("Radius 2", &current_cone->radius_b, 0.0f, UINT8_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+					}
+					else if (current_object->type == TORUS)
+					{
+						const auto current_torus = (TorusInfo*)current_object;
+
+						is_edited |= ImGui::SliderFloat3("Center", current_torus->center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+						is_edited |= ImGui::SliderFloat("Radius 1", &current_torus->radius_a, 0.0f, UINT8_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+						is_edited |= ImGui::SliderFloat("Radius 2", &current_torus->radius_b, 0.0f, UINT8_MAX, "%.3f", 
+							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 					}
 					else if (current_object->type == MODEL)
 					{
@@ -709,64 +920,66 @@ void RtInterface::edit_object()
 
 void RtInterface::edit_sky()
 {
-	if (ImGui::CollapsingHeader("Environment map"))
+	if (ImGui::CollapsingHeader("Environment"))
 	{
-		bool hdr_changed = false, exposure_changed = false;
-		static std::filesystem::path selected_file;
-		const auto iterator = std::filesystem::recursive_directory_iterator("assets/hdr/");
+		bool hdr_changed = false, exposure_changed = false, sky_changed = false;
 
-		ImGui::BeginChild("HDR Files", {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
-			ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
-		ImGui::Text("Choose HDR image");
-		draw_help("Choose file containing HDR image for environment map creation. New files can be added to \"assets/hdr\" folder");
+		ImGui::Text("Set sky properties");
 
-		for (const auto& entry : iterator)
-			if (entry.path().extension() == ".hdr")
-				if (ImGui::Selectable(entry.path().filename().u8string().c_str(), entry.path() == selected_file))
-					selected_file = entry.path();
-		
-		ImGui::EndChild();
-
-		exposure_changed |= ImGui::SliderFloat("Exposure", &render_info_.hdr_exposure, 0.0f, 16.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-		draw_help("Adjust brightness of HDR environment map");
-
-		ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "Loading large files will take a while");
-
-		if (ImGui::Button("Set HDR", {ImGui::GetContentRegionAvail().x, 0}))
+		if (ImGui::TreeNode("Sky properties"))
 		{
-			if (!stbi_info(selected_file.u8string().c_str(), &render_info_.hdr_width, &render_info_.hdr_height, &render_info_.hdr_components))
+			static float turbidity{2.0f};
+			static float ground_albedo[3]{0.5f, 0.5f, 0.5f};
+			static float elevation{0.5f};
+
+			sky_changed |= ImGui::ColorEdit3("Ground albedo", ground_albedo, ImGuiColorEditFlags_Float);
+			sky_changed |= ImGui::SliderFloat("Atmospheric turbidity", &turbidity, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			sky_changed |= ImGui::SliderAngle("Solar elevation", &elevation, 0.0f, 90.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+
+			if (sky_changed)
+				sky_info_.create_sky(turbidity, ground_albedo, elevation);
+
+			ImGui::TreePop();
+		}
+		if (ImGui::TreeNode("HDR properties"))
+		{
+			static std::filesystem::path selected_file;
+
+			draw_help("Choose file containing HDR image for environment map creation. New files can be added to \"assets/hdr\" folder");
+
+			draw_files(selected_file, "HDR Files", "assets/hdr/");
+
+			exposure_changed |= ImGui::SliderFloat("Exposure", &sky_info_.hdr_exposure, 0.0f, 16.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			draw_help("Adjust brightness of HDR environment map");
+
+			if (ImGui::Button("Set HDR", {ImGui::GetContentRegionAvail().x, 0}))
 			{
-				ImGui::OpenPopup("HDR loading failed");
+				if (!sky_info_.check_hdr(selected_file.u8string().c_str()))
+				{
+					ImGui::OpenPopup("HDR loading failed");
+				}
+				else
+				{
+					sky_info_.load_hdr(selected_file.u8string().c_str());
+					hdr_changed = true;
+				}
 			}
-			else
+
+			draw_modal("HDR loading failed", "This file can't be loaded as HDR image");
+
+			if (ImGui::Button("Clear HDR", {ImGui::GetContentRegionAvail().x, 0}))
 			{
-				stbi_image_free(render_info_.hdr_data);
-				render_info_.hdr_data = stbi_loadf(selected_file.u8string().c_str(), &render_info_.hdr_width, &render_info_.hdr_height, &render_info_.hdr_components, 3);
+				sky_info_.clear_hdr();
 				hdr_changed = true;
 			}
-		}
 
-		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
-		if (ImGui::BeginPopupModal("HDR loading failed", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-		{
-			ImGui::Text("%s is not a valid HDR image file", selected_file.u8string().c_str());
-			if (ImGui::Button("OK", ImVec2(ImGui::GetContentRegionAvail().x, 0))) 
-				ImGui::CloseCurrentPopup();
-
-			ImGui::EndPopup();
-		}
-
-		if (ImGui::Button("Clear HDR", {ImGui::GetContentRegionAvail().x, 0}))
-		{
-			stbi_image_free(render_info_.hdr_data);
-			render_info_.hdr_data = nullptr;
-			hdr_changed = true;
+			ImGui::TreePop();
 		}
 
 		if (!is_rendering_)
 			return;
 		
-		if (exposure_changed || hdr_changed)
+		if (exposure_changed || hdr_changed || sky_changed)
 		{
 			if (hdr_changed)
 				renderer_->recreate_sky();
@@ -818,14 +1031,6 @@ void RtInterface::save_image() const
 				ImGui::OpenPopup("Saving failed");
 		}
 
-		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
-		if (ImGui::BeginPopupModal("Saving failed", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-		{
-			ImGui::Text("Image was not rendered yet");
-			if (ImGui::Button("OK", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-				ImGui::CloseCurrentPopup();
-
-			ImGui::EndPopup();
-		}
+		draw_modal("Saving failed", "Image was not rendered yet");
 	}
 }

@@ -4,17 +4,17 @@
 #ifndef __CUDACC__
 #include <cmath>
 
-inline float fminf(float a, float b)
+inline float fminf(const float a, const float b)
 {
 	return a < b ? a : b;
 }
 
-inline float fmaxf(float a, float b)
+inline float fmaxf(const float a, const float b)
 {
 	return a > b ? a : b;
 }
 
-inline float rsqrtf(float x)
+inline float rsqrtf(const float x)
 {
 	return 1.0f / sqrtf(x);
 }
@@ -30,7 +30,7 @@ __device__ __constant__ constexpr float kInv2Pi = 0.159154f;
 
 // Constructors
 
-inline __host__ __device__ float3 make_float3(float s)
+inline __host__ __device__ float3 make_float3(const float s)
 {
     return make_float3(s, s, s);
 }
@@ -40,7 +40,7 @@ inline __host__ __device__ float3 make_float3(const float t[3])
 	return make_float3(t[0], t[1], t[2]);
 }
 
-inline __host__ __device__ float4 make_float4(float3 v, float s)
+inline __host__ __device__ float4 make_float4(const float3 v, const float s)
 {
     return make_float4(v.x, v.y, v.z, s);
 }
@@ -62,473 +62,544 @@ inline __host__ __device__ float3 operator-(const float3 &a)
 }
 
 // Addition
-inline __host__ __device__ float2 operator+(float2 a, float2 b)
+inline __host__ __device__ float2 operator+(const float2 a, const float2 b)
 {
     return make_float2(a.x + b.x, a.y + b.y);
 }
-inline __host__ __device__ void operator+=(float2 &a, float2 b)
+inline __host__ __device__ void operator+=(float2 &a, const float2 b)
 {
     a.x += b.x;
     a.y += b.y;
 }
-inline __host__ __device__ float2 operator+(float2 a, float b)
+inline __host__ __device__ float2 operator+(const float2 a, const float b)
 {
     return make_float2(a.x + b, a.y + b);
 }
-inline __host__ __device__ float2 operator+(float b, float2 a)
+inline __host__ __device__ float2 operator+(const float b, const float2 a)
 {
     return make_float2(a.x + b, a.y + b);
 }
-inline __host__ __device__ void operator+=(float2 &a, float b)
+inline __host__ __device__ void operator+=(float2 &a, const float b)
 {
     a.x += b;
     a.y += b;
 }
-inline __host__ __device__ float3 operator+(float3 a, float3 b)
+inline __host__ __device__ float3 operator+(const float3 a, const float3 b)
 {
     return make_float3(a.x + b.x, a.y + b.y, a.z + b.z);
 }
-inline __host__ __device__ float4 operator+(float4 a, float4 b)
+inline __host__ __device__ float4 operator+(const float4 a, const float4 b)
 {
     return make_float4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
 }
-inline __host__ __device__ void operator+=(float3 &a, float3 b)
+inline __host__ __device__ void operator+=(float3 &a, const float3 b)
 {
     a.x += b.x;
     a.y += b.y;
     a.z += b.z;
 }
-inline __host__ __device__ void operator+=(float4 &a, float4 b)
+inline __host__ __device__ void operator+=(float4 &a, const float4 b)
 {
     a.x += b.x;
     a.y += b.y;
     a.z += b.z;
     a.w += b.w;
 }
-inline __host__ __device__ float3 operator+(float3 a, float b)
+inline __host__ __device__ float3 operator+(const float3 a, const float b)
 {
     return make_float3(a.x + b, a.y + b, a.z + b);
 }
-inline __host__ __device__ float4 operator+(float4 a, float b)
+inline __host__ __device__ float4 operator+(const float4 a, const float b)
 {
     return make_float4(a.x + b, a.y + b, a.z + b, a.w + b);
 }
-inline __host__ __device__ void operator+=(float3 &a, float b)
+inline __host__ __device__ void operator+=(float3 &a, const float b)
 {
     a.x += b;
     a.y += b;
     a.z += b;
 }
-inline __host__ __device__ void operator+=(float4 &a, float b)
+inline __host__ __device__ void operator+=(float4 &a, const float b)
 {
     a.x += b;
     a.y += b;
     a.z += b;
     a.w += b;
 }
-inline __host__ __device__ float3 operator+(float b, float3 a)
+inline __host__ __device__ float3 operator+(const float b, const float3 a)
 {
     return make_float3(a.x + b, a.y + b, a.z + b);
 }
-inline __host__ __device__ float4 operator+(float b, float4 a)
+inline __host__ __device__ float4 operator+(const float b, const float4 a)
 {
     return make_float4(a.x + b, a.y + b, a.z + b, a.w + b);
 }
 
 // Subtraction
-inline __host__ __device__ float2 operator-(float2 a, float2 b)
+inline __host__ __device__ float2 operator-(const float2 a, const float2 b)
 {
     return make_float2(a.x - b.x, a.y - b.y);
 }
-inline __host__ __device__ void operator-=(float2 &a, float2 b)
+inline __host__ __device__ void operator-=(float2 &a, const float2 b)
 {
     a.x -= b.x;
     a.y -= b.y;
 }
-inline __host__ __device__ float2 operator-(float2 a, float b)
+inline __host__ __device__ float2 operator-(const float2 a, const float b)
 {
     return make_float2(a.x - b, a.y - b);
 }
-inline __host__ __device__ float2 operator-(float b, float2 a)
+inline __host__ __device__ float2 operator-(const float b, const float2 a)
 {
     return make_float2(b - a.x, b - a.y);
 }
-inline __host__ __device__ void operator-=(float2 &a, float b)
+inline __host__ __device__ void operator-=(float2 &a, const float b)
 {
     a.x -= b;
     a.y -= b;
 }
-inline __host__ __device__ float3 operator-(float3 a, float3 b)
+inline __host__ __device__ float3 operator-(const float3 a, const float3 b)
 {
     return make_float3(a.x - b.x, a.y - b.y, a.z - b.z);
 }
-inline __host__ __device__ float4 operator-(float4 a, float4 b)
+inline __host__ __device__ float4 operator-(const float4 a, const float4 b)
 {
     return make_float4(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w);
 }
-inline __host__ __device__ void operator-=(float3 &a, float3 b)
+inline __host__ __device__ void operator-=(float3 &a, const float3 b)
 {
     a.x -= b.x;
     a.y -= b.y;
     a.z -= b.z;
 }
-inline __host__ __device__ void operator-=(float4 &a, float4 b)
+inline __host__ __device__ void operator-=(float4 &a, const float4 b)
 {
     a.x -= b.x;
     a.y -= b.y;
     a.z -= b.z;
     a.w -= b.w;
 }
-inline __host__ __device__ float3 operator-(float3 a, float b)
+inline __host__ __device__ float3 operator-(const float3 a, const float b)
 {
     return make_float3(a.x - b, a.y - b, a.z - b);
 }
-inline __host__ __device__ float4 operator-(float4 a, float b)
+inline __host__ __device__ float4 operator-(const float4 a, const float b)
 {
     return make_float4(a.x - b, a.y - b, a.z - b, a.w - b);
 }
-inline __host__ __device__ void operator-=(float3 &a, float b)
+inline __host__ __device__ void operator-=(float3 &a, const float b)
 {
     a.x -= b;
     a.y -= b;
     a.z -= b;
 }
-inline __host__ __device__ void operator-=(float4 &a, float b)
+inline __host__ __device__ void operator-=(float4 &a, const float b)
 {
     a.x -= b;
     a.y -= b;
     a.z -= b;
     a.w -= b;
 }
-inline __host__ __device__ float3 operator-(float b, float3 a)
+inline __host__ __device__ float3 operator-(const float b, const float3 a)
 {
     return make_float3(b - a.x, b - a.y, b - a.z);
 }
-inline __host__ __device__ float4 operator-(float b, float4 a)
+inline __host__ __device__ float4 operator-(const float b, const float4 a)
 {
 	return make_float4(a.x - b, a.y - b, a.z - b, a.w - b);
 }
 
 // Multiplication
-inline __host__ __device__ float2 operator*(float2 a, float2 b)
+inline __host__ __device__ float2 operator*(const float2 a, const float2 b)
 {
     return make_float2(a.x * b.x, a.y * b.y);
 }
-inline __host__ __device__ void operator*=(float2 &a, float2 b)
+inline __host__ __device__ void operator*=(float2 &a, const float2 b)
 {
     a.x *= b.x;
     a.y *= b.y;
 }
-inline __host__ __device__ float2 operator*(float2 a, float b)
+inline __host__ __device__ float2 operator*(const float2 a, const float b)
 {
     return make_float2(a.x * b, a.y * b);
 }
-inline __host__ __device__ float2 operator*(float b, float2 a)
+inline __host__ __device__ float2 operator*(const float b, const float2 a)
 {
     return make_float2(b * a.x, b * a.y);
 }
-inline __host__ __device__ void operator*=(float2 &a, float b)
+inline __host__ __device__ void operator*=(float2 &a, const float b)
 {
     a.x *= b;
     a.y *= b;
 }
-inline __host__ __device__ float3 operator*(float3 a, float3 b)
+inline __host__ __device__ float3 operator*(const float3 a, const float3 b)
 {
     return make_float3(a.x * b.x, a.y * b.y, a.z * b.z);
 }
-inline __host__ __device__ float4 operator*(float4 a, float4 b)
+inline __host__ __device__ float4 operator*(const float4 a, const float4 b)
 {
     return make_float4(a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w);
 }
-inline __host__ __device__ void operator*=(float3 &a, float3 b)
+inline __host__ __device__ void operator*=(float3 &a, const float3 b)
 {
     a.x *= b.x;
     a.y *= b.y;
     a.z *= b.z;
 }
-inline __host__ __device__ void operator*=(float4 &a, float4 b)
+inline __host__ __device__ void operator*=(float4 &a, const float4 b)
 {
     a.x *= b.x;
     a.y *= b.y;
     a.z *= b.z;
     a.w *= b.w;
 }
-inline __host__ __device__ float3 operator*(float3 a, float b)
+inline __host__ __device__ float3 operator*(const float3 a, const float b)
 {
     return make_float3(a.x * b, a.y * b, a.z * b);
 }
-inline __host__ __device__ float4 operator*(float4 a, float b)
+inline __host__ __device__ float4 operator*(const float4 a, const float b)
 {
     return make_float4(a.x * b, a.y * b, a.z * b, a.w * b);
 }
-inline __host__ __device__ void operator*=(float3 &a, float b)
+inline __host__ __device__ void operator*=(float3 &a, const float b)
 {
     a.x *= b;
     a.y *= b;
     a.z *= b;
 }
-inline __host__ __device__ void operator*=(float4 &a, float b)
+inline __host__ __device__ void operator*=(float4 &a, const float b)
 {
     a.x *= b;
     a.y *= b;
     a.z *= b;
     a.w *= b;
 }
-inline __host__ __device__ float3 operator*(float b, float3 a)
+inline __host__ __device__ float3 operator*(const float b, const float3 a)
 {
     return make_float3(b * a.x, b * a.y, b * a.z);
 }
-inline __host__ __device__ float4 operator*(float b, float4 a)
+inline __host__ __device__ float4 operator*(const float b, const float4 a)
 {
     return make_float4(a.x * b, a.y * b, a.z * b, a.w * b);
 }
 
 // Division
-inline __host__ __device__ float2 operator/(float2 a, float2 b)
+inline __host__ __device__ float2 operator/(const float2 a, const float2 b)
 {
     return make_float2(a.x / b.x, a.y / b.y);
 }
-inline __host__ __device__ void operator/=(float2 &a, float2 b)
+inline __host__ __device__ void operator/=(float2 &a, const float2 b)
 {
     a.x /= b.x;
     a.y /= b.y;
 }
-inline __host__ __device__ float2 operator/(float2 a, float b)
+inline __host__ __device__ float2 operator/(const float2 a, const float b)
 {
     return make_float2(a.x / b, a.y / b);
 }
-inline __host__ __device__ void operator/=(float2 &a, float b)
+inline __host__ __device__ void operator/=(float2 &a, const float b)
 {
     a.x /= b;
     a.y /= b;
 }
-inline __host__ __device__ float2 operator/(float b, float2 a)
+inline __host__ __device__ float2 operator/(const float b, const float2 a)
 {
     return make_float2(b / a.x, b / a.y);
 }
-inline __host__ __device__ float3 operator/(float3 a, float3 b)
+inline __host__ __device__ float3 operator/(const float3 a, const float3 b)
 {
     return make_float3(a.x / b.x, a.y / b.y, a.z / b.z);
 }
-inline __host__ __device__ float4 operator/(float4 a, float4 b)
+inline __host__ __device__ float4 operator/(const float4 a, const float4 b)
 {
     return make_float4(a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w);
 }
-inline __host__ __device__ void operator/=(float3 &a, float3 b)
+inline __host__ __device__ void operator/=(float3 &a, const float3 b)
 {
     a.x /= b.x;
     a.y /= b.y;
     a.z /= b.z;
 }
-inline __host__ __device__ void operator/=(float4 &a, float4 b)
+inline __host__ __device__ void operator/=(float4 &a, const float4 b)
 {
     a.x /= b.x;
     a.y /= b.y;
     a.z /= b.z;
     a.w /= b.w;
 }
-inline __host__ __device__ float3 operator/(float3 a, float b)
+inline __host__ __device__ float3 operator/(const float3 a, const float b)
 {
     return make_float3(a.x / b, a.y / b, a.z / b);
 }
-inline __host__ __device__ float4 operator/(float4 a, float b)
+inline __host__ __device__ float4 operator/(const float4 a, const float b)
 {
     return make_float4(a.x / b, a.y / b, a.z / b, a.w / b);
 }
-inline __host__ __device__ void operator/=(float3 &a, float b)
+inline __host__ __device__ void operator/=(float3 &a, const float b)
 {
     a.x /= b;
     a.y /= b;
     a.z /= b;
 }
-inline __host__ __device__ void operator/=(float4 &a, float b)
+inline __host__ __device__ void operator/=(float4 &a, const float b)
 {
     a.x /= b;
     a.y /= b;
     a.z /= b;
     a.w /= b;
 }
-inline __host__ __device__ float3 operator/(float b, float3 a)
+inline __host__ __device__ float3 operator/(const float b, const float3 a)
 {
     return make_float3(b / a.x, b / a.y, b / a.z);
 }
-inline __host__ __device__ float4 operator/(float b, float4 a)
+inline __host__ __device__ float4 operator/(const float b, const float4 a)
 {
     return make_float4(a.x / b, a.y / b, a.z / b, a.w / b);
 }
 
 // Minimum
-inline  __host__ __device__ float2 fminf(float2 a, float2 b)
+inline  __host__ __device__ float2 fminf(const float2 a, const float2 b)
 {
     return make_float2(fminf(a.x,b.x), fminf(a.y,b.y));
 }
-inline  __host__ __device__ float2 fminf(float2 a, float2 b, float2 c)
+inline  __host__ __device__ float2 fminf(const float2 a, const float2 b, const float2 c)
 {
     return make_float2(fminf(c.x, fminf(a.x,b.x)), fminf(c.y, fminf(a.y,b.y)));
 }
-inline __host__ __device__ float3 fminf(float3 a, float3 b)
+inline __host__ __device__ float3 fminf(const float3 a, const float3 b)
 {
     return make_float3(fminf(a.x,b.x), fminf(a.y,b.y), fminf(a.z,b.z));
 }
-inline  __host__ __device__ float3 fminf(float3 a, float3 b, float3 c)
+inline  __host__ __device__ float3 fminf(const float3 a, const float3 b, const float3 c)
 {
     return make_float3(fminf(c.x, fminf(a.x,b.x)), fminf(c.y, fminf(a.y,b.y)), fminf(c.z, fminf(a.z,b.z)));
 }
-inline  __host__ __device__ float4 fminf(float4 a, float4 b)
+inline  __host__ __device__ float4 fminf(const float4 a, const float4 b)
 {
     return make_float4(fminf(a.x,b.x), fminf(a.y,b.y), fminf(a.z,b.z), fminf(a.w,b.w));
 }
-inline  __host__ __device__ float4 fminf(float4 a, float4 b, float4 c)
+inline  __host__ __device__ float4 fminf(const float4 a, const float4 b, const float4 c)
 {
     return make_float4(fminf(c.x, fminf(a.x,b.x)), fminf(c.y, fminf(a.y,b.y)), fminf(c.z, fminf(a.z,b.z)), fminf(c.w, fminf(a.w,b.w)));
 }
 
 // Maximum
-inline __host__ __device__ float2 fmaxf(float2 a, float2 b)
+inline __host__ __device__ float2 fmaxf(const float2 a, const float2 b)
 {
     return make_float2(fmaxf(a.x,b.x), fmaxf(a.y,b.y));
 }
-inline  __host__ __device__ float2 fmaxf(float2 a, float2 b, float2 c)
+inline  __host__ __device__ float2 fmaxf(const float2 a, const float2 b, const float2 c)
 {
     return make_float2(fmaxf(c.x, fmaxf(a.x,b.x)), fmaxf(c.y, fmaxf(a.y,b.y)));
 }
-inline __host__ __device__ float3 fmaxf(float3 a, float3 b)
+inline __host__ __device__ float3 fmaxf(const float3 a, const float3 b)
 {
     return make_float3(fmaxf(a.x,b.x), fmaxf(a.y,b.y), fmaxf(a.z,b.z));
 }
-inline  __host__ __device__ float3 fmaxf(float3 a, float3 b, float3 c)
+inline  __host__ __device__ float3 fmaxf(const float3 a, const float3 b, const float3 c)
 {
     return make_float3(fmaxf(c.x, fmaxf(a.x,b.x)), fmaxf(c.y, fmaxf(a.y,b.y)), fmaxf(c.z, fmaxf(a.z,b.z)));
 }
-inline __host__ __device__ float4 fmaxf(float4 a, float4 b)
+inline __host__ __device__ float4 fmaxf(const float4 a, const float4 b)
 {
     return make_float4(fmaxf(a.x,b.x), fmaxf(a.y,b.y), fmaxf(a.z,b.z), fmaxf(a.w,b.w));
 }
-inline  __host__ __device__ float4 fmaxf(float4 a, float4 b, float4 c)
+inline  __host__ __device__ float4 fmaxf(const float4 a, const float4 b, const float4 c)
 {
     return make_float4(fmaxf(c.x, fmaxf(a.x,b.x)), fmaxf(c.y, fmaxf(a.y,b.y)), fmaxf(c.z, fmaxf(a.z,b.z)), fmaxf(c.w, fmaxf(a.w,b.w)));
 }
 
 // Linear interpolation
-inline __device__ __host__ float lerp(float a, float b, float t)
+inline __device__ __host__ float lerp(const float a, const float b, const float t)
 {
     return a + t*(b-a);
 }
-inline __device__ __host__ float2 lerp(float2 a, float2 b, float t)
+inline __device__ __host__ float2 lerp(const float2 a, const float2 b, const float t)
 {
     return a + t*(b-a);
 }
-inline __device__ __host__ float3 lerp(float3 a, float3 b, float t)
+inline __device__ __host__ float3 lerp(const float3 a, const float3 b, const float t)
 {
     return a + t*(b-a);
 }
-inline __device__ __host__ float4 lerp(float4 a, float4 b, float t)
+inline __device__ __host__ float4 lerp(const float4 a, const float4 b, const float t)
 {
     return a + t*(b-a);
 }
 
+// Fraction
+inline __host__ __device__ float fracf(const float v)
+{
+    return v - floorf(v);
+}
+inline __host__ __device__ float2 fracf(const float2 v)
+{
+    return make_float2(fracf(v.x), fracf(v.y));
+}
+inline __host__ __device__ float3 fracf(const float3 v)
+{
+    return make_float3(fracf(v.x), fracf(v.y), fracf(v.z));
+}
+inline __host__ __device__ float4 fracf(const float4 v)
+{
+    return make_float4(fracf(v.x), fracf(v.y), fracf(v.z), fracf(v.w));
+}
+
 // Clamp
-inline __host__ __device__ float clamp(float f, float a, float b)
+inline __host__ __device__ float clamp(const float f, const float a, const float b)
 {
     return fmaxf(a, fminf(f, b));
 }
-inline __host__ __device__ float3 clamp(float3 v, float a, float b)
+inline __host__ __device__ float3 clamp(const float3 v, const float a, const float b)
 {
     return make_float3(clamp(v.x, a, b), clamp(v.y, a, b), clamp(v.z, a, b));
 }
-inline __host__ __device__ float3 clamp(float3 v, float3 a, float3 b)
+inline __host__ __device__ float3 clamp(const float3 v, const float3 a, const float3 b)
 {
     return make_float3(clamp(v.x, a.x, b.x), clamp(v.y, a.y, b.y), clamp(v.z, a.z, b.z));
 }
 
 // Dot product
-inline __host__ __device__ float dot(float2 a, float2 b)
+inline __host__ __device__ float dot(const float2 a, const float2 b)
 {
     return a.x * b.x + a.y * b.y;
 }
-inline __host__ __device__ float dot(float3 a, float3 b)
+inline __host__ __device__ float dot(const float3 a, const float3 b)
 {
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }
-inline __host__ __device__ float dot(float4 a, float4 b)
+inline __host__ __device__ float dot(const float4 a, const float4 b)
 {
     return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
 }
 
 // Length
-inline __host__ __device__ float length(float3 v)
+inline __host__ __device__ float length(const float2 v)
+{
+    return sqrtf(dot(v, v));
+}
+inline __host__ __device__ float length(const float3 v)
+{
+    return sqrtf(dot(v, v));
+}
+inline __host__ __device__ float length(const float4 v)
 {
     return sqrtf(dot(v, v));
 }
 
+
 // Normalization
-inline __host__ __device__ float3 normalize(float3 v)
+inline __host__ __device__ float3 normalize(const float3 v)
 {
     return v * rsqrtf(dot(v, v));
 }
 
 // Floor
-inline __host__ __device__ float3 floor(float3 v)
+inline __host__ __device__ float3 floor(const float3 v)
 {
     return make_float3(floorf(v.x), floorf(v.y), floorf(v.z));
 }
 
+// Ceil
+inline __host__ __device__ float3 ceil(const float3 v)
+{
+    return make_float3(ceilf(v.x), ceilf(v.y), ceilf(v.z));
+}
+
+// Floor
+inline __host__ __device__ float3 round(const float3 v)
+{
+    return make_float3(roundf(v.x), roundf(v.y), roundf(v.z));
+}
+
 // Absolute value
-inline __host__ __device__ float3 abs(float3 v)
+inline __host__ __device__ float3 abs(const float3 v)
 {
     return make_float3(fabs(v.x), fabs(v.y), fabs(v.z));
 }
 
 // Square root
-inline __host__ __device__ float3 sqrt(float3 v)
+inline __host__ __device__ float3 sqrt(const float3 v)
 {
 	return make_float3(sqrt(v.x), sqrt(v.y), sqrt(v.z));
 }
 
-inline __host__ __device__ float4 sqrt(float4 v)
+inline __host__ __device__ float4 sqrt(const float4 v)
 {
 	return make_float4(sqrt(v.x), sqrt(v.y), sqrt(v.z), sqrt(v.w));
 }
 
 // Reflection
-inline __host__ __device__ float3 reflect(float3 i, float3 n)
+inline __host__ __device__ float3 reflect(const float3 i, const float3 n)
 {
     return i - 2.0f * n * dot(n,i);
 }
 
 // Cross product
-inline __host__ __device__ float3 cross(float3 a, float3 b)
+inline __host__ __device__ float3 cross(const float3 a, const float3 b)
 {
     return make_float3(a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x);
 }
 
 // Versor
-inline __host__ __device__ float3 versor(float3 v)
+inline __host__ __device__ float3 versor(const float3 v)
 {
 	return float3(v / length(v));
 }
 
 // Transformations
-inline __host__ __device__ float3 point_transform(float3 v, float3 t, float3 s, float3 r)
+inline __host__ __device__ void translate_point(float3& v, const float3 t)
 {
-	const float sa = sin(r.x); 
-	const float ca = cos(r.x); 
-	const float sb = sin(r.y); 
-	const float cb = cos(r.y); 
-	const float sc = sin(r.z); 
-	const float cc = cos(r.z);
+    v += t;
+}
 
-	v += t;
+inline __host__ __device__ void scale_point(float3& v, const float3 s)
+{
 	v *= s;
-	v.x = ca * cb * v.x - sa * cc * v.y - ca * sb * sc * v.y + sa * sc * v.z - ca * sb * cc * v.z;
-	v.y = sa * cb * v.x + ca * cc * v.y - sa * sb * sc * v.y - ca * sc * v.z - sa * sb * cc * v.z;
-	v.z = sb * v.x + cb * sc * v.y + cb * cc * v.z;
+}
 
-    return v;
+inline __host__ __device__ void rotate_point_x(float3& v, const float rx)
+{
+	const float sc = sin(rx); 
+	const float cc = cos(rx);
+
+    v = {v.x, cc * v.y - sc * v.z, sc * v.y + cc * v.z};
+}
+
+inline __host__ __device__ void rotate_point_y(float3& v, const float ry)
+{
+	const float sb = sin(ry); 
+	const float cb = cos(ry);
+
+    v = {cb * v.x - sb * v.z, v.y, sb * v.x + cb * v.z};
+}
+
+inline __host__ __device__ void rotate_point_z(float3& v, const float rz)
+{
+	const float sa = sin(rz); 
+	const float ca = cos(rz);
+
+    v = {ca * v.x - sa * v.y, sa * v.x + ca * v.y, v.z};
+}
+
+inline __host__ __device__ void transform_point(float3& v, const float3 t, const float3 s, const float3 r)
+{
+    translate_point(v, t);
+
+    scale_point(v, s);
+
+	if (r.x > 0.0f)
+		rotate_point_x(v, r.x);
+
+	if (r.y > 0.0f)
+		rotate_point_y(v, r.y);
+
+	if (r.z > 0.0f)
+		rotate_point_z(v, r.z);
 }
 
 // Random
-inline __host__ __device__ uint32_t rotl(const uint32_t x, int k)
+inline __host__ __device__ uint32_t rotl(const uint32_t x, const int k)
 {
 	return (x << k) | (x >> (32 - k));
 }

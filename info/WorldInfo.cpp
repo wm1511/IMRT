@@ -60,14 +60,14 @@ void WorldInfo::load_model(const std::string& model_path, const int32_t material
 				const tinyobj::index_t idx = shapes[s].mesh.indices[3 * f + v];
 
 				vertices[v] = make_float3(
-					attrib.vertices[3 * idx.vertex_index + 0],
+					attrib.vertices[3 * idx.vertex_index],
 					attrib.vertices[3 * idx.vertex_index + 1],
 					attrib.vertices[3 * idx.vertex_index + 2]);
 
 				if (idx.normal_index >= 0) 
 				{
 					normals[v] = make_float3(
-						attrib.normals[3 * idx.normal_index + 0],
+						attrib.normals[3 * idx.normal_index],
 						attrib.normals[3 * idx.normal_index + 1],
 						attrib.normals[3 * idx.normal_index + 2]);
 					has_normals = true;
@@ -76,7 +76,7 @@ void WorldInfo::load_model(const std::string& model_path, const int32_t material
 				if (idx.texcoord_index >= 0) 
 				{
 					uvs[v] = make_float2(
-						attrib.texcoords[ 2 * idx.texcoord_index + 0],
+						attrib.texcoords[ 2 * idx.texcoord_index],
 						attrib.texcoords[ 2 * idx.texcoord_index + 1]);
 					has_uvs = true;
 				}

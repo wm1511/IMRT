@@ -2,6 +2,7 @@
 #include "../abstract/IRenderer.hpp"
 #include "../info/RenderInfo.hpp"
 #include "../info/WorldInfo.hpp"
+#include "../info/SkyInfo.hpp"
 
 #include "../common/Color.cuh"
 #include "../common/Camera.cuh"
@@ -9,7 +10,7 @@
 class CpuRenderer final : public IRenderer
 {
 public:
-	CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_info);
+	CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_info, SkyInfo* sky_info);
 	~CpuRenderer() override;
 
 	CpuRenderer(const CpuRenderer&) = delete;
@@ -31,10 +32,10 @@ public:
 private:
 	const RenderInfo* render_info_;
 	const WorldInfo* world_info_;
+	SkyInfo* sky_info_;
 
 	uint4* xoshiro_state_ = nullptr;
     float4* accumulation_buffer_ = nullptr;
-	float3* hdr_data_ = nullptr;
     MaterialInfo** material_data_ = nullptr;
     ObjectInfo** object_data_ = nullptr;
     World* world_ = nullptr;

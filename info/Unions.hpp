@@ -18,3 +18,14 @@ union Float4
 	float4 str;
 	float arr[4];
 };
+
+struct float9
+{
+	float f0, f1, f2, f3, f4, f5, f6, f7, f8;
+};
+
+union Float9
+{
+	float9 str;
+	float arr[9];
+};

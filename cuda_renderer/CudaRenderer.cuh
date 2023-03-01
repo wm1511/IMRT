@@ -9,7 +9,7 @@
 class CudaRenderer final : public IRenderer
 {
 public:
-	CudaRenderer(const RenderInfo* render_info, const WorldInfo* world_info);
+	CudaRenderer(const RenderInfo* render_info, const WorldInfo* world_info, SkyInfo* sky_info);
 	~CudaRenderer() override;
 
 	CudaRenderer(const CudaRenderer&) = delete;
@@ -31,15 +31,14 @@ public:
 private:
 	const RenderInfo* render_info_;
 	const WorldInfo* world_info_;
+	SkyInfo* sky_info_;
 	dim3 blocks_;
 	dim3 threads_;
 
 	uint4* xoshiro_state_ = nullptr;
     float4* frame_buffer_ = nullptr, * accumulation_buffer_ = nullptr;
-	float3* device_hdr_data_ = nullptr;
     MaterialInfo** device_material_data_ = nullptr, ** host_material_data_ = nullptr;
     ObjectInfo** device_object_data_ = nullptr, ** host_object_data_ = nullptr;
-	TriangleInfo** host_triangle_data_ = nullptr;
     World** world_ = nullptr;
     Camera** camera_ = nullptr;
 };
