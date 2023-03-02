@@ -72,8 +72,7 @@ static void draw_modal(const char* id, const char* message)
 
 RtInterface::RtInterface()
 {
-	float albedo[3] = {0.5f, 0.5f, 0.5f};
-	sky_info_.create_sky(0.1f, albedo, 0.5f);
+	sky_info_.create_sky();
 }
 
 RtInterface::~RtInterface()
@@ -928,16 +927,16 @@ void RtInterface::edit_sky()
 
 		if (ImGui::TreeNode("Sky properties"))
 		{
-			static float turbidity{2.0f};
+			static float turbidity{2.5f};
 			static float ground_albedo[3]{0.5f, 0.5f, 0.5f};
-			static float elevation{0.5f};
+			static float elevation{1.25f};
 
 			sky_changed |= ImGui::ColorEdit3("Ground albedo", ground_albedo, ImGuiColorEditFlags_Float);
-			sky_changed |= ImGui::SliderFloat("Atmospheric turbidity", &turbidity, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			sky_changed |= ImGui::SliderFloat("Atmospheric turbidity", &turbidity, 1.0f, 8.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 			sky_changed |= ImGui::SliderAngle("Solar elevation", &elevation, 0.0f, 90.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 
 			if (sky_changed)
-				sky_info_.create_sky(turbidity, ground_albedo, elevation);
+				sky_info_.create_sky(turbidity, ground_albedo[0], ground_albedo[1], ground_albedo[2], elevation);
 
 			ImGui::TreePop();
 		}

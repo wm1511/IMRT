@@ -51,7 +51,9 @@ void CpuRenderer::render(float* image_data)
 
 	if (render_info_->render_mode == PROGRESSIVE)
 	{
+#ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
+#endif
 		for (int32_t y = 0; y < height; y++)
 		{
 			for (int32_t x = 0; x < width; x++)
@@ -74,7 +76,9 @@ void CpuRenderer::render(float* image_data)
 	}
 	else if (render_info_->render_mode == STATIC)
 	{
+#ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
+#endif
 		for (int32_t y = 0; y < static_cast<int32_t>(height); y++)
 		{
 			for (int32_t x = 0; x < static_cast<int32_t>(width); x++)

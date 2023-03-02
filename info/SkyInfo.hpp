@@ -9,15 +9,6 @@ _END_EXTERN_C
 
 #include <cstdint>
 
-struct SkyState
-{
-	Float9 c0{};
-	Float9 c1{};
-	Float9 c2{};
-	Float3 r{};
-	float e{};
-};
-
 struct SkyInfo
 {
 	bool check_hdr(const char* filename)
@@ -37,31 +28,35 @@ struct SkyInfo
 		buffered_hdr_data = nullptr;
 	}
 
-	void create_sky(const float turbidity, float albedo[3], const float elevation)
+	void create_sky(const float turbidity = 2.5f, const float albedo_x = 0.5f, const float albedo_y = 0.5f, const float albedo_z = 0.5f, const float elevation = 1.25f)
 	{
-		ArHosekSkyModelState* local_state_x = arhosek_rgb_skymodelstate_alloc_init(turbidity, albedo[0], elevation);
-		ArHosekSkyModelState* local_state_y = arhosek_rgb_skymodelstate_alloc_init(turbidity, albedo[1], elevation);
-		ArHosekSkyModelState* local_state_z = arhosek_rgb_skymodelstate_alloc_init(turbidity, albedo[2], elevation);
+		ArHosekSkyModelState* local_state_x = arhosek_rgb_skymodelstate_alloc_init((float)turbidity, (float)albedo_x, (float)elevation);
+		ArHosekSkyModelState* local_state_y = arhosek_rgb_skymodelstate_alloc_init((float)turbidity, (float)albedo_y, (float)elevation);
+		ArHosekSkyModelState* local_state_z = arhosek_rgb_skymodelstate_alloc_init((float)turbidity, (float)albedo_z, (float)elevation);
 
 		for (int32_t i = 0; i < 9; i++)
 		{
-			sky_state.c0.arr[i] = (float)local_state_x->configs[0][i];
-			sky_state.c1.arr[i] = (float)local_state_y->configs[1][i];
-			sky_state.c2.arr[i] = (float)local_state_z->configs[2][i];
+			sky_config_x.arr[i] = (float)local_state_x->configs[0][i];
+			sky_config_y.arr[i] = (float)local_state_y->configs[1][i];
+			sky_config_z.arr[i] = (float)local_state_z->configs[2][i];
 		}
 
-		sky_state.r.arr[0] = (float)local_state_x->radiances[0];
-		sky_state.r.arr[1] = (float)local_state_y->radiances[1];
-		sky_state.r.arr[2] = (float)local_state_z->radiances[2];
+		sun_radiance.arr[0] = (float)local_state_x->radiances[0];
+		sun_radiance.arr[1] = (float)local_state_y->radiances[1];
+		sun_radiance.arr[2] = (float)local_state_z->radiances[2];
 
 		arhosekskymodelstate_free(local_state_x);
 		arhosekskymodelstate_free(local_state_y);
 		arhosekskymodelstate_free(local_state_z);
 		
-		sky_state.e = elevation;
+		sun_elevation = elevation;
 	}
 
-	SkyState sky_state{};
+	Float9 sky_config_x{};
+	Float9 sky_config_y{};
+	Float9 sky_config_z{};
+	Float3 sun_radiance{};
+	float sun_elevation{};
 
 	float* buffered_hdr_data = nullptr;
 	float3* usable_hdr_data = nullptr;

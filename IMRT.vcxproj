@@ -107,7 +107,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>D:\Biblioteki\;%VULKAN_SDK%\include;C:\Program Files\Microsoft Visual Studio\Libraries;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\include;C:\Program Files\Microsoft Visual Studio\Libraries\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;D:\Biblioteki\glm;D:\Biblioteki\;%VULKAN_SDK%\include;C:\Program Files\Microsoft Visual Studio\Libraries;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\include;C:\Program Files\Microsoft Visual Studio\Libraries\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <OpenMPSupport>true</OpenMPSupport>
@@ -152,7 +152,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>D:\Biblioteki\;%VULKAN_SDK%\include;C:\Program Files\Microsoft Visual Studio\Libraries;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\include;C:\Program Files\Microsoft Visual Studio\Libraries\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;D:\Biblioteki\glm;D:\Biblioteki\;%VULKAN_SDK%\include;C:\Program Files\Microsoft Visual Studio\Libraries;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\include;C:\Program Files\Microsoft Visual Studio\Libraries\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
