@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "Image.hpp"
+#include "Frame.hpp"
 
 #include "../imgui/imgui_impl_vulkan.h"
 
@@ -16,19 +16,19 @@ static uint32_t GetDeviceMemoryType(const VkMemoryPropertyFlags properties, cons
 	return 0xffffffff;
 }
 
-Image::Image(const uint32_t width, const uint32_t height, const void* data): width_(width), height_(height)
+Frame::Frame(const uint32_t width, const uint32_t height, const void* data): width_(width), height_(height)
 {
 	allocate_memory();
 	if (data)
 		set_data(data);
 }
 
-Image::~Image()
+Frame::~Frame()
 {
 	release_memory();
 }
 
-void Image::allocate_memory()
+void Frame::allocate_memory()
 {
 	const VkDevice device = App::get_device();
 	constexpr VkFormat image_format = VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -89,7 +89,7 @@ void Image::allocate_memory()
 	descriptor_set_ = ImGui_ImplVulkan_AddTexture(sampler_, image_view_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
-void Image::release_memory()
+void Frame::release_memory()
 {
 	const VkDevice device = App::get_device();
 	vkDeviceWaitIdle(device);
@@ -109,7 +109,7 @@ void Image::release_memory()
 	staging_buffer_memory_ = nullptr;
 }
 
-void Image::set_data(const void* data)
+void Frame::set_data(const void* data)
 {
 	const VkDevice device = App::get_device();
 	const uint64_t staging_buffer_size = static_cast<uint64_t>(16) * width_ * height_;

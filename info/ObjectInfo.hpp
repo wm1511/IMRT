@@ -19,7 +19,7 @@ enum ObjectType
 struct ObjectInfo
 {
 	ObjectInfo() = default;
-	ObjectInfo(const ObjectType type, const int32_t material_id) : type(type), material_id(material_id) {}
+	ObjectInfo(const ObjectType type, const int32_t material_info) : type(type), material_id(material_info) {}
 	virtual ~ObjectInfo() = default;
 
 	ObjectInfo(const ObjectInfo&) = delete;

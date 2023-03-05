@@ -132,6 +132,11 @@ void CpuRenderer::refresh_material(const int32_t index) const
 	world_->update_material(index, world_info_->materials_[index]);
 }
 
+void CpuRenderer::refresh_texture(const int32_t index) const
+{
+	world_->update_texture(index, world_info_->textures_[index]);
+}
+
 void CpuRenderer::recreate_camera()
 {
 	delete camera_;
@@ -187,23 +192,27 @@ void CpuRenderer::random_init() const
 
 void CpuRenderer::allocate_world()
 {
+	const auto texture_data = world_info_->textures_;
 	const auto material_data = world_info_->materials_;
     const auto object_data = world_info_->objects_;
-	const auto object_count = object_data.size();
+	const auto texture_count = texture_data.size();
 	const auto material_count = material_data.size();
+	const auto object_count = object_data.size();
 
 	material_data_ = new MaterialInfo*[material_count];
+	texture_data_ = new TextureInfo*[texture_count];
 	object_data_ = new ObjectInfo*[object_count];
 
+	memcpy_s(texture_data_, texture_count * sizeof(TextureInfo*), texture_data.data(), texture_count * sizeof(TextureInfo*));
 	memcpy_s(material_data_, material_count * sizeof(MaterialInfo*), material_data.data(), material_count * sizeof(MaterialInfo*));
 	memcpy_s(object_data_, object_count * sizeof(ObjectInfo*), object_data.data(), object_count * sizeof(ObjectInfo*));
 
-	for (int32_t i = 0; i < (int32_t)material_count; i++)
+	for (int32_t i = 0; i < (int32_t)texture_count; i++)
 	{
-		if (material_data_[i]->type == TEXTURE)
+		if (texture_data[i]->type == IMAGE)
 		{
-			const auto texture_data = (TextureInfo*)material_data[i];
-			texture_data->usable_data = texture_data->buffered_data;
+			const auto image_data = (ImageInfo*)texture_data[i];
+			image_data->usable_data = image_data->buffered_data;
 		}
 	}
 
@@ -216,7 +225,7 @@ void CpuRenderer::allocate_world()
 		}
 	}
 
-	world_ = new World(object_data_, material_data_, (int32_t)object_count, (int32_t)material_count);
+	world_ = new World(object_data_, material_data_, texture_data_, (int32_t)object_count, (int32_t)material_count, (int32_t)texture_count);
 }
 
 void CpuRenderer::deallocate_world() const

@@ -6,10 +6,13 @@
 
 WorldInfo::WorldInfo()
 {
-	materials_[0] = new DiffuseInfo({0.5f, 0.5f, 0.5f});
+	textures_[0] = new CheckerInfo({0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, 0.05f);
+	textures_[1] = new SolidInfo({0.5f, 0.5f, 0.5f});
+	textures_[2] = new SolidInfo({0.2f, 0.2f, 0.8f});
+	materials_[0] = new DiffuseInfo(0);
 	materials_[1] = new RefractiveInfo(1.5f);
-	materials_[2] = new SpecularInfo({0.5f, 0.5f, 0.5f}, 0.1f);
-	materials_[3] = new DiffuseInfo({0.2f, 0.2f, 0.8f});
+	materials_[2] = new SpecularInfo(0.1f, 1);
+	materials_[3] = new DiffuseInfo(2);
 	objects_[0] = new SphereInfo({1.0f, 0.0f, -1.0f}, 0.5f, 0);
 	objects_[1] = new SphereInfo({0.0f, 0.0f, -1.0f}, 0.5f, 1);
 	objects_[2] = new SphereInfo({-1.0f, 0.0f, -1.0f}, 0.5f, 2);
@@ -23,6 +26,9 @@ WorldInfo::~WorldInfo()
 
 	for (uint64_t i = 0; i < materials_.size(); i++)
 		delete materials_[i];
+
+	for (uint64_t i = 0; i < textures_.size(); i++)
+		delete textures_[i];
 }
 
 void WorldInfo::load_model(const std::string& model_path, const int32_t material_id, TriangleInfo*& triangles, uint64_t& triangle_count) const
@@ -106,6 +112,11 @@ void WorldInfo::add_object(ObjectInfo* new_object)
 void WorldInfo::add_material(MaterialInfo* new_material)
 {
 	materials_.push_back(new_material);
+}
+
+void WorldInfo::add_texture(TextureInfo* new_texture)
+{
+	textures_.push_back(new_texture);
 }
 
 void WorldInfo::remove_object(const int32_t object_index)

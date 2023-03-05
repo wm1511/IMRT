@@ -4,7 +4,7 @@
 #include "../info/RenderInfo.hpp"
 #include "../info/WorldInfo.hpp"
 #include "../info/SkyInfo.hpp"
-#include "Image.hpp"
+#include "Frame.hpp"
 
 class RtInterface final : public IDrawable
 {
@@ -23,6 +23,8 @@ private:
 	void move_camera();
 	void edit_settings();
 	void edit_camera();
+	void add_texture();
+	void edit_texture();
 	void add_material();
 	void edit_material();
 	void add_object();
@@ -30,7 +32,7 @@ private:
 	void edit_sky();
 	void save_image() const;
 
-	std::unique_ptr<Image> image_ = nullptr;
+	std::unique_ptr<Frame> image_ = nullptr;
 	std::unique_ptr<IRenderer> renderer_ = nullptr;
 	RenderInfo render_info_{};
 	WorldInfo world_info_{};

@@ -1,7 +1,5 @@
 #pragma once
-#include "Unions.hpp"
-
-#include "stb_image.h"
+#include <cstdint>
 
 enum MaterialType
 {
@@ -9,14 +7,13 @@ enum MaterialType
 	DIFFUSE,
 	SPECULAR,
 	REFRACTIVE,
-	ISOTROPIC,
-	TEXTURE
+	ISOTROPIC
 };
 
 struct MaterialInfo
 {
 	MaterialInfo() = default;
-	explicit MaterialInfo(const MaterialType type) : type(type) {}
+	explicit MaterialInfo(const MaterialType type, const int32_t texture_info) : type(type), texture_id(texture_info) {}
 	virtual ~MaterialInfo() = default;
 
 	MaterialInfo(const MaterialInfo&) = delete;
@@ -25,24 +22,22 @@ struct MaterialInfo
 	MaterialInfo& operator=(MaterialInfo&&) = default;
 
 	MaterialType type{UNKNOWN_MATERIAL};
+	int32_t texture_id{0};
 };
 
 struct DiffuseInfo final : MaterialInfo
 {
 	DiffuseInfo() = default;
-	explicit DiffuseInfo(const float3 albedo)
-		: MaterialInfo(DIFFUSE), albedo{albedo} {}
-
-	Float3 albedo{};
+	explicit DiffuseInfo(const int32_t texture_info)
+		: MaterialInfo(DIFFUSE, texture_info) {}
 };
 
 struct SpecularInfo final : MaterialInfo
 {
 	SpecularInfo() = default;
-	SpecularInfo(const float3 albedo, const float fuzziness)
-		: MaterialInfo(SPECULAR), albedo{albedo}, fuzziness(fuzziness) {}
+	SpecularInfo(const float fuzziness, const int32_t texture_info)
+		: MaterialInfo(SPECULAR, texture_info), fuzziness(fuzziness) {}
 
-	Float3 albedo{};
 	float fuzziness{};
 };
 
@@ -50,7 +45,7 @@ struct RefractiveInfo final : MaterialInfo
 {
 	RefractiveInfo() = default;
 	explicit RefractiveInfo(const float refractive_index)
-		: MaterialInfo(REFRACTIVE), refractive_index(refractive_index) {}
+		: MaterialInfo(REFRACTIVE, NULL), refractive_index(refractive_index) {}
 
 	float refractive_index{};
 };
@@ -58,29 +53,6 @@ struct RefractiveInfo final : MaterialInfo
 struct IsotropicInfo final : MaterialInfo
 {
 	IsotropicInfo() = default;
-	explicit IsotropicInfo(const float3 albedo)
-		: MaterialInfo(ISOTROPIC), albedo{albedo} {}
-
-	Float3 albedo{};
-};
-
-struct TextureInfo final : MaterialInfo
-{
-	TextureInfo() = default;
-	explicit TextureInfo(float* data, const int32_t width, const int32_t height)
-		: MaterialInfo(TEXTURE), buffered_data(data), width(width), height(height) {}
-
-	~TextureInfo() override
-	{
-		stbi_image_free(buffered_data);
-	}
-
-	TextureInfo(const TextureInfo&) = delete;
-	TextureInfo(TextureInfo&&) = default;
-	TextureInfo& operator=(const TextureInfo&) = delete;
-	TextureInfo& operator=(TextureInfo&&) = default;
-
-	float* buffered_data = nullptr;
-	float* usable_data = nullptr;
-	int32_t width{}, height{};
+	explicit IsotropicInfo(const int32_t texture_info)
+		: MaterialInfo(ISOTROPIC, texture_info) {}
 };

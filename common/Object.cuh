@@ -273,7 +273,7 @@ public:
 	__host__ __device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection, uint32_t*) const override
 	{
 		float3 ba = extreme_b_ - extreme_a_;
-		const float3 oc = ray.origin() - extreme_a_;
+		const float3 oc = center_ + ray.origin() - extreme_a_;
 
 		const float baba = dot(ba, ba);
 		const float bard = dot(ba, ray.direction());
@@ -349,8 +349,8 @@ public:
 	__host__ __device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection, uint32_t*) const override
 	{
 		float3 ba = extreme_b_ - extreme_a_;
-		const float3 oa = ray.origin() - extreme_a_;
-		const float3 ob = ray.origin() - extreme_b_;
+		const float3 oa = center_ + ray.origin() - extreme_a_;
+		const float3 ob = center_ + ray.origin() - extreme_b_;
 		const float m0 = dot(ba, ba);
 		const float m1 = dot(oa, ba);
 		const float m2 = dot(ray.direction(), ba);
@@ -447,12 +447,12 @@ public:
 		float po = 1.0f;
 		const float Ra2 = radius_a_ * radius_a_;
 		const float ra2 = radius_b_ * radius_b_;
-		const float m = dot(ray.origin(), ray.origin());
-		const float n = dot(ray.origin(), ray.direction());
+		const float m = dot(center_ + ray.origin(), center_ + ray.origin());
+		const float n = dot(center_ + ray.origin(), ray.direction());
 		const float k = (m + Ra2 - ra2) / 2.0f;
 	    float k3 = n;
 		const float2 dxy = make_float2(ray.direction().x, ray.direction().y);
-		const float2 oxy = make_float2(ray.origin().x, ray.origin().y);
+		const float2 oxy = make_float2(center_.x + ray.origin().x, center_.y + ray.origin().y);
 	    float k2 = n * n - Ra2 * dot(dxy, dxy) + k;
 	    float k1 = n * k - Ra2 * dot(dxy, oxy);
 	    float k0 = k * k - Ra2 * dot(oxy, oxy);

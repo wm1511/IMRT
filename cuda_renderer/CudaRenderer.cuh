@@ -20,6 +20,7 @@ public:
 	void render(float* image_data) override;
 	void refresh_buffer() override;
 	void refresh_camera() override;
+	void refresh_texture(int32_t index) const override;
 	void refresh_material(int32_t index) const override;
 	void refresh_object(int32_t index) const override;
 	void recreate_camera() override;
@@ -37,6 +38,7 @@ private:
 
 	uint4* xoshiro_state_ = nullptr;
     float4* frame_buffer_ = nullptr, * accumulation_buffer_ = nullptr;
+	TextureInfo** device_texture_data_ = nullptr, ** host_texture_data_ = nullptr;
     MaterialInfo** device_material_data_ = nullptr, ** host_material_data_ = nullptr;
     ObjectInfo** device_object_data_ = nullptr, ** host_object_data_ = nullptr;
     World** world_ = nullptr;

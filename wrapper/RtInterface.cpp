@@ -7,8 +7,12 @@
 #include "stb_image_write.h"
 #include "../imgui/imgui.h"
 
+// Intellisense doesn't work without this include
+#include <filesystem>
+
 static const char* object_types[]{"Unknown Object", "Sphere", "Triangle", "Plane", "Volumetric Sphere", "Cylinder", "Cone", "Torus", "Model"};
-static const char* material_types[]{"Unknown Material", "Diffuse", "Specular", "Refractive", "Isotropic", "Texture"};
+static const char* material_types[]{"Unknown Material", "Diffuse", "Specular", "Refractive", "Isotropic"};
+static const char* texture_types[]{"Unknown Texture", "Solid", "Image", "Checker"};
 
 static void draw_help(const char* text)
 {
@@ -22,16 +26,36 @@ static void draw_help(const char* text)
     }
 }
 
-static void draw_materials(MaterialInfo** material_data, const int32_t material_count, int32_t& selected_material)
+static void draw_textures(TextureInfo** texture_data, const int32_t texture_count, int32_t& selected_texture)
+{
+	ImGui::BeginChild("Textures", {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
+		ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::Text("List of defined textures");
+	draw_help("Choose this object's texture id");
+	for (int32_t n = 0; n < texture_count; n++)
+	{
+		static char buffer[64]{};
+		if (sprintf_s(buffer, "%i-%s", n, texture_types[texture_data[n]->type]) > 0)
+		{
+			if (ImGui::Selectable(buffer, selected_texture == n))
+				selected_texture = n;
+		}
+		else
+			ImGui::Text("Failed to print texture identifier");
+	}
+	ImGui::EndChild();
+}
+
+static void draw_materials(TextureInfo** texture_data, MaterialInfo** material_data, const int32_t material_count, int32_t& selected_material)
 {
 	ImGui::BeginChild("Materials", {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
 		ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
 	ImGui::Text("List of defined materials");
-	draw_help("Choose this object's material_id");
+	draw_help("Choose this object's material id");
 	for (int32_t n = 0; n < material_count; n++)
 	{
-		static char buffer[16]{};
-		if (sprintf_s(buffer, "%i-%s", n, material_types[material_data[n]->type]) > 0)
+		static char buffer[64]{};
+		if (sprintf_s(buffer, "%i-%s-%s", n, material_types[material_data[n]->type], texture_types[texture_data[material_data[n]->texture_id]->type]) > 0)
 		{
 			if (ImGui::Selectable(buffer, selected_material == n))
 				selected_material = n;
@@ -120,7 +144,7 @@ void RtInterface::draw()
 		{
 			if (!image_ || render_info_.width != image_->get_width() || render_info_.height != image_->get_height())
 			{
-				image_ = std::make_unique<Image>(render_info_.width, render_info_.height);
+				image_ = std::make_unique<Frame>(render_info_.width, render_info_.height);
 				delete[] image_data_;
 				image_data_ = new float[(uint64_t)4 * render_info_.height * render_info_.width];
 				renderer_->recreate_image();
@@ -153,6 +177,8 @@ void RtInterface::draw()
 
 	{
 		ImGui::Begin("Scene settings");
+		edit_texture();
+		add_texture();
 		edit_material();
 		add_material();
 		edit_object();
@@ -342,12 +368,160 @@ void RtInterface::edit_camera()
 	}
 }
 
+void RtInterface::add_texture()
+{
+	if (ImGui::CollapsingHeader("Add texture"))
+	{
+		bool is_added = false;
+		static int32_t texture_type = UNKNOWN_TEXTURE;
+
+		ImGui::Combo("Texture type", &texture_type, texture_types, IM_ARRAYSIZE(texture_types));
+		if (texture_type == UNKNOWN_MATERIAL)
+		{
+			ImGui::Text("Texture of type Unknown_Texture can't be instantiated");
+		}
+		else if (texture_type == SOLID)
+		{
+			static Float3 new_solid_color{0.0f, 0.0f, 0.0f};
+
+			if (ImGui::TreeNode("Properties"))
+			{
+				ImGui::ColorEdit3("Color", new_solid_color.arr, ImGuiColorEditFlags_Float);
+				ImGui::TreePop();
+			}
+
+			if (ImGui::Button("Create texture", {ImGui::GetContentRegionAvail().x, 0}))
+			{
+				if (is_rendering_)
+					renderer_->deallocate_world();
+				world_info_.add_texture(new SolidInfo(new_solid_color.str));
+				is_added = true;
+			}
+		}
+		else if (texture_type == IMAGE)
+		{
+			static int32_t new_image_width{0}, new_image_height{0}, new_image_components{0};
+			static std::filesystem::path selected_file;
+
+			ImGui::Text("Choose image");
+			draw_help("Choose image file for texture creation. New files can be added to \"assets/tex\" folder");
+
+			draw_files(selected_file, "Texture files", "assets/tex/");
+
+			if (ImGui::Button("Create texture", {ImGui::GetContentRegionAvail().x, 0}))
+			{
+				if (!stbi_info(selected_file.u8string().c_str(), &new_image_width, &new_image_height, &new_image_components))
+				{
+					ImGui::OpenPopup("Texture loading failed");
+				}
+				else
+				{
+					float* new_image_data = stbi_loadf(selected_file.u8string().c_str(), &new_image_width, &new_image_height, &new_image_components, 3);
+					if (is_rendering_)
+						renderer_->deallocate_world();
+					world_info_.add_texture(new ImageInfo(new_image_data, new_image_width, new_image_height));
+					is_added = true;
+				}
+			}
+
+			draw_modal("Texture loading failed", "This file can't be loaded as image");
+		}
+		else if (texture_type == CHECKER)
+		{
+			static Float3 new_checker_color_a{0.0f, 0.0f, 0.0f};
+			static Float3 new_checker_color_b{0.0f, 0.0f, 0.0f};
+			static float new_checker_tile_size{0.1f};
+
+			if (ImGui::TreeNode("Properties"))
+			{
+				ImGui::ColorEdit3("Color 1", new_checker_color_a.arr, ImGuiColorEditFlags_Float);
+				ImGui::ColorEdit3("Color 2", new_checker_color_b.arr, ImGuiColorEditFlags_Float);
+				ImGui::SliderFloat("Tile size", &new_checker_tile_size, 0.001f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::TreePop();
+			}
+
+			if (ImGui::Button("Create texture", {ImGui::GetContentRegionAvail().x, 0}))
+			{
+				if (is_rendering_)
+					renderer_->deallocate_world();
+				world_info_.add_texture(new CheckerInfo(new_checker_color_a.str, new_checker_color_b.str, new_checker_tile_size));
+				is_added = true;
+			}
+		}
+
+		if (is_rendering_ && is_added)
+		{
+			renderer_->allocate_world();
+			renderer_->refresh_buffer();
+			render_info_.frames_since_refresh = 0;
+		}
+	}
+}
+
+void RtInterface::edit_texture()
+{
+	if (ImGui::CollapsingHeader("Texture list"))
+	{
+		bool is_edited = false;
+		for (int32_t i = 0; i < world_info_.textures_.size(); i++)
+		{
+			TextureInfo* current_texture = world_info_.textures_[i];
+			ImGui::PushID(i);
+			if (ImGui::TreeNode("Texture", "%u-%s", i, texture_types[current_texture->type]))
+			{
+				ImGui::Text("Texture type: %s", texture_types[current_texture->type]);
+
+				if (ImGui::TreeNode("Properties"))
+				{
+					if (current_texture->type == UNKNOWN_TEXTURE)
+					{
+						ImGui::Text("Texture properties can't be set for type Unknown_Texture");
+					}
+					else if (current_texture->type == SOLID)
+					{
+						const auto current_solid = (SolidInfo*)current_texture;
+						is_edited |= ImGui::ColorEdit3("Color", current_solid->albedo.arr, ImGuiColorEditFlags_Float);
+					}
+					else if (current_texture->type == IMAGE)
+					{
+						ImGui::Text("Image properties can't be edited");
+					}
+					else if (current_texture->type == CHECKER)
+					{
+						const auto current_checker = (CheckerInfo*)current_texture;
+						is_edited |= ImGui::ColorEdit3("Color 1", current_checker->albedo_a.arr, ImGuiColorEditFlags_Float);
+						is_edited |= ImGui::ColorEdit3("Color 2", current_checker->albedo_b.arr, ImGuiColorEditFlags_Float);
+						is_edited |= ImGui::SliderFloat("Tile size", &current_checker->tile_size, 0.001f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+					}
+					ImGui::TreePop();
+				}
+				ImGui::TreePop();
+			}
+			ImGui::PopID();
+
+			if (is_rendering_ && is_edited)
+			{
+				renderer_->refresh_texture(i);
+				renderer_->refresh_buffer();
+				render_info_.frames_since_refresh = 0;
+			}
+		}
+	}
+}
+
 void RtInterface::add_material()
 {
 	if (ImGui::CollapsingHeader("Add material"))
 	{
 		bool is_added = false;
 		static int32_t material_type = UNKNOWN_MATERIAL;
+		static int32_t selected_texture = 0;
+
+		if (ImGui::TreeNode("Texture"))
+		{
+			draw_textures(world_info_.textures_.data(), (int32_t)world_info_.textures_.size(), selected_texture);
+			ImGui::TreePop();
+		}
 
 		ImGui::Combo("Material type", &material_type, material_types, IM_ARRAYSIZE(material_types));
 		if (material_type == UNKNOWN_MATERIAL)
@@ -356,30 +530,20 @@ void RtInterface::add_material()
 		}
 		else if (material_type == DIFFUSE)
 		{
-			static Float3 new_diffuse_color{0.0f, 0.0f, 0.0f};
-
-			if (ImGui::TreeNode("Properties"))
-			{
-				ImGui::ColorEdit3("Color", new_diffuse_color.arr, ImGuiColorEditFlags_Float);
-				ImGui::TreePop();
-			}
-
 			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
 			{
 				if (is_rendering_)
 					renderer_->deallocate_world();
-				world_info_.add_material(new DiffuseInfo(new_diffuse_color.str));
+				world_info_.add_material(new DiffuseInfo(selected_texture));
 				is_added = true;
 			}
 		}
 		else if (material_type == SPECULAR)
 		{
-			static Float3 new_specular_color{0.0f, 0.0f, 0.0f};
 			static float new_specular_fuzziness{0.0f};
 
 			if (ImGui::TreeNode("Properties"))
 			{
-				ImGui::ColorEdit3("Color", new_specular_color.arr, ImGuiColorEditFlags_Float);
 				ImGui::SliderFloat("Fuzziness", &new_specular_fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 				draw_help("Fuzziness of material reflection");
 				ImGui::TreePop();
@@ -389,7 +553,7 @@ void RtInterface::add_material()
 			{
 				if (is_rendering_)
 					renderer_->deallocate_world();
-				world_info_.add_material(new SpecularInfo(new_specular_color.str, new_specular_fuzziness));
+				world_info_.add_material(new SpecularInfo(new_specular_fuzziness, selected_texture));
 				is_added = true;
 			}
 		}
@@ -414,49 +578,13 @@ void RtInterface::add_material()
 		}
 		else if (material_type == ISOTROPIC)
 		{
-			static Float3 new_isotropic_color{0.0f, 0.0f, 0.0f};
-
-			if (ImGui::TreeNode("Properties"))
-			{
-				ImGui::ColorEdit3("Color", new_isotropic_color.arr, ImGuiColorEditFlags_Float);
-				ImGui::TreePop();
-			}
-
 			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
 			{
 				if (is_rendering_)
 					renderer_->deallocate_world();
-				world_info_.add_material(new IsotropicInfo(new_isotropic_color.str));
+				world_info_.add_material(new IsotropicInfo(selected_texture));
 				is_added = true;
 			}
-		}
-		else if (material_type == TEXTURE)
-		{
-			static int32_t new_texture_width{0}, new_texture_height{0}, new_texture_components{0};
-			static std::filesystem::path selected_file;
-
-			ImGui::Text("Choose texture image");
-			draw_help("Choose image file for texture creation. New files can be added to \"assets/tex\" folder");
-
-			draw_files(selected_file, "Texture files", "assets/tex/");
-
-			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
-			{
-				if (!stbi_info(selected_file.u8string().c_str(), &new_texture_width, &new_texture_height, &new_texture_components))
-				{
-					ImGui::OpenPopup("Texture loading failed");
-				}
-				else
-				{
-					float* new_texture_data = stbi_loadf(selected_file.u8string().c_str(), &new_texture_width, &new_texture_height, &new_texture_components, 3);
-					if (is_rendering_)
-						renderer_->deallocate_world();
-					world_info_.add_material(new TextureInfo(new_texture_data, new_texture_width, new_texture_height));
-					is_added = true;
-				}
-			}
-
-			draw_modal("Texture loading failed", "This file can't be loaded as image");
 		}
 
 		if (is_rendering_ && is_added)
@@ -477,9 +605,23 @@ void RtInterface::edit_material()
 		{
 			MaterialInfo* current_material = world_info_.materials_[i];
 			ImGui::PushID(i);
-			if (ImGui::TreeNode("Material", "%u-%s", i, material_types[current_material->type]))
+			if (ImGui::TreeNode("Material", "%u-%s-%s", i, material_types[current_material->type], texture_types[world_info_.textures_[current_material->texture_id]->type]))
 			{
 				ImGui::Text("Material type: %s", material_types[current_material->type]);
+
+				if (ImGui::TreeNode("Texture"))
+				{
+					ImGui::Text("Material's texture id: %u", current_material->texture_id);
+					static int32_t selected_texture = 0;
+					draw_textures(world_info_.textures_.data(), (int32_t)world_info_.textures_.size(), selected_texture);
+
+					if (ImGui::Button("Set texture", {ImGui::GetContentRegionAvail().x, 0}))
+					{
+						current_material->texture_id = selected_texture;
+						is_edited = true;
+					}
+					ImGui::TreePop();
+				}
 
 				if (ImGui::TreeNode("Properties"))
 				{
@@ -489,13 +631,11 @@ void RtInterface::edit_material()
 					}
 					else if (current_material->type == DIFFUSE)
 					{
-						const auto current_diffuse = (DiffuseInfo*)current_material;
-						is_edited |= ImGui::ColorEdit3("Color", current_diffuse->albedo.arr, ImGuiColorEditFlags_Float);
+						ImGui::Text("Diffuse properties can't be edited");
 					}
 					else if (current_material->type == SPECULAR)
 					{
 						const auto current_specular = (SpecularInfo*)current_material;
-						is_edited |= ImGui::ColorEdit3("Color", current_specular->albedo.arr, ImGuiColorEditFlags_Float);
 						is_edited |= ImGui::SliderFloat("Fuzziness", &current_specular->fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 						draw_help("Fuzziness of material reflection");
 					}
@@ -508,12 +648,7 @@ void RtInterface::edit_material()
 					}
 					else if (current_material->type == ISOTROPIC)
 					{
-						const auto current_isotropic = (IsotropicInfo*)current_material;
-						is_edited |= ImGui::ColorEdit3("Color", current_isotropic->albedo.arr, ImGuiColorEditFlags_Float);
-					}
-					else if (current_material->type == TEXTURE)
-					{
-						ImGui::Text("Texture's properties can't be edited");
+						ImGui::Text("Isotropic properties can't be edited");
 					}
 					ImGui::TreePop();
 				}
@@ -543,7 +678,7 @@ void RtInterface::add_object()
 
 		if (ImGui::TreeNode("Material"))
 		{
-			draw_materials(world_info_.materials_.data(), (int32_t)world_info_.materials_.size(), selected_material);
+			draw_materials(world_info_.textures_.data(), world_info_.materials_.data(), (int32_t)world_info_.materials_.size(), selected_material);
 			ImGui::TreePop();
 		}
 
@@ -665,11 +800,11 @@ void RtInterface::add_object()
 		}
 		else if (object_type == CONE)
 		{
-			static Float3 new_cone_extreme_a{0.0f, 1.0f, 0.0f};
-			static Float3 new_cone_extreme_b{0.0f, -1.0f, 0.0f};
-			static Float3 new_cone_center{0.0f, -1.0f, 0.0f};
-			static float new_cone_radius_a{0.5f};
-			static float new_cone_radius_b{0.2f};
+			static Float3 new_cone_extreme_a{0.0f, 0.5f, 0.0f};
+			static Float3 new_cone_extreme_b{0.0f, -0.5f, 0.0f};
+			static Float3 new_cone_center{0.0f, 0.0f, 0.0f};
+			static float new_cone_radius_a{0.1f};
+			static float new_cone_radius_b{0.5f};
 
 			if (ImGui::TreeNode("Properties"))
 			{
@@ -693,7 +828,7 @@ void RtInterface::add_object()
 		{
 			static Float3 new_torus_center{0.0f, 0.0f, 0.0f};
 			static float new_torus_radius_a{0.5f};
-			static float new_torus_radius_b{0.2f};
+			static float new_torus_radius_b{0.1f};
 
 			if (ImGui::TreeNode("Properties"))
 			{
@@ -759,7 +894,7 @@ void RtInterface::edit_object()
 			ObjectInfo* current_object = world_info_.objects_[i];
 
 			ImGui::PushID(i);
-			if (ImGui::TreeNode("Object", "%u-%s-%s", i, object_types[current_object->type], material_types[world_info_.materials_[current_object->material_id]->type]))
+			if (ImGui::TreeNode("Object", "%u-%s-%s-%s", i, object_types[current_object->type], material_types[world_info_.materials_[current_object->material_id]->type], texture_types[world_info_.textures_[world_info_.materials_[current_object->material_id]->texture_id]->type]))
 			{
 				ImGui::Text("Object type: %s", object_types[current_object->type]);
 
@@ -772,7 +907,7 @@ void RtInterface::edit_object()
 				{
 					ImGui::Text("Object's material id: %u", current_object->material_id);
 					static int32_t selected_material = 0;
-					draw_materials(world_info_.materials_.data(), (int32_t)world_info_.materials_.size(), selected_material);
+					draw_materials(world_info_.textures_.data(), world_info_.materials_.data(), (int32_t)world_info_.materials_.size(), selected_material);
 
 					if (ImGui::Button("Set material", {ImGui::GetContentRegionAvail().x, 0}))
 					{
@@ -835,9 +970,9 @@ void RtInterface::edit_object()
 					{
 						const auto current_cylinder = (CylinderInfo*)current_object;
 
-						is_edited |= ImGui::SliderFloat3("Extreme 1", current_cylinder->extreme_a.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						is_edited |= ImGui::SliderFloat3("Extreme 1", current_cylinder->extreme_a.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat3("Extreme 2", current_cylinder->extreme_b.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						is_edited |= ImGui::SliderFloat3("Extreme 2", current_cylinder->extreme_b.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 						is_edited |= ImGui::SliderFloat3("Center", current_cylinder->center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
@@ -848,9 +983,9 @@ void RtInterface::edit_object()
 					{
 						const auto current_cone = (ConeInfo*)current_object;
 
-						is_edited |= ImGui::SliderFloat3("Extreme 1", current_cone->extreme_a.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						is_edited |= ImGui::SliderFloat3("Extreme 1", current_cone->extreme_a.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat3("Extreme 2", current_cone->extreme_a.arr, -UINT16_MAX, UINT8_MAX, "%.3f", 
+						is_edited |= ImGui::SliderFloat3("Extreme 2", current_cone->extreme_b.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 						is_edited |= ImGui::SliderFloat3("Center", current_cone->center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);

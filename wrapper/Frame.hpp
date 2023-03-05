@@ -1,15 +1,15 @@
 #pragma once
 #include "App.hpp"
 
-class Image
+class Frame
 {
 public:
-	Image(uint32_t width, uint32_t height, const void* data = nullptr);
-	Image(const Image&) = delete;
-	Image(Image&&) = delete;
-	Image& operator= (const Image&) = delete;
-	Image& operator= (Image&&) = delete;
-	~Image();
+	Frame(uint32_t width, uint32_t height, const void* data = nullptr);
+	Frame(const Frame&) = delete;
+	Frame(Frame&&) = delete;
+	Frame& operator= (const Frame&) = delete;
+	Frame& operator= (Frame&&) = delete;
+	~Frame();
 
 	void set_data(const void* data);
 
