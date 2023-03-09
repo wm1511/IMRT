@@ -27,7 +27,7 @@ public:
 	{
 		const float3 reflected_direction = intersection.normal + sphere_random(random_state);
 		ray = Ray(intersection.point, reflected_direction);
-		texture_->color(absorption, intersection.uv);
+		absorption = texture_->color(intersection.uv);
 		return true;
 	}
 
@@ -50,7 +50,7 @@ public:
 	{
 		const float3 reflected_direction = reflect(versor(ray.direction()), intersection.normal);
 		ray = Ray(intersection.point, reflected_direction + fuzziness_ * sphere_random(random_state));
-		texture_->color(absorption, intersection.uv);
+		absorption = texture_->color(intersection.uv);
 		return dot(ray.direction(), intersection.normal) > 0.0f;
 	}
 
@@ -155,7 +155,7 @@ public:
 	__host__ __device__ bool scatter(Ray& ray, const Intersection& intersection, float3& absorption, uint32_t* random_state) const override
 	{
 		ray = Ray(intersection.point, sphere_random(random_state));
-		texture_->color(absorption, intersection.uv);
+		absorption = texture_->color(intersection.uv);
 		return true;
 	}
 

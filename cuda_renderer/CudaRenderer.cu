@@ -138,11 +138,14 @@ CudaRenderer::CudaRenderer(const RenderInfo* render_info, const WorldInfo* world
 
     CCE(cudaMalloc((void**)&frame_buffer_, sizeof(float4) * width * height));
     CCE(cudaMalloc((void**)&accumulation_buffer_, sizeof(float4) * width * height));
+    CCE(cudaMalloc((void**)&xoshiro_initial_, sizeof(uint4) * width * height));
     CCE(cudaMalloc((void**)&xoshiro_state_, sizeof(uint4) * width * height));
 
-    random_init<<<blocks_, threads_>>>(width, height, xoshiro_state_);
+    random_init<<<blocks_, threads_>>>(width, height, xoshiro_initial_);
     CCE(cudaGetLastError());
     CCE(cudaDeviceSynchronize());
+
+    CCE(cudaMemcpy(xoshiro_state_, xoshiro_initial_, sizeof(uint4) * width * height, cudaMemcpyDeviceToDevice));
     
     allocate_world();
     
@@ -172,6 +175,7 @@ CudaRenderer::~CudaRenderer()
     deallocate_world();
 
     CCE(cudaFree(xoshiro_state_));
+    CCE(cudaFree(xoshiro_initial_));
     CCE(cudaFree(accumulation_buffer_));
     CCE(cudaFree(frame_buffer_));
     cudaDeviceReset();
@@ -201,9 +205,7 @@ void CudaRenderer::refresh_buffer()
     const uint32_t height = render_info_->height;
 
     CCE(cudaMemset(accumulation_buffer_, 0, sizeof(float4) * width * height));
-    random_init<<<blocks_, threads_>>>(width, height, xoshiro_state_);
-    CCE(cudaGetLastError());
-    CCE(cudaDeviceSynchronize());
+	CCE(cudaMemcpy(xoshiro_state_, xoshiro_initial_, sizeof(uint4) * width * height, cudaMemcpyDeviceToDevice));
 }
 
 void CudaRenderer::refresh_camera()
@@ -301,16 +303,21 @@ void CudaRenderer::recreate_image()
 
     CCE(cudaFree(frame_buffer_));
     CCE(cudaFree(xoshiro_state_));
+    CCE(cudaFree(xoshiro_initial_));
     CCE(cudaFree(accumulation_buffer_));
     CCE(cudaMalloc((void**)&accumulation_buffer_, sizeof(float4) * width * height));
+    CCE(cudaMalloc((void**)&xoshiro_initial_, sizeof(uint4) * width * height));
     CCE(cudaMalloc((void**)&xoshiro_state_, sizeof(uint4) * width * height));
     CCE(cudaMalloc((void**)&frame_buffer_, sizeof(float4) * width * height));
+
+    random_init<<<blocks_, threads_>>>(width, height, xoshiro_initial_);
+    CCE(cudaGetLastError());
+    CCE(cudaDeviceSynchronize());
 }
 
 void CudaRenderer::recreate_sky()
 {
     CCE(cudaFree(sky_info_->usable_hdr_data));
-
 
     if (sky_info_->buffered_hdr_data)
     {

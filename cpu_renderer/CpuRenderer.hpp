@@ -35,7 +35,7 @@ private:
 	const WorldInfo* world_info_;
 	SkyInfo* sky_info_;
 
-	uint4* xoshiro_state_ = nullptr;
+	uint4* xoshiro_state_ = nullptr, * xoshiro_initial_ = nullptr;
     float4* accumulation_buffer_ = nullptr;
     TextureInfo** texture_data_ = nullptr;
     MaterialInfo** material_data_ = nullptr;
@@ -44,4 +44,5 @@ private:
     Camera* camera_ = nullptr;
 
 	void random_init() const;
+	void random_refresh() const;
 };

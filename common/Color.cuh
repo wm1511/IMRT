@@ -20,7 +20,7 @@ __host__ __device__ inline float3 sample_hdr(const Ray& ray, const SkyInfo& sky_
 
     const int32_t hdr_texel_index = x + y * sky_info.hdr_width;
 
-    if (hdr_texel_index < 0)
+    if (hdr_texel_index < 0 || hdr_texel_index > sky_info.hdr_width * sky_info.hdr_height * 3)
         return make_float3(0.0f);
 
     return clamp(sky_info.usable_hdr_data[hdr_texel_index], 0.0f, 1.0f);
