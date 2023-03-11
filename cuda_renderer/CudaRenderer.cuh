@@ -36,7 +36,7 @@ private:
 	dim3 blocks_;
 	dim3 threads_;
 
-	uint4* xoshiro_state_ = nullptr;
+	uint4* xoshiro_state_ = nullptr, * xoshiro_initial_ = nullptr;
     float4* frame_buffer_ = nullptr, * accumulation_buffer_ = nullptr;
 	TextureInfo** device_texture_data_ = nullptr, ** host_texture_data_ = nullptr;
     MaterialInfo** device_material_data_ = nullptr, ** host_material_data_ = nullptr;

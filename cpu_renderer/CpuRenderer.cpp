@@ -8,9 +8,11 @@ CpuRenderer::CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_i
 	const uint64_t image_size = (uint64_t)render_info_->width * render_info_->height;
 
 	accumulation_buffer_ = new float4[image_size];
+	xoshiro_initial_ = new uint4[image_size];
 	xoshiro_state_ = new uint4[image_size];
 
 	random_init();
+	random_refresh();
 	allocate_world();
 
 	camera_ = new Camera(
@@ -39,6 +41,7 @@ CpuRenderer::~CpuRenderer()
 	deallocate_world();
 
 	delete[] xoshiro_state_;
+	delete[] xoshiro_initial_;
 	delete[] accumulation_buffer_;
 }
 
@@ -109,7 +112,7 @@ void CpuRenderer::refresh_buffer()
 	const uint32_t height = render_info_->height;
 
 	memset(accumulation_buffer_, 0, sizeof(float4) * width * height);
-	random_init();
+	random_refresh();
 }
 
 void CpuRenderer::refresh_camera()
@@ -154,15 +157,19 @@ void CpuRenderer::recreate_image()
 	const uint64_t image_size = (uint64_t)render_info_->width * render_info_->height;
 
 	delete[] xoshiro_state_;
+	delete[] xoshiro_initial_;
 	delete[] accumulation_buffer_;
 	accumulation_buffer_ = new float4[image_size];
+	xoshiro_initial_ = new uint4[image_size];
 	xoshiro_state_ = new uint4[image_size];
+
+	random_init();
+	random_refresh();
 }
 
 void CpuRenderer::recreate_sky()
 {
 	delete[] sky_info_->usable_hdr_data;
-	
 
 	if (sky_info_->buffered_hdr_data)
 	{
@@ -181,13 +188,19 @@ void CpuRenderer::random_init() const
 		for (int32_t x = 0; x < (int32_t)render_info_->width; x++)
 		{
 			const int32_t pixel_index = y * (int32_t)render_info_->width + x;
-			xoshiro_state_[pixel_index] = make_uint4(
+			xoshiro_initial_[pixel_index] = make_uint4(
 			   pixel_index + 15072003,
 			   pixel_index + 15112001,
 			   pixel_index + 10021151,
 			   pixel_index + 30027051);
 		}
 	}
+}
+
+void CpuRenderer::random_refresh() const
+{
+	const uint64_t xoshiro_size = sizeof(uint4) * render_info_->width * render_info_->height;
+	memcpy_s(xoshiro_state_, xoshiro_size, xoshiro_initial_, xoshiro_size);
 }
 
 void CpuRenderer::allocate_world()

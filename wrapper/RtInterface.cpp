@@ -189,12 +189,12 @@ void RtInterface::draw()
 
 	{
 		ImGui::Begin("Viewport");
-		render_info_.width = static_cast<uint32_t>(ImGui::GetContentRegionAvail().x);
-		render_info_.height = static_cast<uint32_t>(ImGui::GetContentRegionAvail().y);
+		render_info_.width = (uint32_t)ImGui::GetContentRegionAvail().x;
+		render_info_.height = (uint32_t)ImGui::GetContentRegionAvail().y;
 
 		if (image_) 
-			ImGui::Image(reinterpret_cast<ImU64>(image_->get_descriptor_set()),
-				{static_cast<float>(image_->get_width()), static_cast<float>(image_->get_height())},
+			ImGui::Image((ImU64)image_->get_descriptor_set(),
+				{(float)image_->get_width(), (float)image_->get_height()},
 				ImVec2(1, 0), ImVec2(0, 1));
 
 		if (is_rendering_ && ImGui::IsWindowFocused())
