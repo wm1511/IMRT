@@ -1,6 +1,6 @@
 #pragma once
 #include "Intersection.cuh"
-#include "Ray.cuh"
+#include "Transform.cuh"
 #include "../info/ObjectInfo.hpp"
 
 #include <cfloat>
@@ -10,7 +10,8 @@ class Object
 public:
 	__host__ __device__ virtual ~Object() {}
 
-	__host__ __device__ virtual bool intersect(const Ray& ray, float t_min, float t_max, Intersection& intersection, uint32_t* random_state) const = 0;
+	__host__ __device__ virtual bool intersect(const Ray& ray, Intersection& intersection, uint32_t* random_state) const = 0;
+	__host__ __device__ virtual Boundary bound() = 0;
 	__host__ __device__ virtual void update(ObjectInfo* object_info, Material* material) = 0;
 
 	Material* material_ = nullptr;
@@ -24,14 +25,14 @@ public:
 	__host__ __device__ Sphere(const SphereInfo* sphere_info, Material* material)
 		: center_(sphere_info->center.str), radius_(sphere_info->radius)
 	{
-		material_ = material;
+		material_ = material;		
 	}
 
-	__host__ __device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection, uint32_t*) const override
+	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection, uint32_t*) const override
 	{
-		const float3 oc = ray.origin() - center_;
-		const float a = dot(ray.direction(), ray.direction());
-		const float b = dot(oc, ray.direction());
+		const float3 oc = ray.origin_ - center_;
+		const float a = dot(ray.direction_, ray.direction_);
+		const float b = dot(oc, ray.direction_);
 		const float c = dot(oc, oc) - radius_ * radius_;
 		const float discriminant = b * b - a * c;
 
@@ -39,8 +40,9 @@ public:
 			return false;
 
 		float t = (-b - sqrt(discriminant)) / a;
-		if (t < t_max && t > t_min)
+		if (t < ray.t_max_ && t > kTMin)
 		{
+			ray.t_max_ = t;
 			intersection.t = t;
 			intersection.point = ray.position(intersection.t);
 			intersection.normal = (intersection.point - center_) / radius_;
@@ -53,8 +55,9 @@ public:
 			return true;
 		}
 		t = (-b + sqrt(discriminant)) / a;
-		if (t < t_max && t > t_min)
+		if (t < ray.t_max_ && t > kTMin)
 		{
+			ray.t_max_ = t;
 			intersection.t = t;
 			intersection.point = ray.position(intersection.t);
 			intersection.normal = (intersection.point - center_) / radius_;
@@ -77,6 +80,11 @@ public:
 		material_ = material;
 	}
 
+	__host__ __device__ Boundary bound() override
+	{
+		return {center_ - make_float3(radius_), center_ + make_float3(radius_)};
+	}
+
 private:
 	float3 center_{};
 	float radius_{};
@@ -90,15 +98,15 @@ public:
 	__host__ __device__ Triangle(const TriangleInfo* triangle_info, Material* material)
 		: v0_(triangle_info->v0.str), v1_(triangle_info->v1.str), v2_(triangle_info->v2.str), normal_average_(triangle_info->normal), min_uv_(triangle_info->min_uv), max_uv_(triangle_info->max_uv)
 	{
-		material_ = material;
+		material_ = material;		
 	}
 
-	__host__ __device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection, uint32_t*) const override
+	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection, uint32_t*) const override
 	{
 		const float3 v0_v1 = v1_ - v0_;
 		const float3 v0_v2 = v2_ - v0_;
 
-		const float3 p_vec = cross(ray.direction(), v0_v2);
+		const float3 p_vec = cross(ray.direction_, v0_v2);
 		const float determinant = dot(p_vec, v0_v1);
 
 		if (determinant < FLT_EPSILON)
@@ -106,20 +114,21 @@ public:
 
 		const float inverse_determinant = 1.0f / determinant;
 
-		const float3 t_vec = ray.origin() - v0_;
+		const float3 t_vec = ray.origin_ - v0_;
 		const float3 q_vec = cross(t_vec, v0_v1);
 
 		const float u = dot(p_vec, t_vec) * inverse_determinant;
-		const float v = dot(q_vec, ray.direction()) * inverse_determinant;
+		const float v = dot(q_vec, ray.direction_) * inverse_determinant;
 
 		if (v < 0.0f || u < 0.0f || u + v > 1.0f)
 			return false;
 
 		const float t = dot(q_vec, v0_v2) * inverse_determinant;
 
-		if (t < t_min || t > t_max)
+		if (t < kTMin || t > ray.t_max_)
 			return false;
 
+		ray.t_max_ = t;
 		intersection.t = t;
 		intersection.point = ray.position(intersection.t);
 		intersection.normal = normal_average_;
@@ -150,6 +159,11 @@ public:
 		return *this;
 	}
 
+	__host__ __device__ Boundary bound() override
+	{
+		return {fminf(v0_, v1_, v2_), fmaxf(v0_, v1_, v2_)};
+	}
+
 private:
 	float3 v0_{}, v1_{}, v2_{};
 	float3 normal_average_{};
@@ -164,20 +178,21 @@ public:
 	__host__ __device__ Plane(const PlaneInfo* plane_info, Material* material)
 		: normal_(normalize(plane_info->normal.str)), offset_(plane_info->offset) 
 	{
-		material_ = material;
+		material_ = material;		
 	}
 
-	__host__ __device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection, uint32_t*) const override
+	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection, uint32_t*) const override
 	{
-		const float angle = dot(normal_, ray.direction());
+		const float angle = dot(normal_, ray.direction_);
 		if (angle < FLT_EPSILON)
 			return false;
 		
-		const float t = -((dot(normal_, ray.origin()) + offset_) / angle);
+		const float t = -((dot(normal_, ray.origin_) + offset_) / angle);
 
-		if (t < t_min || t > t_max)
+		if (t < kTMin || t > ray.t_max_)
 			return false;
 
+		ray.t_max_ = t;
 		intersection.t = t;
 		intersection.point = ray.position(intersection.t);
 		intersection.normal = normal_;
@@ -194,69 +209,14 @@ public:
 		material_ = material;
 	}
 
+	__host__ __device__ Boundary bound() override
+	{
+		return {make_float3(-FLT_MAX), make_float3(FLT_MAX)};
+	}
+
 private:
 	float3 normal_{};
 	float offset_{};
-};
-
-class VolumetricSphere final : public Object
-{
-public:
-	VolumetricSphere() = default;
-
-	__host__ __device__ VolumetricSphere(const VolumetricSphereInfo* volumetric_sphere_info, Material* material)
-		: boundary_(&volumetric_sphere_info->boundary, material), ni_density_(-1.0f / volumetric_sphere_info->density)
-	{
-		material_ = material;
-	}
-
-	__host__ __device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection, uint32_t* random_state) const override
-	{
-		Intersection ia{}, ib{};
-
-	    if (!boundary_.intersect(ray, -FLT_MAX, FLT_MAX, ia, random_state))
-	        return false;
-
-	    if (!boundary_.intersect(ray, ia.t + 0.0001f, FLT_MAX, ib, random_state))
-	        return false;
-
-	    if (ia.t < t_min) 
-			ia.t = t_min;
-
-	    if (ib.t > t_max) 
-			ib.t = t_max;
-
-	    if (ia.t >= ib.t)
-	        return false;
-
-	    if (ia.t < 0)
-	        ia.t = 0;
-
-	    const auto ray_length = length(ray.direction());
-	    const auto distance_inside_boundary = (ib.t - ia.t) * ray_length;
-	    const auto hit_distance = ni_density_ * log(pcg(random_state));
-
-	    if (hit_distance > distance_inside_boundary)
-	        return false;
-
-	    intersection.t = ia.t + hit_distance / ray_length;
-	    intersection.point = ray.position(intersection.t);
-	    intersection.normal = make_float3(1.0f, 0.0f, 0.0f);
-	    intersection.material = material_;
-	    return true;
-	}
-
-	__host__ __device__ void update(ObjectInfo* object_info, Material* material) override
-	{
-		const VolumetricSphereInfo* volumetric_sphere_info = (VolumetricSphereInfo*)object_info;
-		boundary_ = Sphere(&volumetric_sphere_info->boundary, material);
-		ni_density_ = -1.0f / volumetric_sphere_info->density;
-		material_ = material;
-	}
-
-private:
-	Sphere boundary_{};
-	float ni_density_{};
 };
 
 class Cylinder final : public Object
@@ -267,20 +227,20 @@ public:
 	__host__ __device__ Cylinder(const CylinderInfo* cylinder_info, Material* material)
 		: extreme_a_(cylinder_info->extreme_a.str), extreme_b_(cylinder_info->extreme_b.str), center_(cylinder_info->center.str), radius_(cylinder_info->radius)
 	{
-		material_ = material;
+		material_ = material;		
 	}
 
-	__host__ __device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection, uint32_t*) const override
+	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection, uint32_t*) const override
 	{
 		float3 ba = extreme_b_ - extreme_a_;
-		const float3 oc = center_ + ray.origin() - extreme_a_;
+		const float3 oc = center_ + ray.origin_ - extreme_a_;
 
 		const float baba = dot(ba, ba);
-		const float bard = dot(ba, ray.direction());
+		const float bard = dot(ba, ray.direction_);
 		const float baoc = dot(ba, oc);
 
 		const float k2 = baba - bard * bard;
-		const float k1 = baba * dot(oc, ray.direction()) - baoc * bard;
+		const float k1 = baba * dot(oc, ray.direction_) - baoc * bard;
 		const float k0 = baba * dot(oc, oc) - baoc * baoc - radius_ * radius_ * baba;
 	    float h = k1 * k1 - k2 * k0;
 
@@ -291,26 +251,28 @@ public:
 
 	    float t = (-k1 - h) / k2;
 
-		if (t < t_min || t > t_max)
+		if (t < kTMin || t > ray.t_max_)
 			return false;
 
 		const float y = baoc + t * bard;
 	    if (y > 0.0f && y < baba )
 	    {
+			ray.t_max_ = t;
 			intersection.t = t;
 			intersection.point = ray.position(t);
-			intersection.normal = (oc + t * ray.direction() - ba * y / baba) / radius_;
+			intersection.normal = (oc + t * ray.direction_ - ba * y / baba) / radius_;
 			intersection.material = material_;
 			return true;
 		}
 
 	    t = ((y < 0.0f ? 0.0f : baba) - baoc) / bard;
 
-		if (t < t_min || t > t_max)
+		if (t < kTMin || t > ray.t_max_)
 			return false;
 
 	    if (abs(k1 + k2 * t) < h)
 	    {
+			ray.t_max_ = t;
 			intersection.t = t;
 			intersection.point = ray.position(t);
 			intersection.normal = y < 0.0f ? -ba / sqrt(baba) : ba / sqrt(baba);
@@ -330,6 +292,13 @@ public:
 		material_ = material;
 	}
 
+	__host__ __device__ Boundary bound() override
+	{
+		const float3 a = extreme_b_ - extreme_a_;
+		const float3 e = radius_ * sqrt(1.0f - a * a / dot(a, a));
+		return {fminf(extreme_a_ - e, extreme_b_ - e), fmaxf(extreme_a_ + e, extreme_b_ + e)};
+	}
+
 private:
 	float3 extreme_a_{}, extreme_b_{}, center_{};
 	float radius_{};
@@ -343,24 +312,24 @@ public:
 	__host__ __device__ Cone(const ConeInfo* cone_info, Material* material)
 		: extreme_a_(cone_info->extreme_a.str), extreme_b_(cone_info->extreme_b.str), center_(cone_info->center.str), radius_a_(cone_info->radius_a), radius_b_(cone_info->radius_a)
 	{
-		material_ = material;
+		material_ = material;		
 	}
 
-	__host__ __device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection, uint32_t*) const override
+	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection, uint32_t*) const override
 	{
 		float3 ba = extreme_b_ - extreme_a_;
-		const float3 oa = center_ + ray.origin() - extreme_a_;
-		const float3 ob = center_ + ray.origin() - extreme_b_;
+		const float3 oa = center_ + ray.origin_ - extreme_a_;
+		const float3 ob = center_ + ray.origin_ - extreme_b_;
 		const float m0 = dot(ba, ba);
 		const float m1 = dot(oa, ba);
-		const float m2 = dot(ray.direction(), ba);
-		const float m3 = dot(ray.direction(), oa);
+		const float m2 = dot(ray.direction_, ba);
+		const float m3 = dot(ray.direction_, oa);
 		const float m5 = dot(oa, oa);
 		const float m9 = dot(ob, ba); 
 
 	    if (m1 < 0.0f)
 	    {
-		    const float3 c = oa * m2 - ray.direction() * m1;
+		    const float3 c = oa * m2 - ray.direction_ * m1;
 	        if (dot(c, c) < radius_a_ * radius_a_ * m2 * m2)
 	        {
 				intersection.t = -m1 / m2;
@@ -374,12 +343,13 @@ public:
 	    {
 		    const float t = -m9/m2;
 
-			if (t < t_min || t > t_max)
+			if (t < kTMin || t > ray.t_max_)
 				return false;
 
-		    const float3 c = ob + ray.direction() * t;
+		    const float3 c = ob + ray.direction_ * t;
 	        if (dot(c, c) < radius_b_ * radius_b_)
 	        {
+				ray.t_max_ = t;
 		        intersection.t = t;
 				intersection.point = ray.position(intersection.t);
 				intersection.normal = ba * rsqrtf(m0);
@@ -400,7 +370,7 @@ public:
 
 		const float t = (-k1 - sqrt(h)) / k2;
 
-		if (t < t_min || t > t_max)
+		if (t < kTMin || t > ray.t_max_)
 			return false;
 
 		const float y = m1 + t * m2;
@@ -408,9 +378,10 @@ public:
 	    if(y < 0.0f || y > m0)
 			return false;
 
+		ray.t_max_ = t;
 		intersection.t = t;
 		intersection.point = ray.position(intersection.t);
-		intersection.normal = normalize(m0 * (m0 * (oa + t * ray.direction()) + rr * ba * radius_a_) - ba * hy * y);
+		intersection.normal = normalize(m0 * (m0 * (oa + t * ray.direction_) + rr * ba * radius_a_) - ba * hy * y);
 		intersection.material = material_;
 		return true;
 	}
@@ -426,6 +397,13 @@ public:
 		material_ = material;
 	}
 
+	__host__ __device__ Boundary bound() override
+	{
+		const float3 a = extreme_b_ - extreme_a_;
+		const float3 e = sqrt(1.0f - a * a / dot(a, a));
+		return {fminf(extreme_a_ - e * radius_a_, extreme_b_ - e * radius_b_), fmaxf(extreme_a_ + e * radius_a_, extreme_b_ + e * radius_b_)};
+	}
+
 private:
 	float3 extreme_a_{}, extreme_b_{}, center_{};
 	float radius_a_{}, radius_b_{};
@@ -439,20 +417,20 @@ public:
 	__host__ __device__ Torus(const TorusInfo* torus_info, Material* material)
 		: center_(torus_info->center.str) , radius_a_(torus_info->radius_a), radius_b_(torus_info->radius_a)
 	{
-		material_ = material;
+		material_ = material;		
 	}
 
-	__host__ __device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection, uint32_t*) const override
+	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection, uint32_t*) const override
 	{
 		float po = 1.0f;
 		const float Ra2 = radius_a_ * radius_a_;
 		const float ra2 = radius_b_ * radius_b_;
-		const float m = dot(center_ + ray.origin(), center_ + ray.origin());
-		const float n = dot(center_ + ray.origin(), ray.direction());
+		const float m = dot(center_ + ray.origin_, center_ + ray.origin_);
+		const float n = dot(center_ + ray.origin_, ray.direction_);
 		const float k = (m + Ra2 - ra2) / 2.0f;
 	    float k3 = n;
-		const float2 dxy = make_float2(ray.direction().x, ray.direction().y);
-		const float2 oxy = make_float2(center_.x + ray.origin().x, center_.y + ray.origin().y);
+		const float2 dxy = make_float2(ray.direction_.x, ray.direction_.y);
+		const float2 oxy = make_float2(center_.x + ray.origin_.x, center_.y + ray.origin_.y);
 	    float k2 = n * n - Ra2 * dot(dxy, dxy) + k;
 	    float k1 = n * k - Ra2 * dot(dxy, oxy);
 	    float k0 = k * k - Ra2 * dot(oxy, oxy);
@@ -499,9 +477,10 @@ public:
 	        if (t2 > 0.0f)
 				t = fmin(t, t2);
 
-			if (t < t_min || t > t_max)
+			if (t < kTMin || t > ray.t_max_)
 				return false;
 
+			ray.t_max_ = t;
 			intersection.t = t;
 			intersection.point = ray.position(intersection.t);
 			intersection.normal = normalize(intersection.point * (dot(intersection.point, intersection.point) - radius_b_ * radius_b_ - radius_b_ * radius_b_ * make_float3(1.0f, 1.0f, -1.0f)));
@@ -535,9 +514,10 @@ public:
 	    if (t4 > 0.0f)
 			t = fmin(t, t4);
 
-		if (t < t_min || t > t_max)
+		if (t < kTMin || t > ray.t_max_)
 			return false;
 
+		ray.t_max_ = t;
 	    intersection.t = t;
 		intersection.point = ray.position(intersection.t);
 		intersection.normal = normalize(intersection.point * (dot(intersection.point, intersection.point) - radius_b_ * radius_b_ - radius_b_ * radius_b_ * make_float3(1.0f, 1.0f, -1.0f)));
@@ -552,6 +532,12 @@ public:
 		radius_a_ = torus_info->radius_a;
 		radius_b_ = torus_info->radius_b;
 		material_ = material;
+	}
+
+	__host__ __device__ Boundary bound() override
+	{
+		const float size = radius_a_ < radius_b_ ? radius_b_ : radius_a_;
+		return {-make_float3(size), make_float3(size)};
 	}
 
 private:
@@ -577,18 +563,16 @@ public:
 		free(triangles_);
 	}
 
-	__host__ __device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection, uint32_t* random_state) const override
+	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection, uint32_t* random_state) const override
 	{
 		Intersection temp_intersection{};
 		bool intersected = false;
-		float potentially_closest = t_max;
 
 		for (uint64_t i = 0; i < triangle_count_; i++)
 		{
-			if (triangles_[i].intersect(ray, t_min, potentially_closest, temp_intersection, random_state))
+			if (triangles_[i].intersect(ray, temp_intersection, random_state))
 			{
 				intersected = true;
-				potentially_closest = temp_intersection.t;
 				intersection = temp_intersection;
 			}
 		}
@@ -604,6 +588,16 @@ public:
 
 		for (uint64_t i = 0; i < triangle_count_; i++)
 			triangles_[i] = Triangle(&model_info->usable_triangles[i], material).transform(model_info->translation.str, model_info->scale.str, model_info->rotation.str);
+	}
+
+	__host__ __device__ Boundary bound() override
+	{
+		Boundary boundary{};
+
+		for (uint64_t i = 0; i < triangle_count_; i++)
+			boundary = unite(boundary, triangles_[i].bound());
+
+		return boundary;
 	}
 
 private:

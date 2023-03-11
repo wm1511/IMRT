@@ -10,7 +10,7 @@
 // Intellisense doesn't work without this include
 #include <filesystem>
 
-static const char* object_types[]{"Unknown Object", "Sphere", "Triangle", "Plane", "Volumetric Sphere", "Cylinder", "Cone", "Torus", "Model"};
+static const char* object_types[]{"Unknown Object", "Sphere", "Triangle", "Plane", "Cylinder", "Cone", "Torus", "Model"};
 static const char* material_types[]{"Unknown Material", "Diffuse", "Specular", "Refractive", "Isotropic"};
 static const char* texture_types[]{"Unknown Texture", "Solid", "Image", "Checker"};
 
@@ -249,7 +249,7 @@ void RtInterface::move_camera()
 	{
 		render_info_.angle_x += ImGui::GetMouseDragDelta().x * camera_rotation_speed_;
 		render_info_.angle_y += ImGui::GetMouseDragDelta().y * camera_rotation_speed_;
-		render_info_.angle_x = fmodf(render_info_.angle_x, kTwoPi);
+		render_info_.angle_x = fmodf(render_info_.angle_x, k2Pi);
 		render_info_.angle_y = clamp(render_info_.angle_y, -kHalfPi, kHalfPi);
 		render_info_.camera_direction = make_float3(
 			cos(render_info_.angle_y) * -sin(render_info_.angle_x),
@@ -751,29 +751,6 @@ void RtInterface::add_object()
 				is_added = true;
 			}
 		}
-		else if (object_type == VOLUMETRIC_SPHERE)
-		{
-			static Float3 new_volumetric_sphere_center{0.0f, 0.0f, 0.0f};
-			static float new_volumetric_sphere_radius{1.0f};
-			static float new_volumetric_sphere_density{0.1f};
-
-			if (ImGui::TreeNode("Properties"))
-			{
-				ImGui::SliderFloat3("Center", new_volumetric_sphere_center.arr, -UINT16_MAX, UINT16_MAX,"%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat("Radius", &new_volumetric_sphere_radius, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat("Density", &new_volumetric_sphere_density, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				draw_help("Density of volume contained within sphere");
-				ImGui::TreePop();
-			}
-
-			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
-			{
-				if (is_rendering_)
-					renderer_->deallocate_world();
-				world_info_.add_object(new VolumetricSphereInfo(new_volumetric_sphere_center.str, new_volumetric_sphere_radius, new_volumetric_sphere_density, selected_material));
-				is_added = true;
-			}
-		}
 		else if (object_type == CYLINDER)
 		{
 			static Float3 new_cylinder_extreme_a{0.0f, 0.5f, 0.0f};
@@ -953,18 +930,6 @@ void RtInterface::edit_object()
 						is_edited |= ImGui::SliderFloat("Offset", &current_plane->offset, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 						draw_help("Displacement from center position along normal");
-					}
-					else if (current_object->type == VOLUMETRIC_SPHERE)
-					{
-						const auto current_volumetric_sphere = (VolumetricSphereInfo*)current_object;
-
-						is_edited |= ImGui::SliderFloat3("Normal", current_volumetric_sphere->boundary.center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat("Radius", &current_volumetric_sphere->boundary.radius, 0.0f, UINT8_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat("Density", &current_volumetric_sphere->density, 0.0f, UINT8_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						draw_help("Density of volume contained within sphere");
 					}
 					else if (current_object->type == CYLINDER)
 					{

@@ -82,8 +82,8 @@ void WorldInfo::load_model(const std::string& model_path, const int32_t material
 				if (idx.texcoord_index >= 0) 
 				{
 					uvs[v] = make_float2(
-						attrib.texcoords[ 2 * idx.texcoord_index],
-						attrib.texcoords[ 2 * idx.texcoord_index + 1]);
+						attrib.texcoords[2 * idx.texcoord_index],
+						attrib.texcoords[2 * idx.texcoord_index + 1]);
 					has_uvs = true;
 				}
 		    }

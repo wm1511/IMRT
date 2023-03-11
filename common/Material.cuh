@@ -48,10 +48,10 @@ public:
 
 	__host__ __device__ bool scatter(Ray& ray, const Intersection& intersection, float3& absorption, uint32_t* random_state) const override
 	{
-		const float3 reflected_direction = reflect(versor(ray.direction()), intersection.normal);
+		const float3 reflected_direction = reflect(versor(ray.direction_), intersection.normal);
 		ray = Ray(intersection.point, reflected_direction + fuzziness_ * sphere_random(random_state));
 		texture_->color(absorption, intersection.uv);
-		return dot(ray.direction(), intersection.normal) > 0.0f;
+		return dot(ray.direction_, intersection.normal) > 0.0f;
 	}
 
 	__host__ __device__ void update(MaterialInfo* material, Texture* texture) override
@@ -82,24 +82,24 @@ public:
 		float cos_theta;
 		float3 normal_out;
 		float3 refracted_direction{};
-		const float3 reflected_direction = reflect(ray.direction(), intersection.normal);
+		const float3 reflected_direction = reflect(ray.direction_, intersection.normal);
 		absorption = make_float3(1.0f);
 
-		if (dot(ray.direction(), intersection.normal) > 0.0f)
+		if (dot(ray.direction_, intersection.normal) > 0.0f)
 		{
 			normal_out = -intersection.normal;
 			ior = refractive_index_;
-			cos_theta = dot(ray.direction(), intersection.normal) / length(ray.direction());
+			cos_theta = dot(ray.direction_, intersection.normal) / length(ray.direction_);
 			cos_theta = sqrt(1.0f - refractive_index_ * refractive_index_ * (1 - cos_theta * cos_theta));
 		}
 		else
 		{
 			normal_out = intersection.normal;
 			ior = 1.0f / refractive_index_;
-			cos_theta = -dot(ray.direction(), intersection.normal) / length(ray.direction());
+			cos_theta = -dot(ray.direction_, intersection.normal) / length(ray.direction_);
 		}
 
-		const float3 unit_ray_direction = versor(ray.direction());
+		const float3 unit_ray_direction = versor(ray.direction_);
 		const float ray_normal_dot = dot(unit_ray_direction, normal_out);
 		const float discriminant = 1.0f - ior * ior * (1 - ray_normal_dot * ray_normal_dot);
 		if (discriminant > 0)

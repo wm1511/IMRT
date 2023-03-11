@@ -225,7 +225,9 @@
     <ClInclude Include="abstract\IDrawable.hpp" />
     <ClInclude Include="abstract\IRenderer.hpp" />
     <ClInclude Include="common\Color.cuh" />
+    <ClInclude Include="common\Boundary.cuh" />
     <ClInclude Include="common\Texture.cuh" />
+    <ClInclude Include="common\Transform.cuh" />
     <ClInclude Include="cpu_renderer\CpuRenderer.hpp" />
     <ClInclude Include="common\Camera.cuh" />
     <ClInclude Include="cuda_renderer\CudaRenderer.cuh" />

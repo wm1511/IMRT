@@ -3,12 +3,11 @@
 #include "World.cuh"
 #include "Material.cuh"
 
-#include <cfloat>
 #include <device_launch_parameters.h>
 
 __host__ __device__ inline float3 sample_hdr(const Ray& ray, const SkyInfo& sky_info)
 {
-	const float3 ray_direction = normalize(ray.direction());
+	const float3 ray_direction = normalize(ray.direction_);
     const float longitude = atan2(ray_direction.z, ray_direction.x);
     const float latitude = acos(ray_direction.y);
 
@@ -28,7 +27,7 @@ __host__ __device__ inline float3 sample_hdr(const Ray& ray, const SkyInfo& sky_
 
 __host__ __device__ inline float3 sample_sky(const Ray& ray, const SkyInfo& sky_info)
 {
-	const float3 direction = normalize(ray.direction());
+	const float3 direction = normalize(ray.direction_);
 	const float3 sun_direction = make_float3(0.0f, cos(kHalfPi - sky_info.sun_elevation), sin(kHalfPi - sky_info.sun_elevation));
 
     const float abs_cos_theta = abs(dot(direction, make_float3(0.0f, 1.0f, 0.0f)));
@@ -37,16 +36,16 @@ __host__ __device__ inline float3 sample_sky(const Ray& ray, const SkyInfo& sky_
     const float ray_m = cos_gamma * cos_gamma;
 	const float zenith = sqrt(abs_cos_theta);
 
-	const Float9 configs[3]{sky_info.sky_config_x, sky_info.sky_config_y, sky_info.sky_config_z};
+	const SkyConfig configs[3]{sky_info.sky_config_x, sky_info.sky_config_y, sky_info.sky_config_z};
     Float3 result{};
 
     for (int32_t i = 0; i < 3; i++)
     {
-	    const float9 config = configs[i].str;
+	    const SkyConfig config = configs[i];
 
-    	const float exp_m = exp(config.f4 * acos(cos_gamma));
-    	const float mie_m = (1.0f + cos_gamma * cos_gamma) / pow(1.0f + config.f8 * config.f8 - 2.0f * config.f8 * cos_gamma, 1.5f);
-    	const float sample = (1.0f + config.f0 * exp(config.f1 / (abs_cos_theta + 0.01f))) * (config.f2 + config.f3 * exp_m + config.f5 * ray_m + config.f6 * mie_m + config.f7 * zenith);
+    	const float exp_m = exp(config.arr[4] * acos(cos_gamma));
+    	const float mie_m = (1.0f + cos_gamma * cos_gamma) / pow(1.0f + config.arr[8] * config.arr[8] - 2.0f * config.arr[8] * cos_gamma, 1.5f);
+    	const float sample = (1.0f + config.arr[0] * exp(config.arr[1] / (abs_cos_theta + 0.01f))) * (config.arr[2] + config.arr[3] * exp_m + config.arr[5] * ray_m + config.arr[6] * mie_m + config.arr[7] * zenith);
 
     	result.arr[i] = sample * sky_info.sun_radiance.arr[i];
     }
@@ -62,7 +61,7 @@ __host__ __device__ inline float3 calculate_color(const Ray& ray, World** world,
     for (int32_t i = 0; i < max_depth; i++)
     {
 	    Intersection intersection{};
-        if ((*world)->intersect(current_ray, 0.001f, FLT_MAX, intersection, random_state))
+        if ((*world)->intersect(current_ray, intersection, random_state))
         {
             float3 absorption;
             if (intersection.material->scatter(current_ray, intersection, absorption, random_state))

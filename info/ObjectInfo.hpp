@@ -9,7 +9,6 @@ enum ObjectType
 	SPHERE,
 	TRIANGLE,
 	PLANE,
-	VOLUMETRIC_SPHERE,
 	CYLINDER,
 	CONE,
 	TORUS,
@@ -60,16 +59,6 @@ struct PlaneInfo final : ObjectInfo
 
 	Float3 normal{};
 	float offset{};
-};
-
-struct VolumetricSphereInfo final : ObjectInfo
-{
-	VolumetricSphereInfo() = default;
-	VolumetricSphereInfo(const float3 center, const float radius, const float density, const int32_t material_info)
-		: ObjectInfo(VOLUMETRIC_SPHERE, material_info), boundary(center, radius, material_info), density(density) {}
-
-	SphereInfo boundary{};
-	float density{};
 };
 
 struct CylinderInfo final : ObjectInfo

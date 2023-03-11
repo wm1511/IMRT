@@ -261,8 +261,6 @@ void CudaRenderer::refresh_object(const int32_t index) const
 		CCE(cudaMemcpy(host_object_data_[index], object, sizeof(TriangleInfo), cudaMemcpyHostToDevice));
 	else if (object->type == PLANE)
 		CCE(cudaMemcpy(host_object_data_[index], object, sizeof(PlaneInfo), cudaMemcpyHostToDevice));
-	else if (object->type == VOLUMETRIC_SPHERE)
-		CCE(cudaMemcpy(host_object_data_[index], object, sizeof(VolumetricSphereInfo), cudaMemcpyHostToDevice));
 	else if (object->type == CYLINDER)
 		CCE(cudaMemcpy(host_object_data_[index], object, sizeof(CylinderInfo), cudaMemcpyHostToDevice));
 	else if (object->type == CONE)
@@ -399,11 +397,6 @@ void CudaRenderer::allocate_world()
         {
 	        CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(PlaneInfo)));
 			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(PlaneInfo), cudaMemcpyHostToDevice));
-        }
-    	else if (object_data[i]->type == VOLUMETRIC_SPHERE)
-        {
-	        CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(VolumetricSphereInfo)));
-			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(VolumetricSphereInfo), cudaMemcpyHostToDevice));
         }
     	else if (object_data[i]->type == CYLINDER)
         {

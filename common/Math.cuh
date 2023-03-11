@@ -23,10 +23,11 @@ inline float rsqrtf(const float x)
 
 // Constants
 __device__ __constant__ constexpr float kPi = 3.141593f;
-__device__ __constant__ constexpr float kTwoPi = 6.283185f;
+__device__ __constant__ constexpr float k2Pi = 6.283185f;
 __device__ __constant__ constexpr float kHalfPi =  1.570796f;
 __device__ __constant__ constexpr float kInvPi = 0.318309f;
 __device__ __constant__ constexpr float kInv2Pi = 0.159154f;
+__device__ __constant__ constexpr float kTMin = 0.001f;
 
 // Constructors
 
@@ -545,6 +546,122 @@ inline __host__ __device__ float3 cross(const float3 a, const float3 b)
 inline __host__ __device__ float3 versor(const float3 v)
 {
 	return float3(v / length(v));
+}
+
+// Matrix 4x4
+union Matrix4X4
+{
+    float m[4][4]{};
+
+private:
+    struct _
+    {
+	    float4 x{1.0f, 0.0f, 0.0f, 0.0f};
+    	float4 y{0.0f, 1.0f, 0.0f, 0.0f};
+    	float4 z{0.0f, 0.0f, 1.0f, 0.0f};
+    	float4 w{0.0f, 0.0f, 0.0f, 1.0f};
+    };
+};
+
+inline __host__ __device__ Matrix4X4 make_matrix4X4(const float s00, const float s01, const float s02, const float s03, 
+    const float s10, const float s11, const float s12, const float s13, const float s20, const float s21, 
+    const float s22, const float s23, const float s30, const float s31, const float s32, const float s33)
+{
+    return
+    {
+	    {
+		    {s00, s01, s02, s03},
+		    {s10, s11, s12, s13},
+		    {s20, s21, s22, s23},
+		    {s30, s31, s32, s33}
+	    }
+    };
+}
+
+inline __host__ __device__ Matrix4X4 make_matrix4X4()
+{
+    return {};
+}
+
+inline __host__ __device__ Matrix4X4 transpose(const Matrix4X4& m)
+{
+    return
+    {
+	    {
+		    {m.m[0][0], m.m[1][0], m.m[2][0], m.m[3][0]},
+		    {m.m[0][1], m.m[1][1], m.m[2][1], m.m[3][1]},
+		    {m.m[0][2], m.m[1][2], m.m[2][2], m.m[3][2]},
+		    {m.m[0][3], m.m[1][3], m.m[2][3], m.m[3][3]}
+	    }
+    };
+}
+    
+inline __host__ __device__ Matrix4X4 multiply(const Matrix4X4 &m1, const Matrix4X4 &m2)
+{
+    Matrix4X4 r;
+    for (int32_t i = 0; i < 4; i++)
+	    for (int32_t j = 0; j < 4; j++)
+		    r.m[i][j] = m1.m[i][0] * m2.m[0][j] + m1.m[i][1] * m2.m[1][j] +
+			    m1.m[i][2] * m2.m[2][j] + m1.m[i][3] * m2.m[3][j];
+    return r;
+}
+
+inline __host__ __device__ Matrix4X4 invert(const Matrix4X4& m)
+{
+	const float a2323 = m.m[2][2] * m.m[3][3] - m.m[2][3] * m.m[3][2];
+	const float a1323 = m.m[2][1] * m.m[3][3] - m.m[2][3] * m.m[3][1];
+	const float a1223 = m.m[2][1] * m.m[3][2] - m.m[2][2] * m.m[3][1];
+	const float a0323 = m.m[2][0] * m.m[3][3] - m.m[2][3] * m.m[3][0];
+	const float a0223 = m.m[2][0] * m.m[3][2] - m.m[2][2] * m.m[3][0];
+	const float a0123 = m.m[2][0] * m.m[3][1] - m.m[2][1] * m.m[3][0];
+	const float a2313 = m.m[1][2] * m.m[3][3] - m.m[1][3] * m.m[3][2];
+	const float a1313 = m.m[1][1] * m.m[3][3] - m.m[1][3] * m.m[3][1];
+	const float a1213 = m.m[1][1] * m.m[3][2] - m.m[1][2] * m.m[3][1];
+	const float a2312 = m.m[1][2] * m.m[2][3] - m.m[1][3] * m.m[2][2];
+	const float a1312 = m.m[1][1] * m.m[2][3] - m.m[1][3] * m.m[2][1];
+	const float a1212 = m.m[1][1] * m.m[2][2] - m.m[1][2] * m.m[2][1];
+	const float a0313 = m.m[1][0] * m.m[3][3] - m.m[1][3] * m.m[3][0];
+	const float a0213 = m.m[1][0] * m.m[3][2] - m.m[1][2] * m.m[3][0];
+	const float a0312 = m.m[1][0] * m.m[2][3] - m.m[1][3] * m.m[2][0];
+	const float a0212 = m.m[1][0] * m.m[2][2] - m.m[1][2] * m.m[2][0];
+	const float a0113 = m.m[1][0] * m.m[3][1] - m.m[1][1] * m.m[3][0];
+	const float a0112 = m.m[1][0] * m.m[2][1] - m.m[1][1] * m.m[2][0];
+
+    float det = m.m[0][0] * ( m.m[1][1] * a2323 - m.m[1][2] * a1323 + m.m[1][3] * a1223 )
+        - m.m[0][1] * ( m.m[1][0] * a2323 - m.m[1][2] * a0323 + m.m[1][3] * a0223 )
+        + m.m[0][2] * ( m.m[1][0] * a1323 - m.m[1][1] * a0323 + m.m[1][3] * a0123 )
+        - m.m[0][3] * ( m.m[1][0] * a1223 - m.m[1][1] * a0223 + m.m[1][2] * a0123 );
+    det = 1.0f / det;
+
+	return
+	{
+		{
+			{
+				det * (m.m[1][1] * a2323 - m.m[1][2] * a1323 + m.m[1][3] * a1223),
+				det * -(m.m[0][1] * a2323 - m.m[0][2] * a1323 + m.m[0][3] * a1223),
+				det * (m.m[0][1] * a2313 - m.m[0][2] * a1313 + m.m[0][3] * a1213),
+				det * -(m.m[0][1] * a2312 - m.m[0][2] * a1312 + m.m[0][3] * a1212)
+			},
+			{
+				det * -(m.m[1][0] * a2323 - m.m[1][2] * a0323 + m.m[1][3] * a0223),
+				det * (m.m[0][0] * a2323 - m.m[0][2] * a0323 + m.m[0][3] * a0223),
+				det * -(m.m[0][0] * a2313 - m.m[0][2] * a0313 + m.m[0][3] * a0213),
+				det * (m.m[0][0] * a2312 - m.m[0][2] * a0312 + m.m[0][3] * a0212)
+			},
+			{
+				det * (m.m[1][0] * a1323 - m.m[1][1] * a0323 + m.m[1][3] * a0123),
+				det * -(m.m[0][0] * a1323 - m.m[0][1] * a0323 + m.m[0][3] * a0123),
+				det * (m.m[0][0] * a1313 - m.m[0][1] * a0313 + m.m[0][3] * a0113),
+				det * -(m.m[0][0] * a1312 - m.m[0][1] * a0312 + m.m[0][3] * a0112)
+			},
+			{
+				det * -(m.m[1][0] * a1223 - m.m[1][1] * a0223 + m.m[1][2] * a0123),
+				det * (m.m[0][0] * a1223 - m.m[0][1] * a0223 + m.m[0][2] * a0123),
+				det * -(m.m[0][0] * a1213 - m.m[0][1] * a0213 + m.m[0][2] * a0113),
+				det * (m.m[0][0] * a1212 - m.m[0][1] * a0212 + m.m[0][2] * a0112)
+			}
+		}
+	};
 }
 
 // Transformations

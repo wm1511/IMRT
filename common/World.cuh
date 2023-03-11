@@ -49,8 +49,6 @@ public:
 				objects_[i] = new Triangle((TriangleInfo*)object_info, materials_[object_info->material_id]);
 			else if (object_info->type == PLANE)
 				objects_[i] = new Plane((PlaneInfo*)object_info, materials_[object_info->material_id]);
-			else if (object_info->type == VOLUMETRIC_SPHERE)
-				objects_[i] = new VolumetricSphere((VolumetricSphereInfo*)object_info, materials_[object_info->material_id]);
 			else if (object_info->type == CYLINDER)
 				objects_[i] = new Cylinder((CylinderInfo*)object_info, materials_[object_info->material_id]);
 			else if (object_info->type == CONE)
@@ -78,20 +76,21 @@ public:
 		delete[] textures_;
 	}
 
-	__host__ __device__ bool intersect(const Ray& ray, const float t_min, const float t_max, Intersection& intersection, uint32_t* random_state) const
+	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection, uint32_t* random_state) const
 	{
 		Intersection temp_intersection{};
 		bool intersected = false;
-		float potentially_closest = t_max;
 
 		for (int32_t i = 0; i < object_count_; i++)
 		{
-			if (objects_[i]->intersect(ray, t_min, potentially_closest, temp_intersection, random_state))
+			//if (objects_[i]->bound().intersect(ray))
+			
+			if (objects_[i]->intersect(ray, temp_intersection, random_state))
 			{
 				intersected = true;
-				potentially_closest = temp_intersection.t;
 				intersection = temp_intersection;
 			}
+			
 		}
 
 		return intersected;

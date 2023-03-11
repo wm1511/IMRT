@@ -1,6 +1,4 @@
 #pragma once
-#include "Unions.hpp"
-
 _EXTERN_C
 #include "../sky/ArHosekSkyModel.h"
 _END_EXTERN_C
@@ -8,6 +6,17 @@ _END_EXTERN_C
 #include "stb_image.h"
 
 #include <cstdint>
+
+union SkyConfig
+{
+	float arr[9]{};
+
+private:
+	struct _
+	{
+		float f0, f1, f2, f3, f4, f5, f6, f7, f8;
+	};
+};
 
 struct SkyInfo
 {
@@ -52,9 +61,9 @@ struct SkyInfo
 		sun_elevation = elevation;
 	}
 
-	Float9 sky_config_x{};
-	Float9 sky_config_y{};
-	Float9 sky_config_z{};
+	SkyConfig sky_config_x{};
+	SkyConfig sky_config_y{};
+	SkyConfig sky_config_z{};
 	Float3 sun_radiance{};
 	float sun_elevation{};
 
