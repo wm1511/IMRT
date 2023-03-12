@@ -15,13 +15,22 @@ CpuRenderer::CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_i
 	random_refresh();
 	allocate_world();
 
-	camera_ = new Camera(
+	/*camera_ = new Camera(
 			render_info_->camera_position,
 			render_info_->camera_direction,
 			render_info_->fov,
 			(float)render_info_->width / (float)render_info_->height,
 			render_info_->aperture,
-			render_info_->focus_distance);
+			render_info_->focus_distance);*/
+
+	camera_ = new Camera(
+			render_info->camera_rotation,
+            render_info->camera_position,
+            (float)render_info->width, 
+            (float)render_info->height, 
+            render_info->aperture, 
+            render_info->focus_distance, 
+            render_info->fov);
 
 	if (sky_info_->buffered_hdr_data)
 	{
@@ -64,9 +73,10 @@ void CpuRenderer::render(float* image_data)
 				const int32_t pixel_index = y * width + x;
 				uint32_t local_random_state = xoshiro(&xoshiro_state_[y * width + x]);
 
-				const float u = ((float)x + pcg(&local_random_state)) / (float)width;
+				/*const float u = ((float)x + pcg(&local_random_state)) / (float)width;
 				const float v = ((float)y + pcg(&local_random_state)) / (float)height;
-				const Ray ray = camera_->cast_ray(&local_random_state, u, v);
+				const Ray ray = camera_->cast_ray(&local_random_state, u, v);*/
+				const Ray ray = (*camera_).cast_ray(x, y, &local_random_state);
 				const float3 color = sqrt(calculate_color(ray, &world_, *sky_info_, render_info_->max_depth, &local_random_state));
 
 				accumulation_buffer_[pixel_index] += make_float4(color, 1.0f);
@@ -91,9 +101,10 @@ void CpuRenderer::render(float* image_data)
 					const int32_t pixel_index = y * width + x;
 					uint32_t local_random_state = xoshiro(&xoshiro_state_[y * width + x]);
 
-					const float u = ((float)x + pcg(&local_random_state)) / (float)width;
+					/*const float u = ((float)x + pcg(&local_random_state)) / (float)width;
 					const float v = ((float)y + pcg(&local_random_state)) / (float)height;
-					const Ray ray = camera_->cast_ray(&local_random_state, u, v);
+					const Ray ray = camera_->cast_ray(&local_random_state, u, v);*/
+					const Ray ray = (*camera_).cast_ray(x, y, &local_random_state);
 					const float3 color = sqrt(calculate_color(ray, &world_, *sky_info_, render_info_->max_depth, &local_random_state));
 
 					image_data[pixel_index << 2] += color.x / (float)render_info_->samples_per_pixel;
@@ -117,12 +128,19 @@ void CpuRenderer::refresh_buffer()
 
 void CpuRenderer::refresh_camera()
 {
-	camera_->update(
+	/*camera_->update(
 		render_info_->camera_position,
 		render_info_->camera_direction,
 		render_info_->fov,
 		render_info_->aperture,
-		render_info_->focus_distance);
+		render_info_->focus_distance);*/
+
+	camera_->update(
+			render_info_->camera_rotation,
+	        render_info_->camera_position,
+			render_info_->aperture,
+	        render_info_->focus_distance,
+	        render_info_->fov);
 }
 
 void CpuRenderer::refresh_object(const int32_t index) const
@@ -143,13 +161,22 @@ void CpuRenderer::refresh_texture(const int32_t index) const
 void CpuRenderer::recreate_camera()
 {
 	delete camera_;
-	camera_ = new Camera(
+	/*camera_ = new Camera(
 			render_info_->camera_position,
 			render_info_->camera_direction,
 			render_info_->fov,
 			(float)render_info_->width / (float)render_info_->height,
 			render_info_->aperture,
-			render_info_->focus_distance);
+			render_info_->focus_distance);*/
+
+	camera_ = new Camera(
+			render_info_->camera_rotation,
+            render_info_->camera_position,
+            (float)render_info_->width, 
+            (float)render_info_->height, 
+            render_info_->aperture, 
+            render_info_->focus_distance, 
+            render_info_->fov);
 }
 
 void CpuRenderer::recreate_image()

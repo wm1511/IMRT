@@ -52,6 +52,11 @@ inline __host__ __device__ float4 make_float4(const float t[4])
 }
 
 // Negation
+inline __host__ __device__ float2 operator-(float2 &a)
+{
+    return make_float2(-a.x, -a.y);
+}
+
 inline __host__ __device__ float3 operator-(float3 &a)
 {
     return make_float3(-a.x, -a.y, -a.z);

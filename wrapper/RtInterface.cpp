@@ -247,14 +247,17 @@ void RtInterface::move_camera()
 
 	if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
 	{
-		render_info_.angle_x += ImGui::GetMouseDragDelta().x * camera_rotation_speed_;
+		render_info_.camera_rotation += make_float2(ImGui::GetMouseDragDelta().x, ImGui::GetMouseDragDelta().y) * camera_rotation_speed_;
+		render_info_.camera_rotation.x = fmodf(render_info_.camera_rotation.x, k2Pi);
+		render_info_.camera_rotation.y = clamp(render_info_.camera_rotation.y, -kHalfPi, kHalfPi);
+		/*render_info_.angle_x += ImGui::GetMouseDragDelta().x * camera_rotation_speed_;
 		render_info_.angle_y += ImGui::GetMouseDragDelta().y * camera_rotation_speed_;
 		render_info_.angle_x = fmodf(render_info_.angle_x, k2Pi);
-		render_info_.angle_y = clamp(render_info_.angle_y, -kHalfPi, kHalfPi);
-		render_info_.camera_direction = make_float3(
-			cos(render_info_.angle_y) * -sin(render_info_.angle_x),
-			-sin(render_info_.angle_y),
-			-cos(render_info_.angle_x) * cos(render_info_.angle_y));
+		render_info_.angle_y = clamp(render_info_.angle_y, -kHalfPi, kHalfPi);*/
+		render_info_.camera_direction = normalize(make_float3(
+			cos(render_info_.camera_rotation.x) * -sin(render_info_.camera_rotation.x),
+			-sin(render_info_.camera_rotation.y),
+			-cos(render_info_.camera_rotation.x) * cos(render_info_.camera_rotation.y)));
 		ImGui::ResetMouseDragDelta();
 		is_moved =  true;
 	}
@@ -322,13 +325,13 @@ void RtInterface::edit_camera()
 		}
 		if (ImGui::TreeNode("Angle offset"))
 		{
-			is_edited |= ImGui::SliderAngle("degrees x", &render_info_.angle_x, 0.0f, 360.0f, "%.3f");
-			is_edited |= ImGui::SliderAngle("degrees y", &render_info_.angle_y, -90.0f, 90.0f, "%.3f");
+			is_edited |= ImGui::SliderAngle("degrees x", &render_info_.camera_rotation.x, 0.0f, 360.0f, "%.3f");
+			is_edited |= ImGui::SliderAngle("degrees y", &render_info_.camera_rotation.y, -90.0f, 90.0f, "%.3f");
 
 			render_info_.camera_direction = normalize(make_float3(
-			cos(render_info_.angle_y) * -sin(render_info_.angle_x),
-			-sin(render_info_.angle_y),
-			-cos(render_info_.angle_x) * cos(render_info_.angle_y)));
+			cos(render_info_.camera_rotation.x) * -sin(render_info_.camera_rotation.x),
+			-sin(render_info_.camera_rotation.y),
+			-cos(render_info_.camera_rotation.x) * cos(render_info_.camera_rotation.y)));
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Vertical field of view"))

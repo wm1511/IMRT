@@ -27,9 +27,10 @@ __global__ void render_pixel_progressive(float4* frame_buffer, float4* accumulat
 	const uint32_t pixel_index = j * max_x + i;
     uint32_t local_random_state = xoshiro(&xoshiro_state[pixel_index]);
 
-	const float u = ((float)i + pcg(&local_random_state)) / (float)max_x;
-	const float v = ((float)j + pcg(&local_random_state)) / (float)max_y;
-	const Ray ray = (*camera)->cast_ray(&local_random_state, u, v);
+	//const float u = ((float)i + pcg(&local_random_state)) / (float)max_x;
+	//const float v = ((float)j + pcg(&local_random_state)) / (float)max_y;
+	//const Ray ray = (*camera)->cast_ray(&local_random_state, u, v);
+	const Ray ray = (*camera)->cast_ray(i, j, &local_random_state);
     const float3 color = sqrt(calculate_color(ray, world, sky_info, render_info.max_depth, &local_random_state));
 
 	accumulation_buffer[pixel_index] += make_float4(color, 1.0f);
@@ -46,9 +47,10 @@ __global__ void render_pixel_static(float4* frame_buffer, Camera** camera, World
 	const uint32_t pixel_index = j * max_x + i;
     uint32_t local_random_state = xoshiro(&xoshiro_state[pixel_index]);
 
-	const float u = ((float)i + pcg(&local_random_state)) / (float)max_x;
+	/*const float u = ((float)i + pcg(&local_random_state)) / (float)max_x;
 	const float v = ((float)j + pcg(&local_random_state)) / (float)max_y;
-	const Ray ray = (*camera)->cast_ray(&local_random_state, u, v);
+	const Ray ray = (*camera)->cast_ray(&local_random_state, u, v);*/
+    const Ray ray = (*camera)->cast_ray(i, j, &local_random_state);
     const float3 color = sqrt(calculate_color(ray, world, sky_info, render_info.max_depth, &local_random_state));
 
 	frame_buffer[pixel_index] += make_float4(color, 1.0f) / (float)render_info.samples_per_pixel;
@@ -71,11 +73,11 @@ __global__ void update_camera(Camera** camera, const RenderInfo render_info)
 {
     if (threadIdx.x == 0 && blockIdx.x == 0) 
 		(*camera)->update(
-			render_info.camera_position,
-	        render_info.camera_direction,
-	        render_info.fov,
+			render_info.camera_rotation,
+	        render_info.camera_position,
 			render_info.aperture,
-	        render_info.focus_distance);
+	        render_info.focus_distance,
+	        render_info.fov);
 }
 
 __global__ void update_texture(World** world, const int32_t index, TextureInfo** texture_data)
@@ -105,13 +107,23 @@ __global__ void create_world(ObjectInfo** object_data, MaterialInfo** material_d
 __global__ void create_camera(Camera** camera, const RenderInfo render_info)
 {
     if (threadIdx.x == 0 && blockIdx.x == 0) 
-		*camera = new Camera(
+		/**camera = new Camera(
 	            render_info.camera_position,
 	            render_info.camera_direction,
 	            render_info.fov,
 	            (float)render_info.width / (float)render_info.height,
 	            render_info.aperture,
-	            render_info.focus_distance);
+	            render_info.focus_distance);*/
+    {
+	    *camera = new Camera(
+            render_info.camera_rotation,
+            render_info.camera_position,
+            (float)render_info.width, 
+            (float)render_info.height, 
+            render_info.aperture, 
+            render_info.focus_distance, 
+            render_info.fov);
+    }
 }
 
 __global__ void delete_world(World** world)

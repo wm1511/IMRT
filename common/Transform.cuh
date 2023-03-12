@@ -9,6 +9,9 @@ public:
 	__host__ __device__ explicit Transform(const Matrix4X4& m) : m_(m), m_inv_(invert(m)) {}
 	__host__ __device__ explicit Transform(const Matrix4X4& m, const Matrix4X4& m_inv) : m_(m), m_inv_(m_inv) {}
 
+	__host__ __device__ [[nodiscard]] const Matrix4X4& get_matrix() const { return m_; }
+    __host__ __device__ [[nodiscard]] const Matrix4X4& get_inverse_matrix() const { return m_inv_; }
+
 	__host__ __device__ [[nodiscard]] float3 transform(const float3& v) const
 	{
 		return {
@@ -60,6 +63,16 @@ private:
 	Matrix4X4 m_{};
 	Matrix4X4 m_inv_{};
 };
+
+inline __host__ __device__ Transform invert(const Transform& t)
+{
+    return Transform(t.get_inverse_matrix(), t.get_matrix());
+}
+
+inline __host__ __device__ Transform transpose(const Transform& t)
+{
+    return Transform(transpose(t.get_matrix()), transpose(t.get_inverse_matrix()));
+}
 
 inline __host__ __device__ Transform translate(const float3& t)
 {

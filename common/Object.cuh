@@ -15,6 +15,7 @@ public:
 	__host__ __device__ virtual void update(ObjectInfo* object_info, Material* material) = 0;
 
 	Material* material_ = nullptr;
+	Transform* world_to_object_ = nullptr, * object_to_world_ = nullptr;
 };
 
 class Sphere final : public Object
