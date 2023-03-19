@@ -147,8 +147,19 @@ static void SetupVulkan(const char** extensions, uint32_t extensions_count)
 
     // Create Logical Device (with 1 queue)
     {
-        int device_extension_count = 1;
-        const char* device_extensions[] = { "VK_KHR_swapchain" };
+        int device_extension_count = 5;
+        const char* device_extensions[] = { 
+			"VK_KHR_swapchain", 
+        	"VK_KHR_external_memory",
+            "VK_KHR_external_semaphore",
+#if defined(_WIN32)
+            "VK_KHR_external_memory_win32",
+            "VK_KHR_external_semaphore_win32"
+#elif defined(__linux__) || defined(__APPLE__)
+            "VK_KHR_external_memory_fd",
+            "VK_KHR_external_semaphore_fd"
+#endif
+        };
         const float queue_priority[] = { 1.0f };
         VkDeviceQueueCreateInfo queue_info[1] = {};
         queue_info[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -380,8 +391,17 @@ void App::initialize()
 	    throw std::runtime_error("GLFW: Vulkan not supported");
 
     uint32_t extensions_count = 0;
-    const char** extensions = glfwGetRequiredInstanceExtensions(&extensions_count);
-    SetupVulkan(extensions, extensions_count);
+    const char** glfw_extensions = glfwGetRequiredInstanceExtensions(&extensions_count);
+
+    auto extensions = std::vector(glfw_extensions, glfw_extensions + extensions_count);
+
+    extensions.push_back("VK_EXT_debug_report");
+    extensions.push_back("VK_KHR_get_physical_device_properties2");
+    extensions.push_back("VK_KHR_external_memory_capabilities");
+    extensions.push_back("VK_KHR_external_semaphore_capabilities");
+
+    //const char** extensions = glfwGetRequiredInstanceExtensions(&extensions_count);
+    SetupVulkan(extensions.data(), extensions_count);
 
     // Create Window Surface
     VkSurfaceKHR surface;

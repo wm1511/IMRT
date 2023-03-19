@@ -2,6 +2,8 @@
 #include "Frame.hpp"
 
 #include "../imgui/imgui_impl_vulkan.h"
+#include "Windows.h"
+#include "vulkan/vulkan_win32.h"
 
 static uint32_t GetDeviceMemoryType(const VkMemoryPropertyFlags properties, const uint32_t type_bits)
 {
@@ -31,12 +33,11 @@ Frame::~Frame()
 void Frame::allocate_memory()
 {
 	const VkDevice device = App::get_device();
-	constexpr VkFormat image_format = VK_FORMAT_R32G32B32A32_SFLOAT;
 
 	VkImageCreateInfo image_info = {};
 	image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	image_info.imageType = VK_IMAGE_TYPE_2D;
-	image_info.format = image_format;
+	image_info.format = VK_FORMAT_R32G32B32A32_SFLOAT;
 	image_info.extent.width = width_;
 	image_info.extent.height = height_;
 	image_info.extent.depth = 1;
@@ -44,28 +45,55 @@ void Frame::allocate_memory()
 	image_info.arrayLayers = 1;
 	image_info.samples = VK_SAMPLE_COUNT_1_BIT;
 	image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-	image_info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	// Sampled needed to display image properly
+	image_info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+	VkExternalMemoryImageCreateInfoKHR external_memory_image_info = {};
+	external_memory_image_info.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHR;
+
+#if defined(_WIN32)
+            external_memory_image_info.handleTypes |= VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
+#elif defined(__linux__) || defined(__APPLE__)
+            external_memory_image_info.handleTypes |= VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR;
+#endif
+
+	image_info.pNext = &external_memory_image_info;
+
 	if (vkCreateImage(device, &image_info, nullptr, &image_) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create image");
 
 	VkMemoryRequirements requirements;
 	vkGetImageMemoryRequirements(device, image_, &requirements);
+
 	VkMemoryAllocateInfo allocate_info = {};
 	allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocate_info.allocationSize = requirements.size;
 	allocate_info.memoryTypeIndex = GetDeviceMemoryType(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, requirements.memoryTypeBits);
+
+    VkExportMemoryAllocateInfoKHR export_memory_info = {};
+    export_memory_info.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR;
+
+#if defined(_WIN32)
+            export_memory_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
+#elif defined(__linux__) || defined(__APPLE__)
+            export_memory_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR;
+#endif
+
+	allocate_info.pNext = &export_memory_info;
+
 	if (vkAllocateMemory(device, &allocate_info, nullptr, &memory_) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate image memory");
-	if (vkBindImageMemory(device, image_, memory_, 0 != VK_SUCCESS))
+
+	if (vkBindImageMemory(device, image_, memory_, 0) != VK_SUCCESS)
 		throw std::runtime_error("Failed to bind memory to image");
 
 	VkImageViewCreateInfo image_view_info = {};
 	image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	image_view_info.image = image_;
 	image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	image_view_info.format = image_format;
+	image_view_info.format = VK_FORMAT_R32G32B32A32_SFLOAT;
 	image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	image_view_info.subresourceRange.levelCount = 1;
 	image_view_info.subresourceRange.layerCount = 1;
@@ -136,7 +164,7 @@ void Frame::set_data(const void* data)
 			throw std::runtime_error("Failed to bind memory to staging buffer");
 	}
 
-	char* map = nullptr;
+	float* map = nullptr;
 	if (vkMapMemory(device, staging_buffer_memory_, 0, required_memory_size_, 0, reinterpret_cast<void**>(&map)) != VK_SUCCESS)
 		throw std::runtime_error("Failed to map staging buffer memory to be GPU-readable");
 	memcpy(map, data, staging_buffer_size);
@@ -188,4 +216,47 @@ void Frame::set_data(const void* data)
 	                     0, 0, nullptr, 0, nullptr, 1, &usage_barrier);
 
 	App::flush_command_buffer(command_buffer);
+}
+
+int Frame::get_image_memory_handle() const
+{
+	const VkDevice device = App::get_device();
+	
+	
+#if defined(_WIN32)
+	HANDLE handle;
+
+	VkMemoryGetWin32HandleInfoKHR handle_info = {};
+	handle_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
+	handle_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+	handle_info.memory = memory_;
+
+	const auto vkGetMemoryWin32HandleKHR = (PFN_vkGetMemoryWin32HandleKHR) vkGetDeviceProcAddr(device, "vkGetMemoryWin32HandleKHR");
+
+    if (!vkGetMemoryWin32HandleKHR)
+        throw std::runtime_error("Failed to obtain vkGetMemoryWin32HandleKHR function pointer");
+
+    if (vkGetMemoryWin32HandleKHR(device, &handle_info, &handle) != VK_SUCCESS)
+		throw std::runtime_error("Failed to execute vkGetMemoryWin32HandleKHR");
+
+	//return handle;
+
+#elif defined(__linux__) || defined(__APPLE__)
+	int handle = -1;
+
+	VkMemoryGetFdInfoKHR handle_info = {};
+	handle_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+	handle_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR;
+	handle_info.memory = memory_;
+
+	const auto vkGetMemoryFdKHR = (PFN_vkGetMemoryFdKHR) vkGetDeviceProcAddr(device, "vkGetMemoryFdKHR");
+
+    if (!vkGetMemoryFdKHR)
+        throw std::runtime_error("Failed to obtain vkGetMemoryFdKHR function pointer");
+
+    if (vkGetMemoryFdKHR(device, &handle_info, &handle) != VK_SUCCESS)
+		throw std::runtime_error("Failed to execute vkGetMemoryFdKHR");
+
+	return handle;
+#endif
 }
