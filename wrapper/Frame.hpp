@@ -4,7 +4,7 @@
 class Frame
 {
 public:
-	Frame(uint32_t width, uint32_t height, const void* data = nullptr);
+	Frame(uint32_t width, uint32_t height);
 	Frame(const Frame&) = delete;
 	Frame(Frame&&) = delete;
 	Frame& operator= (const Frame&) = delete;
@@ -14,7 +14,7 @@ public:
 	void set_data(const void* data);
 
 	[[nodiscard]] VkDescriptorSet get_descriptor_set() const { return descriptor_set_; }
-	[[nodiscard]] int get_image_memory_handle() const;
+	[[nodiscard]] int64_t get_image_memory_handle() const;
 
 	[[nodiscard]] uint32_t get_width() const { return width_; }
 	[[nodiscard]] uint32_t get_height() const { return height_; }

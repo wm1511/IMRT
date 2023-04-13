@@ -30,7 +30,6 @@ __global__ void render_pixel_progressive(float4* frame_buffer, float4* accumulat
 	const float u = ((float)i + pcg(&local_random_state)) / (float)max_x;
 	const float v = ((float)j + pcg(&local_random_state)) / (float)max_y;
 	const Ray ray = (*camera)->cast_ray(&local_random_state, u, v);
-	//const Ray ray = (*camera)->cast_ray(i, j, &local_random_state);
     const float3 color = sqrt(calculate_color(ray, world, sky_info, render_info.max_depth, &local_random_state));
 
 	accumulation_buffer[pixel_index] += make_float4(color, 1.0f);
@@ -50,7 +49,6 @@ __global__ void render_pixel_static(float4* frame_buffer, Camera** camera, World
 	const float u = ((float)i + pcg(&local_random_state)) / (float)max_x;
 	const float v = ((float)j + pcg(&local_random_state)) / (float)max_y;
 	const Ray ray = (*camera)->cast_ray(&local_random_state, u, v);
-    //const Ray ray = (*camera)->cast_ray(i, j, &local_random_state);
     const float3 color = sqrt(calculate_color(ray, world, sky_info, render_info.max_depth, &local_random_state));
 
 	frame_buffer[pixel_index] += make_float4(color, 1.0f) / (float)render_info.samples_per_pixel;
@@ -78,13 +76,6 @@ __global__ void update_camera(Camera** camera, const RenderInfo render_info)
 			render_info.fov,
 	        render_info.aperture,
 	        render_info.focus_distance);
-
-	/*(*camera)->update(
-			render_info.camera_rotation,
-	        render_info.camera_position,
-			render_info.aperture,
-	        render_info.focus_distance,
-	        render_info.fov);*/
 }
 
 __global__ void update_texture(World** world, const int32_t index, TextureInfo** texture_data)
@@ -121,16 +112,6 @@ __global__ void create_camera(Camera** camera, const RenderInfo render_info)
 	            (float)render_info.width / (float)render_info.height,
 	            render_info.aperture,
 	            render_info.focus_distance);
-    {
-	    /**camera = new Camera(
-            render_info.camera_rotation,
-            render_info.camera_position,
-            (float)render_info.width, 
-            (float)render_info.height, 
-            render_info.aperture, 
-            render_info.focus_distance, 
-            render_info.fov);*/
-    }
 }
 
 __global__ void delete_world(World** world)
@@ -155,7 +136,6 @@ CudaRenderer::CudaRenderer(const RenderInfo* render_info, const WorldInfo* world
     blocks_ = dim3((width + thread_x - 1) / thread_x, (height + thread_y - 1) / thread_y);
     threads_ = dim3(thread_x, thread_y);
 
-    CCE(cudaMalloc((void**)&frame_buffer_, sizeof(float4) * width * height));
     CCE(cudaMalloc((void**)&accumulation_buffer_, sizeof(float4) * width * height));
     CCE(cudaMalloc((void**)&xoshiro_initial_, sizeof(uint4) * width * height));
     CCE(cudaMalloc((void**)&xoshiro_state_, sizeof(uint4) * width * height));
@@ -196,14 +176,12 @@ CudaRenderer::~CudaRenderer()
     CCE(cudaFree(xoshiro_state_));
     CCE(cudaFree(xoshiro_initial_));
     CCE(cudaFree(accumulation_buffer_));
-    CCE(cudaFree(frame_buffer_));
     cudaDeviceReset();
 }
 
-void CudaRenderer::render(float* image_data)
+float* CudaRenderer::render()
 {
-    const uint32_t width = render_info_->width;
-    const uint32_t height = render_info_->height;
+    fetch_frame_buffer();
 
     if (render_info_->render_mode == PROGRESSIVE)
 	    render_pixel_progressive<<<blocks_, threads_>>>(frame_buffer_, accumulation_buffer_, camera_, world_, *sky_info_, *render_info_, xoshiro_state_);
@@ -214,8 +192,9 @@ void CudaRenderer::render(float* image_data)
 	CCE(cudaGetLastError());
     CCE(cudaDeviceSynchronize());
 
-    if (render_info_->frame_needs_display)
-		CCE(cudaMemcpy(image_data, frame_buffer_, sizeof(float4) * width * height, cudaMemcpyDeviceToHost));
+    CCE(cudaFree(frame_buffer_));
+
+    return nullptr;
 }
 
 void CudaRenderer::refresh_buffer()
@@ -234,7 +213,7 @@ void CudaRenderer::refresh_camera()
     CCE(cudaDeviceSynchronize());
 }
 
-void CudaRenderer::refresh_texture(int32_t index) const
+void CudaRenderer::refresh_texture(const int32_t index) const
 {
     const TextureInfo* texture = world_info_->textures_[index];
 
@@ -318,14 +297,12 @@ void CudaRenderer::recreate_image()
     blocks_ = dim3((width + thread_x - 1) / thread_x, (height + thread_y - 1) / thread_y);
     threads_ = dim3(thread_x, thread_y);
 
-    CCE(cudaFree(frame_buffer_));
     CCE(cudaFree(xoshiro_state_));
     CCE(cudaFree(xoshiro_initial_));
     CCE(cudaFree(accumulation_buffer_));
     CCE(cudaMalloc((void**)&accumulation_buffer_, sizeof(float4) * width * height));
     CCE(cudaMalloc((void**)&xoshiro_initial_, sizeof(uint4) * width * height));
     CCE(cudaMalloc((void**)&xoshiro_state_, sizeof(uint4) * width * height));
-    CCE(cudaMalloc((void**)&frame_buffer_, sizeof(float4) * width * height));
 
     random_init<<<blocks_, threads_>>>(width, height, xoshiro_initial_);
     CCE(cudaGetLastError());
@@ -499,4 +476,28 @@ void CudaRenderer::deallocate_world() const
     delete[] host_object_data_;
     delete[] host_material_data_;
     delete[] host_texture_data_;
+}
+
+void CudaRenderer::fetch_frame_buffer()
+{
+    cudaExternalMemoryHandleDesc handle_desc = {};
+
+#if defined(_WIN32)
+    handle_desc.type = cudaExternalMemoryHandleTypeOpaqueWin32;
+    handle_desc.handle.win32.handle = (void*)render_info_->image_handle;
+#elif defined(__linux__) || defined(__APPLE__)
+    handle_desc.type = cudaExternalMemoryHandleTypeOpaqueFd;
+    handle_desc.handle.fd = image_handle;
+#endif
+
+    handle_desc.size = render_info_->image_size;
+
+    cudaExternalMemory_t external_memory = {};
+    CCE(cudaImportExternalMemory(&external_memory, &handle_desc));
+
+    cudaExternalMemoryBufferDesc buffer_desc = {};
+    buffer_desc.size = render_info_->image_size;
+    buffer_desc.offset = 0;
+
+    CCE(cudaExternalMemoryGetMappedBuffer((void**)&frame_buffer_, external_memory, &buffer_desc));
 }

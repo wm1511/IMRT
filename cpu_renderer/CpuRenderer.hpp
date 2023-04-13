@@ -18,7 +18,7 @@ public:
 	CpuRenderer& operator=(const CpuRenderer&) = delete;
 	CpuRenderer& operator=(CpuRenderer&&) = delete;
 
-	void render(float* image_data) override;
+	float* render() override;
 	void refresh_buffer() override;
 	void refresh_camera() override;
 	void refresh_object(int32_t index) const override;
@@ -31,10 +31,14 @@ public:
 	void deallocate_world() const override;
 
 private:
+	void random_init() const;
+	void random_refresh() const;
+
 	const RenderInfo* render_info_;
 	const WorldInfo* world_info_;
 	SkyInfo* sky_info_;
 
+	float* frame_data_ = nullptr;
 	uint4* xoshiro_state_ = nullptr, * xoshiro_initial_ = nullptr;
     float4* accumulation_buffer_ = nullptr;
     TextureInfo** texture_data_ = nullptr;
@@ -42,7 +46,4 @@ private:
     ObjectInfo** object_data_ = nullptr;
     World* world_ = nullptr;
     Camera* camera_ = nullptr;
-
-	void random_init() const;
-	void random_refresh() const;
 };

@@ -7,6 +7,7 @@ CpuRenderer::CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_i
 {
 	const uint64_t image_size = (uint64_t)render_info_->width * render_info_->height;
 
+	frame_data_ = new float[4 * image_size];
 	accumulation_buffer_ = new float4[image_size];
 	xoshiro_initial_ = new uint4[image_size];
 	xoshiro_state_ = new uint4[image_size];
@@ -22,15 +23,6 @@ CpuRenderer::CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_i
 			(float)render_info_->width / (float)render_info_->height,
 			render_info_->aperture,
 			render_info_->focus_distance);
-
-	/*camera_ = new Camera(
-			render_info->camera_rotation,
-            render_info->camera_position,
-            (float)render_info->width, 
-            (float)render_info->height, 
-            render_info->aperture, 
-            render_info->focus_distance, 
-            render_info->fov);*/
 
 	if (sky_info_->buffered_hdr_data)
 	{
@@ -52,14 +44,15 @@ CpuRenderer::~CpuRenderer()
 	delete[] xoshiro_state_;
 	delete[] xoshiro_initial_;
 	delete[] accumulation_buffer_;
+	delete[] frame_data_;
 }
 
-void CpuRenderer::render(float* image_data)
+float* CpuRenderer::render()
 {
 	const int32_t width = (int32_t)render_info_->width;
 	const int32_t height = (int32_t)render_info_->height;
 
-	memset(image_data, 0, sizeof(float4) * width * height);
+	memset(frame_data_, 0, sizeof(float4) * width * height);
 
 	if (render_info_->render_mode == PROGRESSIVE)
 	{
@@ -76,14 +69,13 @@ void CpuRenderer::render(float* image_data)
 				const float u = ((float)x + pcg(&local_random_state)) / (float)width;
 				const float v = ((float)y + pcg(&local_random_state)) / (float)height;
 				const Ray ray = camera_->cast_ray(&local_random_state, u, v);
-				//const Ray ray = (*camera_).cast_ray(x, y, &local_random_state);
 				const float3 color = sqrt(calculate_color(ray, &world_, *sky_info_, render_info_->max_depth, &local_random_state));
 
 				accumulation_buffer_[pixel_index] += make_float4(color, 1.0f);
-				image_data[pixel_index << 2] = accumulation_buffer_[pixel_index].x / (float)render_info_->frames_since_refresh;
-				image_data[(pixel_index << 2) + 1] = accumulation_buffer_[pixel_index].y / (float)render_info_->frames_since_refresh;
-				image_data[(pixel_index << 2) + 2] = accumulation_buffer_[pixel_index].z / (float)render_info_->frames_since_refresh;
-				image_data[(pixel_index << 2) + 3] = accumulation_buffer_[pixel_index].w / (float)render_info_->frames_since_refresh;
+				frame_data_[pixel_index << 2] = accumulation_buffer_[pixel_index].x / (float)render_info_->frames_since_refresh;
+				frame_data_[(pixel_index << 2) + 1] = accumulation_buffer_[pixel_index].y / (float)render_info_->frames_since_refresh;
+				frame_data_[(pixel_index << 2) + 2] = accumulation_buffer_[pixel_index].z / (float)render_info_->frames_since_refresh;
+				frame_data_[(pixel_index << 2) + 3] = accumulation_buffer_[pixel_index].w / (float)render_info_->frames_since_refresh;
 			}
 		}
 	}
@@ -104,17 +96,18 @@ void CpuRenderer::render(float* image_data)
 					const float u = ((float)x + pcg(&local_random_state)) / (float)width;
 					const float v = ((float)y + pcg(&local_random_state)) / (float)height;
 					const Ray ray = camera_->cast_ray(&local_random_state, u, v);
-					//const Ray ray = (*camera_).cast_ray(x, y, &local_random_state);
 					const float3 color = sqrt(calculate_color(ray, &world_, *sky_info_, render_info_->max_depth, &local_random_state));
 
-					image_data[pixel_index << 2] += color.x / (float)render_info_->samples_per_pixel;
-					image_data[(pixel_index << 2) + 1] += color.y / (float)render_info_->samples_per_pixel;
-					image_data[(pixel_index << 2) + 2] += color.z / (float)render_info_->samples_per_pixel;
-					image_data[(pixel_index << 2) + 3] += 1.0f / (float)render_info_->samples_per_pixel;
+					frame_data_[pixel_index << 2] += color.x / (float)render_info_->samples_per_pixel;
+					frame_data_[(pixel_index << 2) + 1] += color.y / (float)render_info_->samples_per_pixel;
+					frame_data_[(pixel_index << 2) + 2] += color.z / (float)render_info_->samples_per_pixel;
+					frame_data_[(pixel_index << 2) + 3] += 1.0f / (float)render_info_->samples_per_pixel;
 				}
 			}
 		}
 	}
+
+	return frame_data_;
 }
 
 void CpuRenderer::refresh_buffer()
@@ -134,13 +127,6 @@ void CpuRenderer::refresh_camera()
 		render_info_->fov,
 		render_info_->aperture,
 		render_info_->focus_distance);
-
-	/*camera_->update(
-			render_info_->camera_rotation,
-	        render_info_->camera_position,
-			render_info_->aperture,
-	        render_info_->focus_distance,
-	        render_info_->fov);*/
 }
 
 void CpuRenderer::refresh_object(const int32_t index) const
@@ -168,15 +154,6 @@ void CpuRenderer::recreate_camera()
 			(float)render_info_->width / (float)render_info_->height,
 			render_info_->aperture,
 			render_info_->focus_distance);
-
-	/*camera_ = new Camera(
-			render_info_->camera_rotation,
-            render_info_->camera_position,
-            (float)render_info_->width, 
-            (float)render_info_->height, 
-            render_info_->aperture, 
-            render_info_->focus_distance, 
-            render_info_->fov);*/
 }
 
 void CpuRenderer::recreate_image()
@@ -186,6 +163,8 @@ void CpuRenderer::recreate_image()
 	delete[] xoshiro_state_;
 	delete[] xoshiro_initial_;
 	delete[] accumulation_buffer_;
+	delete[] frame_data_;
+	frame_data_ = new float[4 * image_size];
 	accumulation_buffer_ = new float4[image_size];
 	xoshiro_initial_ = new uint4[image_size];
 	xoshiro_state_ = new uint4[image_size];

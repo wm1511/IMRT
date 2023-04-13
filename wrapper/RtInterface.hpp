@@ -32,13 +32,13 @@ private:
 	void edit_sky();
 	void save_image() const;
 
-	std::unique_ptr<Frame> image_ = nullptr;
+	std::unique_ptr<Frame> frame_ = nullptr;
+	float* frame_data_ = nullptr;
 	std::unique_ptr<IRenderer> renderer_ = nullptr;
 	RenderInfo render_info_{};
 	WorldInfo world_info_{};
 	SkyInfo sky_info_{};
 
-	float* image_data_ = nullptr;
 	float camera_movement_speed_ = 0.002f, camera_rotation_speed_ = 0.002f;
 	uint64_t render_time_ = 0, frames_rendered_ = 0;
 	bool is_rendering_ = false;

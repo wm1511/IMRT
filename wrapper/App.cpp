@@ -2,10 +2,6 @@
 #include "stdafx.h"
 #include "App.hpp"
 
-#include "../imgui/imgui.h"
-#include "../imgui/imgui_impl_glfw.h"
-#include "../imgui/imgui_impl_vulkan.h"
-
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
 // To link with VS2010-era libraries, VS2015+ requires linking with legacy_stdio_definitions.lib, which we do using this pragma.
 // Your own project should not be affected, as you are likely to link with a newer binary of GLFW that is adequate for your version of Visual Studio.
@@ -655,6 +651,7 @@ VkCommandBuffer App::get_command_buffer()
 
 	VkCommandBuffer& command_buffer = g_allocatedCommandBuffers[wd->FrameIndex].emplace_back();
 	auto err = vkAllocateCommandBuffers(g_Device, &cmd_buf_allocate_info, &command_buffer);
+    check_vk_result(err);
 
 	VkCommandBufferBeginInfo begin_info = {};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

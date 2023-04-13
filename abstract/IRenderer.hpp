@@ -1,14 +1,12 @@
 #pragma once
 #include <cstdint>
 
-class CudaRenderer;
-
 class IRenderer
 {
 public:
 	virtual ~IRenderer() = default;
 
-	virtual void render(float* image_data) = 0;
+	virtual float* render() = 0;
 	virtual void refresh_buffer() = 0;
 	virtual void refresh_camera() = 0;
 	virtual void refresh_object(int32_t index) const = 0;

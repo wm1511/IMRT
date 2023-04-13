@@ -17,7 +17,7 @@ public:
 	CudaRenderer& operator=(const CudaRenderer&) = delete;
 	CudaRenderer& operator=(CudaRenderer&&) = delete;
 
-	void render(float* image_data) override;
+	float* render() override;
 	void refresh_buffer() override;
 	void refresh_camera() override;
 	void refresh_texture(int32_t index) const override;
@@ -30,6 +30,8 @@ public:
 	void deallocate_world() const override;
 
 private:
+	void fetch_frame_buffer();
+
 	const RenderInfo* render_info_;
 	const WorldInfo* world_info_;
 	SkyInfo* sky_info_;

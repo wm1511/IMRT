@@ -5,7 +5,6 @@
 
 #include "stb_image.h"
 #include "stb_image_write.h"
-#include "../imgui/imgui.h"
 
 // Intellisense doesn't work without this include
 #include <filesystem>
@@ -116,6 +115,31 @@ void RtInterface::draw()
 		const bool starting_disabled = is_rendering_;
 		if (starting_disabled)
 			ImGui::BeginDisabled();
+
+		if (is_rendering_)
+		{
+			if (!frame_ || render_info_.width != frame_->get_width() || render_info_.height != frame_->get_height())
+			{
+				frame_ = std::make_unique<Frame>(render_info_.width, render_info_.height);
+
+				render_info_.image_handle = frame_->get_image_memory_handle();
+				render_info_.image_size = sizeof(float) * 4 * render_info_.height * render_info_.width;
+				
+				renderer_->recreate_image();
+				renderer_->recreate_camera();
+				renderer_->refresh_buffer();
+				render_info_.frames_since_refresh = 0;
+			}
+
+			frames_rendered_++;
+			render_info_.frames_since_refresh++;
+
+			frame_data_ = renderer_->render();
+
+			if (frame_data_)
+				frame_->set_data(frame_data_);
+		}
+
 		if (ImGui::Button("CPU render", {ImGui::GetContentRegionAvail().x / 2, 0}))
 		{
 			frames_rendered_ = 0;
@@ -138,30 +162,6 @@ void RtInterface::draw()
 		{
 			renderer_.reset();
 			is_rendering_ = false;
-		}
-
-		if (is_rendering_)
-		{
-			if (!image_ || render_info_.width != image_->get_width() || render_info_.height != image_->get_height())
-			{
-				image_ = std::make_unique<Frame>(render_info_.width, render_info_.height);
-				delete[] image_data_;
-				image_data_ = new float[(uint64_t)4 * render_info_.height * render_info_.width];
-				renderer_->recreate_image();
-				renderer_->recreate_camera();
-				renderer_->refresh_buffer();
-				render_info_.frames_since_refresh = 0;
-			}
-
-			frames_rendered_++;
-			render_info_.frames_since_refresh++;
-
-			render_info_.frame_needs_display = fmod(log2f((float)render_info_.frames_since_refresh), 1) == 0.0f;
-
-			renderer_->render(image_data_);
-
-			if (render_info_.frame_needs_display)
-				image_->set_data(image_data_);
 		}
 
 		ImGui::Text("Last render time: %llu ms", render_time_);
@@ -192,9 +192,9 @@ void RtInterface::draw()
 		render_info_.width = (uint32_t)ImGui::GetContentRegionAvail().x;
 		render_info_.height = (uint32_t)ImGui::GetContentRegionAvail().y;
 
-		if (image_) 
-			ImGui::Image((ImU64)image_->get_descriptor_set(),
-				{(float)image_->get_width(), (float)image_->get_height()},
+		if (frame_) 
+			ImGui::Image((ImU64)frame_->get_descriptor_set(),
+				{(float)frame_->get_width(), (float)frame_->get_height()},
 				ImVec2(1, 0), ImVec2(0, 1));
 
 		if (is_rendering_ && ImGui::IsWindowFocused())
@@ -247,17 +247,14 @@ void RtInterface::move_camera()
 
 	if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
 	{
-		render_info_.camera_rotation += make_float2(ImGui::GetMouseDragDelta().x, ImGui::GetMouseDragDelta().y) * camera_rotation_speed_;
-		render_info_.camera_rotation.x = fmodf(render_info_.camera_rotation.x, k2Pi);
-		render_info_.camera_rotation.y = clamp(render_info_.camera_rotation.y, -kHalfPi, kHalfPi);
-		/*render_info_.angle_x += ImGui::GetMouseDragDelta().x * camera_rotation_speed_;
+		render_info_.angle_x += ImGui::GetMouseDragDelta().x * camera_rotation_speed_;
 		render_info_.angle_y += ImGui::GetMouseDragDelta().y * camera_rotation_speed_;
 		render_info_.angle_x = fmodf(render_info_.angle_x, k2Pi);
-		render_info_.angle_y = clamp(render_info_.angle_y, -kHalfPi, kHalfPi);*/
-		render_info_.camera_direction = normalize(make_float3(
-			cos(render_info_.camera_rotation.x) * -sin(render_info_.camera_rotation.x),
-			-sin(render_info_.camera_rotation.y),
-			-cos(render_info_.camera_rotation.x) * cos(render_info_.camera_rotation.y)));
+		render_info_.angle_y = clamp(render_info_.angle_y, -kHalfPi, kHalfPi);
+		render_info_.camera_direction = make_float3(
+			cos(render_info_.angle_y) * -sin(render_info_.angle_x),
+			-sin(render_info_.angle_y),
+			-cos(render_info_.angle_x) * cos(render_info_.angle_y));
 		ImGui::ResetMouseDragDelta();
 		is_moved =  true;
 	}
@@ -325,13 +322,13 @@ void RtInterface::edit_camera()
 		}
 		if (ImGui::TreeNode("Angle offset"))
 		{
-			is_edited |= ImGui::SliderAngle("degrees x", &render_info_.camera_rotation.x, 0.0f, 360.0f, "%.3f");
-			is_edited |= ImGui::SliderAngle("degrees y", &render_info_.camera_rotation.y, -90.0f, 90.0f, "%.3f");
+			is_edited |= ImGui::SliderAngle("degrees x", &render_info_.angle_x, 0.0f, 360.0f, "%.3f");
+			is_edited |= ImGui::SliderAngle("degrees y", &render_info_.angle_y, -90.0f, 90.0f, "%.3f");
 
 			render_info_.camera_direction = normalize(make_float3(
-			cos(render_info_.camera_rotation.x) * -sin(render_info_.camera_rotation.x),
-			-sin(render_info_.camera_rotation.y),
-			-cos(render_info_.camera_rotation.x) * cos(render_info_.camera_rotation.y)));
+			cos(render_info_.angle_x) * -sin(render_info_.angle_x),
+			-sin(render_info_.angle_y),
+			-cos(render_info_.angle_x) * cos(render_info_.angle_y)));
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Vertical field of view"))
@@ -1104,18 +1101,18 @@ void RtInterface::save_image() const
 
 		if (ImGui::Button("Save", {ImGui::GetContentRegionAvail().x, 0}))
 		{
-			if (image_data_)
+			/*if (frame_data_)
 			{
 				const auto output_path = std::filesystem::path("output") / buffer;
 
 				if (format == 0)
-					stbi_write_hdr((output_path.u8string() + ".hdr").c_str(), (int32_t)render_info_.width, (int32_t)render_info_.height, 4, image_data_);
+					stbi_write_hdr((output_path.u8string() + ".hdr").c_str(), (int32_t)render_info_.width, (int32_t)render_info_.height, 4, frame_data_);
 				else
 				{
 					const uint32_t image_size = 4 * render_info_.width * render_info_.height;
 					const auto data = new uint8_t[image_size];
 					for (uint32_t i = 0; i <= image_size; i++)
-						data[i] = (uint8_t)(clamp(image_data_[i], 0.0f, 1.0f) * 255.99f);
+						data[i] = (uint8_t)(clamp(frame_data_[i], 0.0f, 1.0f) * 255.99f);
 
 					if (format == 1)
 						stbi_write_png((output_path.u8string() + ".png").c_str(), (int32_t)render_info_.width, (int32_t)render_info_.height, 4, data, 4 * render_info_.width);
@@ -1129,7 +1126,7 @@ void RtInterface::save_image() const
 					delete[] data;
 				}
 			}
-			else
+			else*/
 				ImGui::OpenPopup("Saving failed");
 		}
 

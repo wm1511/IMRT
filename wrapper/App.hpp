@@ -1,13 +1,7 @@
 #pragma once
 #include "../abstract/IDrawable.hpp"
 
-#define GLFW_INCLUDE_NONE
-#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-
-#ifdef _WIN32
-#define VK_USE_PLATFORM_WIN32_KHR
-#endif
 #include <vulkan/vulkan.h>
 
 struct AppInfo
@@ -50,7 +44,7 @@ private:
 	void initialize();
 	void terminate();
 
-	AppInfo info_;
-	GLFWwindow* window_;
-	std::unique_ptr<IDrawable> app_interface_;
+	AppInfo info_{};
+	GLFWwindow* window_ = nullptr;
+	std::unique_ptr<IDrawable> app_interface_ = nullptr;
 };
