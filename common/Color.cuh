@@ -61,7 +61,7 @@ __host__ __device__ inline float3 calculate_color(const Ray& ray, World** world,
     for (int32_t i = 0; i < max_depth; i++)
     {
 	    Intersection intersection{};
-        if ((*world)->intersect(current_ray, intersection, random_state))
+        if ((*world)->intersect(current_ray, intersection))
         {
             float3 absorption;
             if (intersection.material->scatter(current_ray, intersection, absorption, random_state))

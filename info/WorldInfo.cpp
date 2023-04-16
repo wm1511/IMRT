@@ -14,7 +14,8 @@ WorldInfo::WorldInfo()
 	materials_[2] = new SpecularInfo(0.1f, 1);
 	materials_[3] = new DiffuseInfo(2);
 	objects_[0] = new SphereInfo({1.0f, 0.0f, -1.0f}, 0.5f, 0);
-	objects_[1] = new SphereInfo({0.0f, 0.0f, -1.0f}, 0.5f, 1);
+	//objects_[1] = new SphereInfo({0.0f, 0.0f, -1.0f}, 0.5f, 1);
+	objects_[1] = new CylinderInfo({0.0f, 0.5f, 0.0f}, {0.0f, -0.5f, 0.0f}, 0.5f, 0);
 	objects_[2] = new SphereInfo({-1.0f, 0.0f, -1.0f}, 0.5f, 2);
 	objects_[3] = new SphereInfo({0.0f, -100.5f, -1.0f}, 100.0f, 3);
 }

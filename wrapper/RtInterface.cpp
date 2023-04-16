@@ -116,30 +116,6 @@ void RtInterface::draw()
 		if (starting_disabled)
 			ImGui::BeginDisabled();
 
-		if (is_rendering_)
-		{
-			if (!frame_ || render_info_.width != frame_->get_width() || render_info_.height != frame_->get_height())
-			{
-				frame_ = std::make_unique<Frame>(render_info_.width, render_info_.height);
-
-				render_info_.image_handle = frame_->get_image_memory_handle();
-				render_info_.image_size = sizeof(float) * 4 * render_info_.height * render_info_.width;
-				
-				renderer_->recreate_image();
-				renderer_->recreate_camera();
-				renderer_->refresh_buffer();
-				render_info_.frames_since_refresh = 0;
-			}
-
-			frames_rendered_++;
-			render_info_.frames_since_refresh++;
-
-			frame_data_ = renderer_->render();
-
-			if (frame_data_)
-				frame_->set_data(frame_data_);
-		}
-
 		if (ImGui::Button("CPU render", {ImGui::GetContentRegionAvail().x / 2, 0}))
 		{
 			frames_rendered_ = 0;
@@ -162,6 +138,30 @@ void RtInterface::draw()
 		{
 			renderer_.reset();
 			is_rendering_ = false;
+		}
+
+		if (is_rendering_)
+		{
+			if (!frame_ || render_info_.width != frame_->get_width() || render_info_.height != frame_->get_height())
+			{
+				frame_ = std::make_unique<Frame>(render_info_.width, render_info_.height);
+
+				render_info_.image_handle = frame_->get_image_memory_handle();
+				render_info_.image_size = sizeof(float) * 4 * render_info_.height * render_info_.width;
+				
+				renderer_->recreate_image();
+				renderer_->recreate_camera();
+				renderer_->refresh_buffer();
+				render_info_.frames_since_refresh = 0;
+			}
+
+			frames_rendered_++;
+			render_info_.frames_since_refresh++;
+
+			frame_data_ = renderer_->render();
+
+			if (frame_data_)
+				frame_->set_data(frame_data_);
 		}
 
 		ImGui::Text("Last render time: %llu ms", render_time_);
@@ -755,14 +755,12 @@ void RtInterface::add_object()
 		{
 			static Float3 new_cylinder_extreme_a{0.0f, 0.5f, 0.0f};
 			static Float3 new_cylinder_extreme_b{0.0f, -0.5f, 0.0f};
-			static Float3 new_cylinder_center{0.0f, 0.0f, 0.0f};
 			static float new_cylinder_radius{0.5f};
 
 			if (ImGui::TreeNode("Properties"))
 			{
 				ImGui::SliderFloat3("Extreme 1", new_cylinder_extreme_a.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				ImGui::SliderFloat3("Extreme 2", new_cylinder_extreme_b.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat3("Center", new_cylinder_center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				ImGui::SliderFloat("Radius", &new_cylinder_radius, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				ImGui::TreePop();
 			}
@@ -771,7 +769,7 @@ void RtInterface::add_object()
 			{
 				if (is_rendering_)
 					renderer_->deallocate_world();
-				world_info_.add_object(new CylinderInfo(new_cylinder_extreme_a.str, new_cylinder_extreme_b.str, new_cylinder_center.str, new_cylinder_radius, selected_material));
+				world_info_.add_object(new CylinderInfo(new_cylinder_extreme_a.str, new_cylinder_extreme_b.str, new_cylinder_radius, selected_material));
 				is_added = true;
 			}
 		}
@@ -779,7 +777,6 @@ void RtInterface::add_object()
 		{
 			static Float3 new_cone_extreme_a{0.0f, 0.5f, 0.0f};
 			static Float3 new_cone_extreme_b{0.0f, -0.5f, 0.0f};
-			static Float3 new_cone_center{0.0f, 0.0f, 0.0f};
 			static float new_cone_radius_a{0.1f};
 			static float new_cone_radius_b{0.5f};
 
@@ -787,7 +784,6 @@ void RtInterface::add_object()
 			{
 				ImGui::SliderFloat3("Extreme 1", new_cone_extreme_a.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				ImGui::SliderFloat3("Extreme 2", new_cone_extreme_b.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat3("Center", new_cone_center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				ImGui::SliderFloat("Radius 1", &new_cone_radius_a, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				ImGui::SliderFloat("Radius 2", &new_cone_radius_b, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				ImGui::TreePop();
@@ -797,7 +793,7 @@ void RtInterface::add_object()
 			{
 				if (is_rendering_)
 					renderer_->deallocate_world();
-				world_info_.add_object(new ConeInfo(new_cone_extreme_a.str, new_cone_extreme_b.str, new_cone_center.str, new_cone_radius_a, new_cone_radius_b, selected_material));
+				world_info_.add_object(new ConeInfo(new_cone_extreme_a.str, new_cone_extreme_b.str, new_cone_radius_a, new_cone_radius_b, selected_material));
 				is_added = true;
 			}
 		}
@@ -939,8 +935,6 @@ void RtInterface::edit_object()
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 						is_edited |= ImGui::SliderFloat3("Extreme 2", current_cylinder->extreme_b.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat3("Center", current_cylinder->center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 						is_edited |= ImGui::SliderFloat("Radius", &current_cylinder->radius, 0.0f, UINT8_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 					}
@@ -951,8 +945,6 @@ void RtInterface::edit_object()
 						is_edited |= ImGui::SliderFloat3("Extreme 1", current_cone->extreme_a.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 						is_edited |= ImGui::SliderFloat3("Extreme 2", current_cone->extreme_b.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat3("Center", current_cone->center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 						is_edited |= ImGui::SliderFloat("Radius 1", &current_cone->radius_a, 0.0f, UINT8_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);

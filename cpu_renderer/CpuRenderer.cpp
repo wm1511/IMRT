@@ -52,8 +52,6 @@ float* CpuRenderer::render()
 	const int32_t width = (int32_t)render_info_->width;
 	const int32_t height = (int32_t)render_info_->height;
 
-	memset(frame_data_, 0, sizeof(float4) * width * height);
-
 	if (render_info_->render_mode == PROGRESSIVE)
 	{
 #ifndef _DEBUG

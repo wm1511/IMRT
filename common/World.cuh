@@ -76,7 +76,7 @@ public:
 		delete[] textures_;
 	}
 
-	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection, uint32_t* random_state) const
+	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection) const
 	{
 		Intersection temp_intersection{};
 		bool intersected = false;
@@ -85,7 +85,7 @@ public:
 		{
 			//if (objects_[i]->bound().intersect(ray))
 			
-			if (objects_[i]->intersect(ray, temp_intersection, random_state))
+			if (objects_[i]->intersect(ray, temp_intersection))
 			{
 				intersected = true;
 				intersection = temp_intersection;

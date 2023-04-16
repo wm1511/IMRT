@@ -500,4 +500,5 @@ void CudaRenderer::fetch_frame_buffer()
     buffer_desc.offset = 0;
 
     CCE(cudaExternalMemoryGetMappedBuffer((void**)&frame_buffer_, external_memory, &buffer_desc));
+    CCE(cudaMemset(frame_buffer_, 0, render_info_->image_size));
 }

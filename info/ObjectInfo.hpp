@@ -64,20 +64,20 @@ struct PlaneInfo final : ObjectInfo
 struct CylinderInfo final : ObjectInfo
 {
 	CylinderInfo() = default;
-	CylinderInfo(const float3 extreme_a, const float3 extreme_b, const float3 center, const float radius, const int32_t material_info)
-		: ObjectInfo(CYLINDER, material_info), extreme_a{extreme_a}, extreme_b{extreme_b}, center{center}, radius(radius) {}
+	CylinderInfo(const float3 extreme_a, const float3 extreme_b, const float radius, const int32_t material_info)
+		: ObjectInfo(CYLINDER, material_info), extreme_a{extreme_a}, extreme_b{extreme_b}, radius(radius) {}
 
-	Float3 extreme_a{}, extreme_b{}, center{};
+	Float3 extreme_a{}, extreme_b{};
 	float radius{};
 };
 
 struct ConeInfo final : ObjectInfo
 {
 	ConeInfo() = default;
-	ConeInfo(const float3 extreme_a, const float3 extreme_b, const float3 center, const float radius_a, const float radius_b, const int32_t material_info)
-		: ObjectInfo(CONE, material_info), extreme_a{extreme_a}, extreme_b{extreme_b}, center{center}, radius_a(radius_a), radius_b(radius_b) {}
+	ConeInfo(const float3 extreme_a, const float3 extreme_b, const float radius_a, const float radius_b, const int32_t material_info)
+		: ObjectInfo(CONE, material_info), extreme_a{extreme_a}, extreme_b{extreme_b}, radius_a(radius_a), radius_b(radius_b) {}
 
-	Float3 extreme_a{}, extreme_b{}, center{};
+	Float3 extreme_a{}, extreme_b{};
 	float radius_a{}, radius_b{};
 };
 
