@@ -415,6 +415,38 @@ inline  __host__ __device__ float4 fmaxf(const float4 a, const float4 b, const f
     return make_float4(fmaxf(c.x, fmaxf(a.x,b.x)), fmaxf(c.y, fmaxf(a.y,b.y)), fmaxf(c.z, fmaxf(a.z,b.z)), fmaxf(c.w, fmaxf(a.w,b.w)));
 }
 
+// Maximal component
+inline __host__ __device__ float maxcomp(const float2 v)
+{
+    return fmaxf(v.x, v.y);
+}
+
+inline __host__ __device__ float maxcomp(const float3 v)
+{
+    return fmaxf(fmaxf(v.x, v.y), v.z);
+}
+
+inline __host__ __device__ float maxcomp(const float4 v)
+{
+    return fmaxf(fmaxf(fmaxf(v.x, v.y), v.z), v.w);
+}
+
+// Minimal component
+inline __host__ __device__ float mincomp(const float2 v)
+{
+    return fminf(v.x, v.y);
+}
+
+inline __host__ __device__ float mincomp(const float3 v)
+{
+    return fminf(fminf(v.x, v.y), v.z);
+}
+
+inline __host__ __device__ float mincomp(const float4 v)
+{
+    return fminf(fminf(fminf(v.x, v.y), v.z), v.w);
+}
+
 // Linear interpolation
 inline __device__ __host__ float lerp(const float a, const float b, const float t)
 {

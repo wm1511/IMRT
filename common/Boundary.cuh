@@ -10,62 +10,20 @@ public:
 		: min_(make_float3(fminf(p1.x, p2.x), fminf(p1.y, p2.y), fminf(p1.z, p2.z))),
           max_(make_float3(fmaxf(p1.x, p2.x), fmaxf(p1.y, p2.y), fmaxf(p1.z, p2.z))) {}
 
+	//A Ray-Box Intersection Algorithm and Efficient Dynamic Voxel Rendering
 	__host__ __device__ [[nodiscard]] bool intersect(const Ray& ray) const
 	{
-		float t0{kTMin}, t1{ray.t_max_};
+		const float3 inverse_direction = 1.0f / ray.direction_;
 
-		float inv_direction = 1.0f / ray.direction_.x;
-		float t_near = (min_.x - ray.origin_.x) * inv_direction;
-		float t_far = (max_.x - ray.origin_.x) * inv_direction;
+		const float3 t_lower = (min_ - ray.origin_) * inverse_direction;
+		const float3 t_upper = (max_ - ray.origin_) * inverse_direction;
 
-        if (t_near > t_far)
-        {
-	        const float temp = t0;
-			t0 = t1;
-			t1 = temp;
-        }
+		const float4 t_mins = make_float4(fminf(t_lower, t_upper), kTMin);
+		const float4 t_maxes = make_float4(fmaxf(t_lower, t_upper), FLT_MAX);
 
-		t0 = t_near > t0 ? t_near : t0;
-		t1 = t_far < t1 ? t_far : t1;
-
-		if (t0 > t1)
-			return false;
-
-		inv_direction = 1.0f / ray.direction_.y;
-		t_near = (min_.y - ray.origin_.y) * inv_direction;
-		t_far = (max_.y - ray.origin_.y) * inv_direction;
-
-        if (t_near > t_far)
-        {
-	        const float temp = t0;
-			t0 = t1;
-			t1 = temp;
-        }
-
-		t0 = t_near > t0 ? t_near : t0;
-		t1 = t_far < t1 ? t_far : t1;
-
-		if (t0 > t1)
-			return false;
-
-		inv_direction = 1.0f / ray.direction_.z;
-		t_near = (min_.z - ray.origin_.z) * inv_direction;
-		t_far = (max_.z - ray.origin_.z) * inv_direction;
-
-        if (t_near > t_far)
-        {
-	        const float temp = t0;
-			t0 = t1;
-			t1 = temp;
-        }
-
-		t0 = t_near > t0 ? t_near : t0;
-		t1 = t_far < t1 ? t_far : t1;
-
-		if (t0 > t1)
-			return false;
-	    
-		return true;
+		const float t_boundary_min = maxcomp(t_mins);
+		const float t_boundary_max = mincomp(t_maxes);
+		return t_boundary_min <= t_boundary_max;
 	}
 
 	float3 min_, max_;
