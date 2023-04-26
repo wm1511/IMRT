@@ -33,6 +33,7 @@ private:
 	void save_image() const;
 
 	std::unique_ptr<Frame> frame_ = nullptr;
+	std::chrono::time_point<std::chrono::steady_clock> last_frame_time_ = std::chrono::high_resolution_clock::now();
 	float* frame_data_ = nullptr;
 	std::unique_ptr<IRenderer> renderer_ = nullptr;
 	RenderInfo render_info_{};

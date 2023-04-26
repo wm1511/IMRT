@@ -265,8 +265,6 @@ void CudaRenderer::refresh_object(const int32_t index) const
 		CCE(cudaMemcpy(host_object_data_[index], object, sizeof(CylinderInfo), cudaMemcpyHostToDevice));
 	else if (object->type == CONE)
 		CCE(cudaMemcpy(host_object_data_[index], object, sizeof(ConeInfo), cudaMemcpyHostToDevice));
-	else if (object->type == TORUS)
-		CCE(cudaMemcpy(host_object_data_[index], object, sizeof(TorusInfo), cudaMemcpyHostToDevice));
     else if (object->type == MODEL)
 	    CCE(cudaMemcpy(host_object_data_[index], object, sizeof(ModelInfo), cudaMemcpyHostToDevice));
 
@@ -410,11 +408,6 @@ void CudaRenderer::allocate_world()
         {
 	        CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(ConeInfo)));
 			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(ConeInfo), cudaMemcpyHostToDevice));
-        }
-    	else if (object_data[i]->type == TORUS)
-        {
-	        CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(TorusInfo)));
-			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(TorusInfo), cudaMemcpyHostToDevice));
         }
         else if (object_data[i]->type == MODEL)
         {

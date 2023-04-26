@@ -9,7 +9,7 @@
 // Intellisense doesn't work without this include
 #include <filesystem>
 
-static const char* object_types[]{"Unknown Object", "Sphere", "Triangle", "Plane", "Cylinder", "Cone", "Torus", "Model"};
+static const char* object_types[]{"Unknown Object", "Sphere", "Triangle", "Plane", "Cylinder", "Cone", "Model"};
 static const char* material_types[]{"Unknown Material", "Diffuse", "Specular", "Refractive", "Isotropic"};
 static const char* texture_types[]{"Unknown Texture", "Solid", "Image", "Checker"};
 
@@ -107,8 +107,6 @@ void RtInterface::draw()
 {
 	ImGui::ShowDemoWindow();
 
-	const auto start = std::chrono::high_resolution_clock::now();
-
 	{
 		ImGui::Begin("Render settings");
 
@@ -203,9 +201,12 @@ void RtInterface::draw()
 		ImGui::End();
 	}
 
-	const auto duration = std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - start);
 	if (is_rendering_)
-		render_time_ = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+	{
+		const auto current_time = std::chrono::high_resolution_clock::now();
+		render_time_ = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_frame_time_).count();
+		last_frame_time_ = current_time;
+	}
 }
 
 void RtInterface::move_camera()
@@ -777,15 +778,13 @@ void RtInterface::add_object()
 		{
 			static Float3 new_cone_extreme_a{0.0f, 0.5f, 0.0f};
 			static Float3 new_cone_extreme_b{0.0f, -0.5f, 0.0f};
-			static float new_cone_radius_a{0.1f};
-			static float new_cone_radius_b{0.5f};
+			static float new_cone_radius{0.5f};
 
 			if (ImGui::TreeNode("Properties"))
 			{
 				ImGui::SliderFloat3("Extreme 1", new_cone_extreme_a.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				ImGui::SliderFloat3("Extreme 2", new_cone_extreme_b.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat("Radius 1", &new_cone_radius_a, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat("Radius 2", &new_cone_radius_b, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SliderFloat("Radius", &new_cone_radius, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				ImGui::TreePop();
 			}
 
@@ -793,29 +792,7 @@ void RtInterface::add_object()
 			{
 				if (is_rendering_)
 					renderer_->deallocate_world();
-				world_info_.add_object(new ConeInfo(new_cone_extreme_a.str, new_cone_extreme_b.str, new_cone_radius_a, new_cone_radius_b, selected_material));
-				is_added = true;
-			}
-		}
-		else if (object_type == TORUS)
-		{
-			static Float3 new_torus_center{0.0f, 0.0f, 0.0f};
-			static float new_torus_radius_a{0.5f};
-			static float new_torus_radius_b{0.1f};
-
-			if (ImGui::TreeNode("Properties"))
-			{
-				ImGui::SliderFloat3("Center", new_torus_center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat("Radius 1", &new_torus_radius_a, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat("Radius 2", &new_torus_radius_b, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::TreePop();
-			}
-
-			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
-			{
-				if (is_rendering_)
-					renderer_->deallocate_world();
-				world_info_.add_object(new TorusInfo(new_torus_center.str, new_torus_radius_a, new_torus_radius_b, selected_material));
+				world_info_.add_object(new ConeInfo(new_cone_extreme_a.str, new_cone_extreme_b.str, new_cone_radius, selected_material));
 				is_added = true;
 			}
 		}
@@ -946,20 +923,7 @@ void RtInterface::edit_object()
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 						is_edited |= ImGui::SliderFloat3("Extreme 2", current_cone->extreme_b.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat("Radius 1", &current_cone->radius_a, 0.0f, UINT8_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat("Radius 2", &current_cone->radius_b, 0.0f, UINT8_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-					}
-					else if (current_object->type == TORUS)
-					{
-						const auto current_torus = (TorusInfo*)current_object;
-
-						is_edited |= ImGui::SliderFloat3("Center", current_torus->center.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat("Radius 1", &current_torus->radius_a, 0.0f, UINT8_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat("Radius 2", &current_torus->radius_b, 0.0f, UINT8_MAX, "%.3f", 
+						is_edited |= ImGui::SliderFloat("Radius", &current_cone->radius, 0.0f, UINT8_MAX, "%.3f", 
 							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 					}
 					else if (current_object->type == MODEL)

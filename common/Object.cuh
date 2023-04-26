@@ -268,13 +268,6 @@ public:
 			intersection.t = t;
 			intersection.point = ray.position(t);
 			intersection.normal = normalize(intersection.point - extreme_b_ - axis * m);
-
-			//const float height = dot(intersection_height, axis);
-			//const float3 lateral_vector = intersection_height - axis * height;
-			//const float azimuthal_angle = atan2f(lateral_vector.z, lateral_vector.x);
-			//intersection.uv.x = azimuthal_angle * kInv2Pi;
-			//intersection.uv.y = height / length(extreme_a_ - extreme_b_);
-
 			intersection.uv.x = acosf(intersection.normal.x) / kPi;
 			intersection.uv.y = intersection.point.y / (extreme_b_.y - extreme_a_.y);
 			intersection.material = material_;
@@ -344,25 +337,25 @@ public:
 	Cone() = default;
 
 	__host__ __device__ Cone(const ConeInfo* cone_info, Material* material)
-		: extreme_a_(cone_info->extreme_a.str), extreme_b_(cone_info->extreme_b.str), radius_a_(cone_info->radius_a), radius_b_(cone_info->radius_a)
+		: extreme_a_(cone_info->extreme_a.str), extreme_b_(cone_info->extreme_b.str), radius_(cone_info->radius)
 	{
 		material_ = material;
 	}
 
 	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection) const override
 	{
-		const float3 ob = ray.origin_ - extreme_b_;
-		const float3 axis = normalize(extreme_a_ - extreme_b_);
+		const float3 oa = ray.origin_ - extreme_a_;
+		const float3 axis = normalize(extreme_b_ - extreme_a_);
 
-		const float ba = dot(ob, axis);
+		const float aa = dot(oa, axis);
 		const float da = dot(ray.direction_, axis);
-		const float od = dot(ray.direction_, ob);
+		const float od = dot(ray.direction_, oa);
 
-		const float k = radius_b_ * radius_b_ / length(extreme_a_ - extreme_b_);
+		const float k = radius_ * radius_ / dot(extreme_b_ - extreme_a_, extreme_b_ - extreme_a_);
 
 		const float a = dot(ray.direction_, ray.direction_) - (1.0f + k) * da * da;
-		const float b = od - (1.0f + k) * da * ba;
-		const float c = dot(ob, ob) - (1.0f + k * k) * ba * ba - radius_b_ * radius_b_;
+		const float b = od - (1.0f + k) * da * aa;
+		const float c = dot(oa, oa) - (1.0f + k) * aa * aa;
 
 		const float delta = b * b - a * c;
 
@@ -375,9 +368,9 @@ public:
 		const float t2 = (-b + sqrt_delta) / a;
 		const float t = t1 > t2 ? t2 : t1;
 
-		const float m = da * t + ba;
+		const float m = da * t + aa;
 
-		if (m > 0.0f && m < length(extreme_a_ - extreme_b_))
+		if (m > 0.0f && m < length(extreme_b_ - extreme_a_))
 		{
 			if (t < kTMin || t > ray.t_max_)
 				return false;
@@ -385,23 +378,17 @@ public:
 			ray.t_max_ = t;
 			intersection.t = t;
 			intersection.point = ray.position(t);
-			intersection.normal = normalize(intersection.point - extreme_b_ - (1.0f + k) * axis * m);
-
-			//const float height = dot(intersection_height, axis);
-			//const float3 lateral_vector = intersection_height - axis * height;
-			//const float azimuthal_angle = atan2f(lateral_vector.z, lateral_vector.x);
-			//intersection.uv.x = azimuthal_angle * kInv2Pi;
-			//intersection.uv.y = height / length(extreme_a_ - extreme_b_);
-
+			intersection.normal = normalize(intersection.point - extreme_a_ - (1.0f + k) * axis * m);
 			intersection.uv.x = acosf(intersection.normal.x) / kPi;
 			intersection.uv.y = intersection.point.y / (extreme_b_.y - extreme_a_.y);
 			intersection.material = material_;
 			return true;
 		}
 
+		const float ba = dot(ray.origin_ - extreme_b_, axis);
 		const float t_bottom = -ba / da;
 		const float3 bottom_point = ray.position(t_bottom);
-		if (length(extreme_b_ - bottom_point) < radius_b_ && da > 0.0f)
+		if (length(extreme_b_ - bottom_point) < radius_ && -da > 0.0f)
 		{
 			if (t_bottom < kTMin || t_bottom > ray.t_max_)
 				return false;
@@ -409,7 +396,7 @@ public:
 			ray.t_max_ = t_bottom;
 			intersection.t = t_bottom;
 			intersection.point = bottom_point;
-			intersection.normal = -axis;
+			intersection.normal = axis;
 			intersection.uv = fracf(make_float2(intersection.point.x, intersection.point.z));
 			intersection.material = material_;
 			return true;
@@ -423,8 +410,7 @@ public:
 		const ConeInfo* cone_info = (ConeInfo*)object_info;
 		extreme_a_ = cone_info->extreme_a.str;
 		extreme_b_ = cone_info->extreme_b.str;
-		radius_a_ = cone_info->radius_a;
-		radius_b_ = cone_info->radius_b;
+		radius_ = cone_info->radius;
 		material_ = material;
 	}
 
@@ -432,148 +418,12 @@ public:
 	{
 		const float3 a = extreme_b_ - extreme_a_;
 		const float3 e = sqrt(1.0f - a * a / dot(a, a));
-		return { fminf(extreme_a_ - e * radius_a_, extreme_b_ - e * radius_b_), fmaxf(extreme_a_ + e * radius_a_, extreme_b_ + e * radius_b_) };
+		return { fminf(extreme_a_ - e * radius_, extreme_b_ - e * radius_), fmaxf(extreme_a_ + e * radius_, extreme_b_ + e * radius_) };
 	}
 
 private:
 	float3 extreme_a_{}, extreme_b_{};
-	float radius_a_{}, radius_b_{};
-};
-
-class Torus final : public Object
-{
-public:
-	Torus() = default;
-
-	__host__ __device__ Torus(const TorusInfo* torus_info, Material* material)
-		: center_(torus_info->center.str), radius_a_(torus_info->radius_a), radius_b_(torus_info->radius_a)
-	{
-		material_ = material;
-	}
-
-	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection) const override
-	{
-		float po = 1.0f;
-		const float Ra2 = radius_a_ * radius_a_;
-		const float ra2 = radius_b_ * radius_b_;
-		const float m = dot(center_ + ray.origin_, center_ + ray.origin_);
-		const float n = dot(center_ + ray.origin_, ray.direction_);
-		const float k = (m + Ra2 - ra2) / 2.0f;
-		float k3 = n;
-		const float2 dxy = make_float2(ray.direction_.x, ray.direction_.y);
-		const float2 oxy = make_float2(center_.x + ray.origin_.x, center_.y + ray.origin_.y);
-		float k2 = n * n - Ra2 * dot(dxy, dxy) + k;
-		float k1 = n * k - Ra2 * dot(dxy, oxy);
-		float k0 = k * k - Ra2 * dot(oxy, oxy);
-
-		if (abs(k3 * (k3 * k3 - k2) + k1) < 0.01f)
-		{
-			po = -1.0f;
-			const float temp = k1;
-			k1 = k3;
-			k3 = temp;
-			k0 = 1.0f / k0;
-			k1 = k1 * k0;
-			k2 = k2 * k0;
-			k3 = k3 * k0;
-		}
-
-		float c2 = k2 * 2.0f - 3.0f * k3 * k3;
-		float c1 = k3 * (k3 * k3 - k2) + k1;
-		float c0 = k3 * (k3 * (c2 + 2.0f * k2) - 8.0f * k1) + 4.0f * k0;
-		c2 /= 3.0f;
-		c1 *= 2.0f;
-		c0 /= 3.0f;
-		const float Q = c2 * c2 + c0;
-		const float R = c2 * c2 * c2 - 3.0f * c2 * c0 + c1 * c1;
-		float h = R * R - Q * Q * Q;
-
-		if (h >= FLT_EPSILON)
-		{
-			h = sqrt(h);
-			const float v = R + h > 0.0f ? pow(abs(R + h), 1.0f / 3.0f) : -pow(abs(R + h), 1.0f / 3.0f);
-			const float u = R - h > 0.0f ? pow(abs(R - h), 1.0f / 3.0f) : -pow(abs(R - h), 1.0f / 3.0f);
-			const float2 s = make_float2(v + u + 4.0f * c2, (v - u) * sqrt(3.0f));
-			const float y = sqrt(0.5f * (length(s) + s.x));
-			const float x = 0.5f * s.y / y;
-			const float r = 2.0f * c1 / (x * x + y * y);
-			float t1 = x - r - k3;
-			t1 = po < 0.0f ? 2.0f / t1 : t1;
-			float t2 = -x - r - k3;
-			t2 = po < 0.0f ? 2.0f / t2 : t2;
-			float t = 1e20f;
-
-			if (t1 > 0.0f)
-				t = t1;
-			if (t2 > 0.0f)
-				t = fmin(t, t2);
-
-			if (t < kTMin || t > ray.t_max_)
-				return false;
-
-			ray.t_max_ = t;
-			intersection.t = t;
-			intersection.point = ray.position(intersection.t);
-			intersection.normal = normalize(intersection.point * (dot(intersection.point, intersection.point) - radius_b_ * radius_b_ - radius_b_ * radius_b_ * make_float3(1.0f, 1.0f, -1.0f)));
-			intersection.uv = make_float2(u, v);
-			intersection.material = material_;
-			return true;
-		}
-
-		const float sQ = sqrt(Q);
-		const float w = sQ * cos(acos(-R / (sQ * Q)) / 3.0f);
-		const float d2 = -(w + c2);
-
-		if (d2 < 0.0f)
-			return false;
-
-		const float d1 = sqrt(d2);
-		const float h1 = sqrt(w - 2.0f * c2 + c1 / d1);
-		const float h2 = sqrt(w - 2.0f * c2 - c1 / d1);
-		float t1 = -d1 - h1 - k3; t1 = po < 0.0f ? 2.0f / t1 : t1;
-		float t2 = -d1 + h1 - k3; t2 = po < 0.0f ? 2.0f / t2 : t2;
-		float t3 = d1 - h2 - k3; t3 = po < 0.0f ? 2.0f / t3 : t3;
-		float t4 = d1 + h2 - k3; t4 = po < 0.0f ? 2.0f / t4 : t4;
-		float t = 1e20f;
-
-		if (t1 > 0.0f)
-			t = t1;
-		if (t2 > 0.0f)
-			t = fmin(t, t2);
-		if (t3 > 0.0f)
-			t = fmin(t, t3);
-		if (t4 > 0.0f)
-			t = fmin(t, t4);
-
-		if (t < kTMin || t > ray.t_max_)
-			return false;
-
-		ray.t_max_ = t;
-		intersection.t = t;
-		intersection.point = ray.position(intersection.t);
-		intersection.normal = normalize(intersection.point * (dot(intersection.point, intersection.point) - radius_b_ * radius_b_ - radius_b_ * radius_b_ * make_float3(1.0f, 1.0f, -1.0f)));
-		intersection.material = material_;
-		return true;
-	}
-
-	__host__ __device__ void update(ObjectInfo* object_info, Material* material) override
-	{
-		const TorusInfo* torus_info = (TorusInfo*)object_info;
-		center_ = torus_info->center.str;
-		radius_a_ = torus_info->radius_a;
-		radius_b_ = torus_info->radius_b;
-		material_ = material;
-	}
-
-	__host__ __device__ Boundary bound() override
-	{
-		const float size = radius_a_ < radius_b_ ? radius_b_ : radius_a_;
-		return { -make_float3(size), make_float3(size) };
-	}
-
-private:
-	float3 center_{};
-	float radius_a_{}, radius_b_{};
+	float radius_{};
 };
 
 class Model final : public Object

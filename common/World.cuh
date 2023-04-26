@@ -53,8 +53,6 @@ public:
 				objects_[i] = new Cylinder((CylinderInfo*)object_info, materials_[object_info->material_id]);
 			else if (object_info->type == CONE)
 				objects_[i] = new Cone((ConeInfo*)object_info, materials_[object_info->material_id]);
-			else if (object_info->type == TORUS)
-				objects_[i] = new Torus((TorusInfo*)object_info, materials_[object_info->material_id]);
 			else if (object_info->type == MODEL)
 				objects_[i] = new Model((ModelInfo*)object_info, materials_[object_info->material_id]);
 		}
@@ -83,14 +81,14 @@ public:
 
 		for (int32_t i = 0; i < object_count_; i++)
 		{
-			//if (objects_[i]->bound().intersect(ray))
-			
-			if (objects_[i]->intersect(ray, temp_intersection))
+			if (objects_[i]->bound().intersect(ray))
 			{
-				intersected = true;
-				intersection = temp_intersection;
+				if (objects_[i]->intersect(ray, temp_intersection))
+				{
+					intersected = true;
+					intersection = temp_intersection;
+				}
 			}
-			
 		}
 
 		return intersected;
