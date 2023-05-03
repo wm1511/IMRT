@@ -1,5 +1,7 @@
 #pragma once
 #include <cstdint>
+#include <string>
+#include <utility>
 
 enum MaterialType
 {
@@ -12,8 +14,8 @@ enum MaterialType
 
 struct MaterialInfo
 {
-	MaterialInfo() = default;
-	explicit MaterialInfo(const MaterialType type, const int32_t texture_info) : type(type), texture_id(texture_info) {}
+	MaterialInfo(const MaterialType type, const int32_t texture_info, std::string material_name)
+		: type(type), texture_id(texture_info), name(std::move(material_name)) {}
 	virtual ~MaterialInfo() = default;
 
 	MaterialInfo(const MaterialInfo&) = delete;
@@ -23,36 +25,33 @@ struct MaterialInfo
 
 	MaterialType type{UNKNOWN_MATERIAL};
 	int32_t texture_id{0};
+	std::string name{};
 };
 
 struct DiffuseInfo final : MaterialInfo
 {
-	DiffuseInfo() = default;
-	explicit DiffuseInfo(const int32_t texture_info)
-		: MaterialInfo(DIFFUSE, texture_info) {}
+	explicit DiffuseInfo(const int32_t texture_info, std::string material_name)
+		: MaterialInfo(DIFFUSE, texture_info, std::move(material_name)) {}
 };
 
 struct SpecularInfo final : MaterialInfo
 {
-	SpecularInfo() = default;
-	SpecularInfo(const float fuzziness, const int32_t texture_info)
-		: MaterialInfo(SPECULAR, texture_info), fuzziness(fuzziness) {}
+	SpecularInfo(const float fuzziness, const int32_t texture_info, std::string material_name)
+		: MaterialInfo(SPECULAR, texture_info, std::move(material_name)), fuzziness(fuzziness) {}
 
 	float fuzziness{};
 };
 
 struct RefractiveInfo final : MaterialInfo
 {
-	RefractiveInfo() = default;
-	explicit RefractiveInfo(const float refractive_index)
-		: MaterialInfo(REFRACTIVE, NULL), refractive_index(refractive_index) {}
+	explicit RefractiveInfo(const float refractive_index, std::string material_name)
+		: MaterialInfo(REFRACTIVE, NULL, std::move(material_name)), refractive_index(refractive_index) {}
 
 	float refractive_index{};
 };
 
 struct IsotropicInfo final : MaterialInfo
 {
-	IsotropicInfo() = default;
-	explicit IsotropicInfo(const int32_t texture_info)
-		: MaterialInfo(ISOTROPIC, texture_info) {}
+	explicit IsotropicInfo(const int32_t texture_info, std::string material_name)
+		: MaterialInfo(ISOTROPIC, texture_info, std::move(material_name)) {}
 };

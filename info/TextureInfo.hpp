@@ -4,6 +4,8 @@
 #include "stb_image.h"
 
 #include <cstdint>
+#include <string>
+#include <utility>
 
 enum TextureType
 {
@@ -15,8 +17,8 @@ enum TextureType
 
 struct TextureInfo
 {
-	TextureInfo() = default;
-	explicit TextureInfo(const TextureType type) : type(type) {}
+	explicit TextureInfo(const TextureType type, std::string texture_name)
+		: type(type), name(std::move(texture_name)) {}
 	virtual ~TextureInfo() = default;
 
 	TextureInfo(const TextureInfo&) = delete;
@@ -25,22 +27,21 @@ struct TextureInfo
 	TextureInfo& operator=(TextureInfo&&) = default;
 
 	TextureType type{UNKNOWN_TEXTURE};
+	std::string name{};
 };
 
 struct SolidInfo final : TextureInfo
 {
-	SolidInfo() = default;
-	explicit SolidInfo(const float3 albedo)
-		: TextureInfo(SOLID), albedo{albedo} {}
+	explicit SolidInfo(const float3 albedo, std::string texture_name)
+		: TextureInfo(SOLID, std::move(texture_name)), albedo{albedo} {}
 
 	Float3 albedo{};
 };
 
 struct ImageInfo final : TextureInfo
 {
-	ImageInfo() = default;
-	explicit ImageInfo(float* data, const int32_t width, const int32_t height)
-		: TextureInfo(IMAGE), buffered_data(data), width(width), height(height) {}
+	explicit ImageInfo(float* data, const int32_t width, const int32_t height, std::string texture_name)
+		: TextureInfo(IMAGE, std::move(texture_name)), buffered_data(data), width(width), height(height) {}
 
 	~ImageInfo() override
 	{
@@ -59,9 +60,8 @@ struct ImageInfo final : TextureInfo
 
 struct CheckerInfo final : TextureInfo
 {
-	CheckerInfo() = default;
-	explicit CheckerInfo(const float3 albedo_a, const float3 albedo_b, const float tile_size)
-		: TextureInfo(CHECKER), albedo_a{albedo_a}, albedo_b{albedo_b}, tile_size(tile_size) {}
+	explicit CheckerInfo(const float3 albedo_a, const float3 albedo_b, const float tile_size, std::string texture_name)
+		: TextureInfo(CHECKER, std::move(texture_name)), albedo_a{albedo_a}, albedo_b{albedo_b}, tile_size(tile_size) {}
 
 	Float3 albedo_a{};
 	Float3 albedo_b{};

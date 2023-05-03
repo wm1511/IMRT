@@ -7,7 +7,6 @@ enum ObjectType
 {
 	UNKNOWN_OBJECT,
 	SPHERE,
-	TRIANGLE,
 	PLANE,
 	CYLINDER,
 	CONE,
@@ -17,7 +16,8 @@ enum ObjectType
 struct ObjectInfo
 {
 	ObjectInfo() = default;
-	ObjectInfo(const ObjectType type, const int32_t material_info) : type(type), material_id(material_info) {}
+	ObjectInfo(const ObjectType type, const int32_t material_info, std::string object_name)
+		: type(type), material_id(material_info), name(std::move(object_name)) {}
 	virtual ~ObjectInfo() = default;
 
 	ObjectInfo(const ObjectInfo&) = delete;
@@ -27,34 +27,24 @@ struct ObjectInfo
 
 	ObjectType type{UNKNOWN_OBJECT};
 	int32_t material_id{0};
+	std::string name{};
 };
 
 struct SphereInfo final : ObjectInfo
 {
 	SphereInfo() = default;
-	SphereInfo(const float3 center, const float radius, const int32_t material_info)
-		: ObjectInfo(SPHERE, material_info), center{center}, radius(radius) {}
+	SphereInfo(const float3 center, const float radius, const int32_t material_info, std::string object_name)
+		: ObjectInfo(SPHERE, material_info, std::move(object_name)), center{center}, radius(radius) {}
 
 	Float3 center{};
 	float radius{};
 };
 
-struct TriangleInfo final : ObjectInfo
-{
-	TriangleInfo() = default;
-	TriangleInfo(const float3 v0, const float3 v1, const float3 v2, const int32_t material_info, const float3 normal, const float2 min_uv, const float2 max_uv)
-		: ObjectInfo(TRIANGLE, material_info), v0{v0}, v1{v1}, v2{v2}, normal(normal), min_uv(min_uv), max_uv(max_uv) {}
-
-	Float3 v0{}, v1{}, v2{};
-	float3 normal{};
-	float2 min_uv{}, max_uv{};
-};
-
 struct PlaneInfo final : ObjectInfo
 {
 	PlaneInfo() = default;
-	PlaneInfo(const float3 normal, const float offset, const int32_t material_info)
-		: ObjectInfo(PLANE, material_info), normal{normal}, offset(offset) {}
+	PlaneInfo(const float3 normal, const float offset, const int32_t material_info, std::string object_name)
+		: ObjectInfo(PLANE, material_info, std::move(object_name)), normal{normal}, offset(offset) {}
 
 	Float3 normal{};
 	float offset{};
@@ -63,8 +53,8 @@ struct PlaneInfo final : ObjectInfo
 struct CylinderInfo final : ObjectInfo
 {
 	CylinderInfo() = default;
-	CylinderInfo(const float3 extreme_a, const float3 extreme_b, const float radius, const int32_t material_info)
-		: ObjectInfo(CYLINDER, material_info), extreme_a{extreme_a}, extreme_b{extreme_b}, radius(radius) {}
+	CylinderInfo(const float3 extreme_a, const float3 extreme_b, const float radius, const int32_t material_info, std::string object_name)
+		: ObjectInfo(CYLINDER, material_info, std::move(object_name)), extreme_a{extreme_a}, extreme_b{extreme_b}, radius(radius) {}
 
 	Float3 extreme_a{}, extreme_b{};
 	float radius{};
@@ -73,22 +63,29 @@ struct CylinderInfo final : ObjectInfo
 struct ConeInfo final : ObjectInfo
 {
 	ConeInfo() = default;
-	ConeInfo(const float3 extreme_a, const float3 extreme_b, const float radius, const int32_t material_info)
-		: ObjectInfo(CONE, material_info), extreme_a{extreme_a}, extreme_b{extreme_b}, radius(radius) {}
+	ConeInfo(const float3 extreme_a, const float3 extreme_b, const float radius, const int32_t material_info, std::string object_name)
+		: ObjectInfo(CONE, material_info, std::move(object_name)), extreme_a{extreme_a}, extreme_b{extreme_b}, radius(radius) {}
 
 	Float3 extreme_a{}, extreme_b{};
 	float radius{};
 };
 
+struct Vertex
+{
+	float3 position;
+	float3 normal;
+	float2 uv;
+};
+
 struct ModelInfo final : ObjectInfo
 {
 	ModelInfo() = default;
-	ModelInfo(TriangleInfo* triangles, const uint64_t triangle_count, const int32_t material_info)
-		: ObjectInfo(MODEL, material_info), buffered_triangles(triangles), triangle_count(triangle_count) {}
+	ModelInfo(Vertex* vertices, const uint64_t triangle_count, const int32_t material_info, std::string object_name)
+		: ObjectInfo(MODEL, material_info, std::move(object_name)), buffered_vertices(vertices), triangle_count(triangle_count) {}
 
 	~ModelInfo() override
 	{
-		delete[] buffered_triangles;
+		delete[] buffered_vertices;
 	}
 
 	ModelInfo(const ModelInfo&) = delete;
@@ -99,7 +96,7 @@ struct ModelInfo final : ObjectInfo
 	Float3 translation{{0.0f, 0.0f, 0.0f}};
 	Float3 scale{{1.0f, 1.0f, 1.0f}};
 	Float3 rotation{{0.0f, 0.0f, 0.0f}};
-	TriangleInfo* buffered_triangles = nullptr;
-	TriangleInfo* usable_triangles = nullptr;
+	Vertex* buffered_vertices = nullptr;
+	Vertex* usable_vertices = nullptr;
 	uint64_t triangle_count{};
 };

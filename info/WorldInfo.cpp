@@ -6,17 +6,17 @@
 
 WorldInfo::WorldInfo()
 {
-	textures_[0] = new CheckerInfo({0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, 0.05f);
-	textures_[1] = new SolidInfo({0.5f, 0.5f, 0.5f});
-	textures_[2] = new SolidInfo({0.2f, 0.2f, 0.8f});
-	materials_[0] = new DiffuseInfo(0);
-	materials_[1] = new RefractiveInfo(1.5f);
-	materials_[2] = new SpecularInfo(0.1f, 1);
-	materials_[3] = new DiffuseInfo(2);
-	objects_[0] = new SphereInfo({1.0f, 0.0f, -1.0f}, 0.5f, 0);
-	objects_[1] = new SphereInfo({0.0f, 0.0f, -1.0f}, 0.5f, 1);
-	objects_[2] = new SphereInfo({-1.0f, 0.0f, -1.0f}, 0.5f, 2);
-	objects_[3] = new SphereInfo({0.0f, -100.5f, -1.0f}, 100.0f, 3);
+	textures_[0] = new CheckerInfo({0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, 0.05f, "DemoChecker");
+	textures_[1] = new SolidInfo({0.5f, 0.5f, 0.5f}, "DemoGray");
+	textures_[2] = new SolidInfo({0.2f, 0.2f, 0.8f}, "DemoBlue");
+	materials_[0] = new DiffuseInfo(0, "DemoDiffuseGray");
+	materials_[1] = new RefractiveInfo(1.5f, "DemoRefractive");
+	materials_[2] = new SpecularInfo(0.1f, 1, "DemoFuzzySpecular");
+	materials_[3] = new DiffuseInfo(2, "DemoDiffuseBlue");
+	objects_[0] = new SphereInfo({1.0f, 0.0f, -1.0f}, 0.5f, 0, "DemoCheckerSphere");
+	objects_[1] = new SphereInfo({0.0f, 0.0f, -1.0f}, 0.5f, 1, "DemoGlassSphere");
+	objects_[2] = new SphereInfo({-1.0f, 0.0f, -1.0f}, 0.5f, 2, "DemoSpecularSphere");
+	objects_[3] = new SphereInfo({0.0f, -100.5f, -1.0f}, 100.0f, 3, "DemoBaseSphere");
 }
 
 WorldInfo::~WorldInfo()
@@ -31,12 +31,11 @@ WorldInfo::~WorldInfo()
 		delete textures_[i];
 }
 
-void WorldInfo::load_model(const std::string& model_path, const int32_t material_id, TriangleInfo*& triangles, uint64_t& triangle_count) const
+void WorldInfo::load_model(const std::string& model_path, Vertex*& vertices, uint64_t& triangle_count) const
 {
 	tinyobj::ObjReaderConfig reader_config;
 	reader_config.vertex_color = false;
 	reader_config.triangulation_method = "earcut";
-	reader_config.mtl_search_path = "../mtl";
 
 	tinyobj::ObjReader reader;
 
@@ -49,57 +48,40 @@ void WorldInfo::load_model(const std::string& model_path, const int32_t material
 	for (uint64_t s = 0; s < shapes.size(); s++) 
 		triangle_count += shapes[s].mesh.num_face_vertices.size();
 
-	uint64_t triangle_index = 0;
-	triangles = new TriangleInfo[triangle_count];
+	uint64_t vertex_index = 0;
+	vertices = new Vertex[3 * triangle_count];
 
 	for (uint64_t s = 0; s < shapes.size(); s++) 
 	{
 		for (uint64_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) 
 		{
-			bool has_normals = false, has_uvs = false;
-			float3 vertices[3]{};
-			float3 normals[3]{};
-			float2 uvs[3]{};
-
 		    for (size_t v = 0; v < 3; v++) 
 			{
+				Vertex vertex{};
 				const tinyobj::index_t idx = shapes[s].mesh.indices[3 * f + v];
 
-				vertices[v] = make_float3(
+				vertex.position = make_float3(
 					attrib.vertices[3 * idx.vertex_index],
 					attrib.vertices[3 * idx.vertex_index + 1],
 					attrib.vertices[3 * idx.vertex_index + 2]);
 
 				if (idx.normal_index >= 0) 
 				{
-					normals[v] = make_float3(
+					vertex.normal = make_float3(
 						attrib.normals[3 * idx.normal_index],
 						attrib.normals[3 * idx.normal_index + 1],
 						attrib.normals[3 * idx.normal_index + 2]);
-					has_normals = true;
 				}
 
 				if (idx.texcoord_index >= 0) 
 				{
-					uvs[v] = make_float2(
+					vertex.uv = make_float2(
 						attrib.texcoords[2 * idx.texcoord_index],
 						attrib.texcoords[2 * idx.texcoord_index + 1]);
-					has_uvs = true;
 				}
-		    }
 
-			float3 normal = {0.0f, 0.0f, 0.0f};
-			if (has_normals)
-				normal = (normals[0] + normals[1] + normals[2]) / 3;
-
-			float2 min_uv{0.0f, 0.0f}, max_uv{1.0f, 1.0f};
-			if (has_uvs)
-			{
-				min_uv = fminf(uvs[0], uvs[1], uvs[2]);
-				max_uv = fmaxf(uvs[0], uvs[1], uvs[2]);
+				vertices[vertex_index++] = std::move(vertex);
 			}
-
-			triangles[triangle_index++] = std::move(TriangleInfo(vertices[0], vertices[1], vertices[2], material_id, normal, min_uv, max_uv));
 		}
 	}
 }

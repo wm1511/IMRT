@@ -238,7 +238,7 @@ void CpuRenderer::allocate_world()
 		if (object_data_[i]->type == MODEL)
 		{
 			const auto model_data = (ModelInfo*)object_data_[i];
-			model_data->usable_triangles = model_data->buffered_triangles;
+			model_data->usable_vertices = model_data->buffered_vertices;
 		}
 	}
 

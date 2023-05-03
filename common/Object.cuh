@@ -5,7 +5,6 @@
 
 #include <cfloat>
 
-
 class Object
 {
 public:
@@ -98,9 +97,18 @@ class Triangle final : public Object
 public:
 	Triangle() = default;
 
-	__host__ __device__ Triangle(const TriangleInfo* triangle_info, Material* material)
-		: v0_(triangle_info->v0.str), v1_(triangle_info->v1.str), v2_(triangle_info->v2.str), normal_average_(triangle_info->normal), min_uv_(triangle_info->min_uv), max_uv_(triangle_info->max_uv)
+	__host__ __device__ Triangle(const Vertex* first_vertex, Material* material)
 	{
+		const Vertex v0 = *first_vertex;
+		const Vertex v1 = *(first_vertex + 1);
+		const Vertex v2 = *(first_vertex + 2);
+
+		v0_ = v0.position;
+		v1_ = v1.position;
+		v2_ = v2.position;
+		normal_average_ = (v0.normal + v1.normal + v2.normal) / 3.0f;
+		min_uv_ = fminf(v0.uv, v1.uv, v2.uv);
+		max_uv_ = fmaxf(v0.uv, v1.uv, v2.uv);
 		material_ = material;
 	}
 
@@ -140,12 +148,8 @@ public:
 		return true;
 	}
 
-	__host__ __device__ void update(ObjectInfo* object_info, Material* material) override
+	__host__ __device__ void update(ObjectInfo*, Material* material) override
 	{
-		const TriangleInfo* triangle_info = (TriangleInfo*)object_info;
-		v0_ = triangle_info->v0.str;
-		v1_ = triangle_info->v1.str;
-		v2_ = triangle_info->v2.str;
 		material_ = material;
 	}
 
@@ -436,7 +440,7 @@ public:
 		triangles_ = (Triangle*)malloc(sizeof(Triangle) * triangle_count_);
 
 		for (uint64_t i = 0; i < triangle_count_; i++)
-			triangles_[i] = Triangle(&model_info->usable_triangles[i], material);
+			triangles_[i] = Triangle(&model_info->usable_vertices[3 * i], material);
 	}
 
 	__host__ __device__ ~Model() override
@@ -468,7 +472,7 @@ public:
 		material_ = material;
 
 		for (uint64_t i = 0; i < triangle_count_; i++)
-			triangles_[i] = Triangle(&model_info->usable_triangles[i], material).transform(model_info->translation.str, model_info->scale.str, model_info->rotation.str);
+			triangles_[i] = Triangle(&model_info->usable_vertices[3 * i], material).transform(model_info->translation.str, model_info->scale.str, model_info->rotation.str);
 	}
 
 	__host__ __device__ Boundary bound() override

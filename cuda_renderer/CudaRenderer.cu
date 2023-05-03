@@ -257,8 +257,6 @@ void CudaRenderer::refresh_object(const int32_t index) const
 
     if (object->type == SPHERE)
 		CCE(cudaMemcpy(host_object_data_[index], object, sizeof(SphereInfo), cudaMemcpyHostToDevice));
-    else if (object->type == TRIANGLE)
-		CCE(cudaMemcpy(host_object_data_[index], object, sizeof(TriangleInfo), cudaMemcpyHostToDevice));
 	else if (object->type == PLANE)
 		CCE(cudaMemcpy(host_object_data_[index], object, sizeof(PlaneInfo), cudaMemcpyHostToDevice));
 	else if (object->type == CYLINDER)
@@ -389,11 +387,6 @@ void CudaRenderer::allocate_world()
 	        CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(SphereInfo)));
 			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(SphereInfo), cudaMemcpyHostToDevice));
         }
-        else if (object_data[i]->type == TRIANGLE)
-        {
-	        CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(TriangleInfo)));
-			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(TriangleInfo), cudaMemcpyHostToDevice));
-        }
     	else if (object_data[i]->type == PLANE)
         {
 	        CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(PlaneInfo)));
@@ -413,8 +406,8 @@ void CudaRenderer::allocate_world()
         {
 	        const auto model_data = (ModelInfo*)object_data[i];
 
-            CCE(cudaMalloc((void**)&model_data->usable_triangles, model_data->triangle_count * sizeof(TriangleInfo)));
-			CCE(cudaMemcpy(model_data->usable_triangles, model_data->buffered_triangles, model_data->triangle_count * sizeof(TriangleInfo), cudaMemcpyHostToDevice));
+            CCE(cudaMalloc((void**)&model_data->usable_vertices, 3 * model_data->triangle_count * sizeof(Vertex)));
+			CCE(cudaMemcpy(model_data->usable_vertices, model_data->buffered_vertices, 3 * model_data->triangle_count * sizeof(Vertex), cudaMemcpyHostToDevice));
 
             CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(ModelInfo)));
 			CCE(cudaMemcpy(host_object_data_[i], model_data, sizeof(ModelInfo), cudaMemcpyHostToDevice));
@@ -448,7 +441,7 @@ void CudaRenderer::deallocate_world() const
     for (uint64_t i = 0; i < world_info_->objects_.size(); i++)
     {
         if (world_info_->objects_[i]->type == MODEL)
-            CCE(cudaFree(((ModelInfo*)world_info_->objects_[i])->usable_triangles));
+            CCE(cudaFree(((ModelInfo*)world_info_->objects_[i])->usable_vertices));
 
 	    CCE(cudaFree(host_object_data_[i]));
     }

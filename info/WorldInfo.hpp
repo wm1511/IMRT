@@ -17,7 +17,7 @@ public:
 	WorldInfo operator=(const WorldInfo&) = delete;
 	WorldInfo operator=(WorldInfo&&) = delete;
 
-	void load_model(const std::string& model_path, int32_t material_id, TriangleInfo*& triangles, uint64_t& triangle_count) const;
+	void load_model(const std::string& model_path, Vertex*& vertices, uint64_t& triangle_count) const;
 	void add_object(ObjectInfo* new_object);
 	void add_material(MaterialInfo* new_material);
 	void add_texture(TextureInfo* new_texture);

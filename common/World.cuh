@@ -45,8 +45,6 @@ public:
 
 			if (object_info->type == SPHERE)
 				objects_[i] = new Sphere((SphereInfo*)object_info, materials_[object_info->material_id]);
-			else if (object_info->type == TRIANGLE)
-				objects_[i] = new Triangle((TriangleInfo*)object_info, materials_[object_info->material_id]);
 			else if (object_info->type == PLANE)
 				objects_[i] = new Plane((PlaneInfo*)object_info, materials_[object_info->material_id]);
 			else if (object_info->type == CYLINDER)

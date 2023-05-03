@@ -9,7 +9,7 @@
 // Intellisense doesn't work without this include
 #include <filesystem>
 
-static const char* object_types[]{"Unknown Object", "Sphere", "Triangle", "Plane", "Cylinder", "Cone", "Model"};
+static const char* object_types[]{"Unknown Object", "Sphere", "Plane", "Cylinder", "Cone", "Model"};
 static const char* material_types[]{"Unknown Material", "Diffuse", "Specular", "Refractive", "Isotropic"};
 static const char* texture_types[]{"Unknown Texture", "Solid", "Image", "Checker"};
 
@@ -25,46 +25,6 @@ static void draw_help(const char* text)
     }
 }
 
-static void draw_textures(TextureInfo** texture_data, const int32_t texture_count, int32_t& selected_texture)
-{
-	ImGui::BeginChild("Textures", {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
-		ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
-	ImGui::Text("List of defined textures");
-	draw_help("Choose this object's texture id");
-	for (int32_t n = 0; n < texture_count; n++)
-	{
-		static char buffer[64]{};
-		if (sprintf_s(buffer, "%i-%s", n, texture_types[texture_data[n]->type]) > 0)
-		{
-			if (ImGui::Selectable(buffer, selected_texture == n))
-				selected_texture = n;
-		}
-		else
-			ImGui::Text("Failed to print texture identifier");
-	}
-	ImGui::EndChild();
-}
-
-static void draw_materials(TextureInfo** texture_data, MaterialInfo** material_data, const int32_t material_count, int32_t& selected_material)
-{
-	ImGui::BeginChild("Materials", {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
-		ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
-	ImGui::Text("List of defined materials");
-	draw_help("Choose this object's material id");
-	for (int32_t n = 0; n < material_count; n++)
-	{
-		static char buffer[64]{};
-		if (sprintf_s(buffer, "%i-%s-%s", n, material_types[material_data[n]->type], texture_types[texture_data[material_data[n]->texture_id]->type]) > 0)
-		{
-			if (ImGui::Selectable(buffer, selected_material == n))
-				selected_material = n;
-		}
-		else
-			ImGui::Text("Failed to print material identifier");
-	}
-	ImGui::EndChild();
-}
-
 static void draw_files(std::filesystem::path& selected_file, const char* id, const char* directory)
 {
 	ImGui::BeginChild(id, {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
@@ -74,7 +34,7 @@ static void draw_files(std::filesystem::path& selected_file, const char* id, con
 	for (const auto& entry : iterator)
 		if (ImGui::Selectable(entry.path().filename().u8string().c_str(), entry.path() == selected_file))
 			selected_file = entry.path();
-			
+
 	ImGui::EndChild();
 
 	ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "Loading large files will take a while");
@@ -375,41 +335,55 @@ void RtInterface::add_texture()
 	{
 		bool is_added = false;
 		static int32_t texture_type = UNKNOWN_TEXTURE;
+		static char name[64] = "";
+
+		static Float3 new_solid_color{0.0f, 0.0f, 0.0f};
+		static int32_t new_image_width{0}, new_image_height{0}, new_image_components{0};
+		static std::filesystem::path selected_file;
+		static Float3 new_checker_color_a{0.0f, 0.0f, 0.0f};
+		static Float3 new_checker_color_b{1.0f, 1.0f, 1.0f};
+		static float new_checker_tile_size{0.1f};
 
 		ImGui::Combo("Texture type", &texture_type, texture_types, IM_ARRAYSIZE(texture_types));
-		if (texture_type == UNKNOWN_MATERIAL)
+
+		if (texture_type == UNKNOWN_TEXTURE)
 		{
 			ImGui::Text("Texture of type Unknown_Texture can't be instantiated");
+			return;
 		}
-		else if (texture_type == SOLID)
+
+		ImGui::InputText("Texture name", name, IM_ARRAYSIZE(name));
+
+		if (texture_type == SOLID)
 		{
-			static Float3 new_solid_color{0.0f, 0.0f, 0.0f};
-
-			if (ImGui::TreeNode("Properties"))
-			{
-				ImGui::ColorEdit3("Color", new_solid_color.arr, ImGuiColorEditFlags_Float);
-				ImGui::TreePop();
-			}
-
-			if (ImGui::Button("Create texture", {ImGui::GetContentRegionAvail().x, 0}))
-			{
-				if (is_rendering_)
-					renderer_->deallocate_world();
-				world_info_.add_texture(new SolidInfo(new_solid_color.str));
-				is_added = true;
-			}
+			ImGui::ColorEdit3("Color", new_solid_color.arr, ImGuiColorEditFlags_Float);
 		}
 		else if (texture_type == IMAGE)
 		{
-			static int32_t new_image_width{0}, new_image_height{0}, new_image_components{0};
-			static std::filesystem::path selected_file;
-
 			ImGui::Text("Choose image");
 			draw_help("Choose image file for texture creation. New files can be added to \"assets/tex\" folder");
 
 			draw_files(selected_file, "Texture files", "assets/tex/");
 
-			if (ImGui::Button("Create texture", {ImGui::GetContentRegionAvail().x, 0}))
+			draw_modal("Texture loading failed", "This file can't be loaded as image");
+		}
+		else if (texture_type == CHECKER)
+		{
+			ImGui::ColorEdit3("Color 1", new_checker_color_a.arr, ImGuiColorEditFlags_Float);
+			ImGui::ColorEdit3("Color 2", new_checker_color_b.arr, ImGuiColorEditFlags_Float);
+			ImGui::SliderFloat("Tile size", &new_checker_tile_size, 0.001f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+		}
+
+		if (ImGui::Button("Create texture", {ImGui::GetContentRegionAvail().x, 0}))
+		{
+			if (is_rendering_)
+				renderer_->deallocate_world();
+
+			if (texture_type == SOLID)
+			{
+				world_info_.add_texture(new SolidInfo(new_solid_color.str, name));
+			}
+			else if (texture_type == IMAGE)
 			{
 				if (!stbi_info(selected_file.u8string().c_str(), &new_image_width, &new_image_height, &new_image_components))
 				{
@@ -418,36 +392,15 @@ void RtInterface::add_texture()
 				else
 				{
 					float* new_image_data = stbi_loadf(selected_file.u8string().c_str(), &new_image_width, &new_image_height, &new_image_components, 3);
-					if (is_rendering_)
-						renderer_->deallocate_world();
-					world_info_.add_texture(new ImageInfo(new_image_data, new_image_width, new_image_height));
-					is_added = true;
+					world_info_.add_texture(new ImageInfo(new_image_data, new_image_width, new_image_height, name));
 				}
 			}
-
-			draw_modal("Texture loading failed", "This file can't be loaded as image");
-		}
-		else if (texture_type == CHECKER)
-		{
-			static Float3 new_checker_color_a{0.0f, 0.0f, 0.0f};
-			static Float3 new_checker_color_b{0.0f, 0.0f, 0.0f};
-			static float new_checker_tile_size{0.1f};
-
-			if (ImGui::TreeNode("Properties"))
+			else if (texture_type == CHECKER)
 			{
-				ImGui::ColorEdit3("Color 1", new_checker_color_a.arr, ImGuiColorEditFlags_Float);
-				ImGui::ColorEdit3("Color 2", new_checker_color_b.arr, ImGuiColorEditFlags_Float);
-				ImGui::SliderFloat("Tile size", &new_checker_tile_size, 0.001f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::TreePop();
+				world_info_.add_texture(new CheckerInfo(new_checker_color_a.str, new_checker_color_b.str, new_checker_tile_size, name));
 			}
 
-			if (ImGui::Button("Create texture", {ImGui::GetContentRegionAvail().x, 0}))
-			{
-				if (is_rendering_)
-					renderer_->deallocate_world();
-				world_info_.add_texture(new CheckerInfo(new_checker_color_a.str, new_checker_color_b.str, new_checker_tile_size));
-				is_added = true;
-			}
+			is_added = true;
 		}
 
 		if (is_rendering_ && is_added)
@@ -464,37 +417,34 @@ void RtInterface::edit_texture()
 	if (ImGui::CollapsingHeader("Texture list"))
 	{
 		bool is_edited = false;
+
 		for (int32_t i = 0; i < world_info_.textures_.size(); i++)
 		{
 			TextureInfo* current_texture = world_info_.textures_[i];
 			ImGui::PushID(i);
-			if (ImGui::TreeNode("Texture", "%u-%s", i, texture_types[current_texture->type]))
+			if (ImGui::TreeNode("Texture", "%s (%u)", current_texture->name.c_str(), i))
 			{
 				ImGui::Text("Texture type: %s", texture_types[current_texture->type]);
 
-				if (ImGui::TreeNode("Properties"))
+				if (current_texture->type == UNKNOWN_TEXTURE)
 				{
-					if (current_texture->type == UNKNOWN_TEXTURE)
-					{
-						ImGui::Text("Texture properties can't be set for type Unknown_Texture");
-					}
-					else if (current_texture->type == SOLID)
-					{
-						const auto current_solid = (SolidInfo*)current_texture;
-						is_edited |= ImGui::ColorEdit3("Color", current_solid->albedo.arr, ImGuiColorEditFlags_Float);
-					}
-					else if (current_texture->type == IMAGE)
-					{
-						ImGui::Text("Image properties can't be edited");
-					}
-					else if (current_texture->type == CHECKER)
-					{
-						const auto current_checker = (CheckerInfo*)current_texture;
-						is_edited |= ImGui::ColorEdit3("Color 1", current_checker->albedo_a.arr, ImGuiColorEditFlags_Float);
-						is_edited |= ImGui::ColorEdit3("Color 2", current_checker->albedo_b.arr, ImGuiColorEditFlags_Float);
-						is_edited |= ImGui::SliderFloat("Tile size", &current_checker->tile_size, 0.001f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-					}
-					ImGui::TreePop();
+					ImGui::Text("Texture properties can't be set for type Unknown_Texture");
+				}
+				else if (current_texture->type == SOLID)
+				{
+					const auto current_solid = (SolidInfo*)current_texture;
+					is_edited |= ImGui::ColorEdit3("Color", current_solid->albedo.arr, ImGuiColorEditFlags_Float);
+				}
+				else if (current_texture->type == IMAGE)
+				{
+					ImGui::Text("Image properties can't be edited");
+				}
+				else if (current_texture->type == CHECKER)
+				{
+					const auto current_checker = (CheckerInfo*)current_texture;
+					is_edited |= ImGui::ColorEdit3("Color 1", current_checker->albedo_a.arr, ImGuiColorEditFlags_Float);
+					is_edited |= ImGui::ColorEdit3("Color 2", current_checker->albedo_b.arr, ImGuiColorEditFlags_Float);
+					is_edited |= ImGui::SliderFloat("Tile size", &current_checker->tile_size, 0.001f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				}
 				ImGui::TreePop();
 			}
@@ -517,75 +467,50 @@ void RtInterface::add_material()
 		bool is_added = false;
 		static int32_t material_type = UNKNOWN_MATERIAL;
 		static int32_t selected_texture = 0;
+		static char name[64] = "";
 
-		if (ImGui::TreeNode("Texture"))
-		{
-			draw_textures(world_info_.textures_.data(), (int32_t)world_info_.textures_.size(), selected_texture);
-			ImGui::TreePop();
-		}
+		static float new_specular_fuzziness{0.0f};
+		static float new_refractive_index_of_refraction{0.0f};
 
 		ImGui::Combo("Material type", &material_type, material_types, IM_ARRAYSIZE(material_types));
+
 		if (material_type == UNKNOWN_MATERIAL)
 		{
 			ImGui::Text("Material of type Unknown_Material can't be instantiated");
+			return;
 		}
-		else if (material_type == DIFFUSE)
-		{
-			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
-			{
-				if (is_rendering_)
-					renderer_->deallocate_world();
-				world_info_.add_material(new DiffuseInfo(selected_texture));
-				is_added = true;
-			}
-		}
-		else if (material_type == SPECULAR)
-		{
-			static float new_specular_fuzziness{0.0f};
 
-			if (ImGui::TreeNode("Properties"))
-			{
-				ImGui::SliderFloat("Fuzziness", &new_specular_fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-				draw_help("Fuzziness of material reflection");
-				ImGui::TreePop();
-			}
+		ImGui::InputText("Material name", name, IM_ARRAYSIZE(name));
 
-			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
-			{
-				if (is_rendering_)
-					renderer_->deallocate_world();
-				world_info_.add_material(new SpecularInfo(new_specular_fuzziness, selected_texture));
-				is_added = true;
-			}
+		if (material_type == SPECULAR)
+		{
+			ImGui::SliderFloat("Fuzziness", &new_specular_fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			draw_help("Fuzziness of material reflection");
 		}
 		else if (material_type == REFRACTIVE)
 		{
-			static float new_refractive_index_of_refraction{0.0f};
-
-			if (ImGui::TreeNode("Properties"))
-			{
-				ImGui::SliderFloat("Refractive index", &new_refractive_index_of_refraction, 0.0f, 4.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-				draw_help("Index of refraction between air and current material");
-				ImGui::TreePop();
-			}
-
-			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
-			{
-				if (is_rendering_)
-					renderer_->deallocate_world();
-				world_info_.add_material(new RefractiveInfo(new_refractive_index_of_refraction));
-				is_added = true;
-			}
+			ImGui::SliderFloat("Refractive index", &new_refractive_index_of_refraction, 0.0f, 4.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			draw_help("Index of refraction between air and current material");
 		}
-		else if (material_type == ISOTROPIC)
+
+		if (material_type != REFRACTIVE && !world_info_.textures_.empty())
+			ImGui::SliderInt("Texture id", &selected_texture, 0, (int32_t)world_info_.textures_.size() - 1);
+
+		if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
 		{
-			if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
-			{
-				if (is_rendering_)
-					renderer_->deallocate_world();
-				world_info_.add_material(new IsotropicInfo(selected_texture));
-				is_added = true;
-			}
+			if (is_rendering_)
+				renderer_->deallocate_world();
+
+			if (material_type == DIFFUSE)
+				world_info_.add_material(new DiffuseInfo(selected_texture, name));
+			else if (material_type == SPECULAR)
+				world_info_.add_material(new SpecularInfo(new_specular_fuzziness, selected_texture, name));
+			else if (material_type == REFRACTIVE)
+				world_info_.add_material(new RefractiveInfo(new_refractive_index_of_refraction, name));
+			else if (material_type == ISOTROPIC)
+				world_info_.add_material(new IsotropicInfo(selected_texture, name));
+
+			is_added = true;
 		}
 
 		if (is_rendering_ && is_added)
@@ -606,53 +531,37 @@ void RtInterface::edit_material()
 		{
 			MaterialInfo* current_material = world_info_.materials_[i];
 			ImGui::PushID(i);
-			if (ImGui::TreeNode("Material", "%u-%s-%s", i, material_types[current_material->type], texture_types[world_info_.textures_[current_material->texture_id]->type]))
+			if (ImGui::TreeNode("Material", "%s (%u)", current_material->name.c_str(), i))
 			{
 				ImGui::Text("Material type: %s", material_types[current_material->type]);
 
-				if (ImGui::TreeNode("Texture"))
+				if (current_material->type == SPECULAR)
 				{
-					ImGui::Text("Material's texture id: %u", current_material->texture_id);
+					const auto current_specular = (SpecularInfo*)current_material;
+					is_edited |= ImGui::SliderFloat("Fuzziness", &current_specular->fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+					draw_help("Fuzziness of material reflection");
+				}
+				else if (current_material->type == REFRACTIVE)
+				{
+					const auto current_refractive = (RefractiveInfo*)current_material;
+					is_edited |= ImGui::SliderFloat("Refractive index", &current_refractive->refractive_index, 0.0f, 4.0f, "%.3f", 
+						ImGuiSliderFlags_AlwaysClamp);
+					draw_help("Index of refraction between air and current material");
+				}
+
+				if (current_material->type != REFRACTIVE)
+				{
+					ImGui::Text("Material's texture: %s (%u)", world_info_.textures_[current_material->texture_id]->name.c_str(), current_material->texture_id);
 					static int32_t selected_texture = 0;
-					draw_textures(world_info_.textures_.data(), (int32_t)world_info_.textures_.size(), selected_texture);
+					ImGui::SliderInt("Texture id", &selected_texture, 0, (int32_t)world_info_.textures_.size() - 1);
 
 					if (ImGui::Button("Set texture", {ImGui::GetContentRegionAvail().x, 0}))
 					{
 						current_material->texture_id = selected_texture;
 						is_edited = true;
 					}
-					ImGui::TreePop();
 				}
 
-				if (ImGui::TreeNode("Properties"))
-				{
-					if (current_material->type == UNKNOWN_MATERIAL)
-					{
-						ImGui::Text("Material properties can't be set for type Unknown_Material");
-					}
-					else if (current_material->type == DIFFUSE)
-					{
-						ImGui::Text("Diffuse properties can't be edited");
-					}
-					else if (current_material->type == SPECULAR)
-					{
-						const auto current_specular = (SpecularInfo*)current_material;
-						is_edited |= ImGui::SliderFloat("Fuzziness", &current_specular->fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-						draw_help("Fuzziness of material reflection");
-					}
-					else if (current_material->type == REFRACTIVE)
-					{
-						const auto current_refractive = (RefractiveInfo*)current_material;
-						is_edited |= ImGui::SliderFloat("Refractive index", &current_refractive->refractive_index, 0.0f, 4.0f, "%.3f", 
-							ImGuiSliderFlags_AlwaysClamp);
-						draw_help("Index of refraction between air and current material");
-					}
-					else if (current_material->type == ISOTROPIC)
-					{
-						ImGui::Text("Isotropic properties can't be edited");
-					}
-					ImGui::TreePop();
-				}
 				ImGui::TreePop();
 			}
 			ImGui::PopID();
@@ -674,155 +583,92 @@ void RtInterface::add_object()
 		bool is_added = false;
 		static int32_t object_type = UNKNOWN_OBJECT;
 		static int32_t selected_material = 0;
+		static char name[64] = "";
 
+		static Float3 new_sphere_center{0.0f, 0.0f, 0.0f};
+		static float new_sphere_radius{1.0f};
+		static Float3 new_plane_normal{0.0f, -1.0f, 0.0f};
+		static float new_plane_offset{0.0f};
+		static Float3 new_cc_extreme_a{0.0f, 0.5f, 0.0f};
+		static Float3 new_cc_extreme_b{0.0f, -0.5f, 0.0f};
+		static float new_cc_radius{0.5f};
+		static std::filesystem::path selected_file;
+		
 		ImGui::Combo("Object type", &object_type, object_types, IM_ARRAYSIZE(object_types));
-
-		if (ImGui::TreeNode("Material"))
-		{
-			draw_materials(world_info_.textures_.data(), world_info_.materials_.data(), (int32_t)world_info_.materials_.size(), selected_material);
-			ImGui::TreePop();
-		}
 
 		if (object_type == UNKNOWN_OBJECT)
 		{
 			ImGui::Text("Object of type Unknown_Object can't be instantiated");
+			return;
 		}
-		else if (object_type == SPHERE)
+
+		ImGui::InputText("Material name", name, IM_ARRAYSIZE(name));
+
+		if (object_type == SPHERE)
 		{
-			static Float3 new_sphere_center{0.0f, 0.0f, 0.0f};
-			static float new_sphere_radius{1.0f};
-
-			if (ImGui::TreeNode("Properties"))
-			{
-				ImGui::SliderFloat3("Center", new_sphere_center.arr, -UINT16_MAX, UINT16_MAX,"%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat("Radius", &new_sphere_radius, -UINT8_MAX, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				draw_help("Radius of sphere can be negative for refractive spheres to make sphere hollow");
-				ImGui::TreePop();
-			}
-
-			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
-			{
-				if (is_rendering_)
-					renderer_->deallocate_world();
-				world_info_.add_object(new SphereInfo(new_sphere_center.str, new_sphere_radius, selected_material));
-				is_added = true;
-			}
-		}
-		else if (object_type == TRIANGLE)
-		{
-			static Float3 new_triangle_v0{-1.0f, 0.0f, 0.0f};
-			static Float3 new_triangle_v1{0.0f, 1.0f, 0.0f};
-			static Float3 new_triangle_v2{1.0f, 0.0f, 0.0f};
-
-			if (ImGui::TreeNode("Properties"))
-			{
-				ImGui::SliderFloat3("Vertex 0", new_triangle_v0.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat3("Vertex 1", new_triangle_v1.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat3("Vertex 2", new_triangle_v2.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::TreePop();
-			}
-
-			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
-			{
-				if (is_rendering_)
-					renderer_->deallocate_world();
-				const float3 normal = cross(new_triangle_v1.str - new_triangle_v0.str, new_triangle_v2.str - new_triangle_v0.str);
-				world_info_.add_object(new TriangleInfo(new_triangle_v0.str, new_triangle_v1.str, new_triangle_v2.str, selected_material, normal, make_float2(0.0f, 0.0f), make_float2(1.0f, 1.0f)));
-				is_added = true;
-			}
+			ImGui::SliderFloat3("Center", new_sphere_center.arr, -UINT16_MAX, UINT16_MAX,"%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Radius", &new_sphere_radius, -UINT8_MAX, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+			draw_help("Radius of sphere can be negative for refractive spheres to make sphere hollow");
 		}
 		else if (object_type == PLANE)
 		{
-			static Float3 new_plane_normal{0.0f, -1.0f, 0.0f};
-			static float new_plane_offset{0.0f};
-
-			if (ImGui::TreeNode("Properties"))
-			{
-				ImGui::SliderFloat3("Normal", new_plane_normal.arr, -1.0f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat("Offset", &new_plane_offset, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				draw_help("Displacement from center position along normal");
-				ImGui::TreePop();
-			}
-
-			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
-			{
-				if (is_rendering_)
-					renderer_->deallocate_world();
-				world_info_.add_object(new PlaneInfo(new_plane_normal.str, new_plane_offset, selected_material));
-				is_added = true;
-			}
+			ImGui::SliderFloat3("Normal", new_plane_normal.arr, -1.0f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Offset", &new_plane_offset, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+			draw_help("Displacement from center position along normal");
 		}
-		else if (object_type == CYLINDER)
+		else if (object_type == CYLINDER || object_type == CONE)
 		{
-			static Float3 new_cylinder_extreme_a{0.0f, 0.5f, 0.0f};
-			static Float3 new_cylinder_extreme_b{0.0f, -0.5f, 0.0f};
-			static float new_cylinder_radius{0.5f};
-
-			if (ImGui::TreeNode("Properties"))
-			{
-				ImGui::SliderFloat3("Extreme 1", new_cylinder_extreme_a.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat3("Extreme 2", new_cylinder_extreme_b.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat("Radius", &new_cylinder_radius, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::TreePop();
-			}
-
-			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
-			{
-				if (is_rendering_)
-					renderer_->deallocate_world();
-				world_info_.add_object(new CylinderInfo(new_cylinder_extreme_a.str, new_cylinder_extreme_b.str, new_cylinder_radius, selected_material));
-				is_added = true;
-			}
-		}
-		else if (object_type == CONE)
-		{
-			static Float3 new_cone_extreme_a{0.0f, 0.5f, 0.0f};
-			static Float3 new_cone_extreme_b{0.0f, -0.5f, 0.0f};
-			static float new_cone_radius{0.5f};
-
-			if (ImGui::TreeNode("Properties"))
-			{
-				ImGui::SliderFloat3("Extreme 1", new_cone_extreme_a.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat3("Extreme 2", new_cone_extreme_b.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::SliderFloat("Radius", &new_cone_radius, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				ImGui::TreePop();
-			}
-
-			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
-			{
-				if (is_rendering_)
-					renderer_->deallocate_world();
-				world_info_.add_object(new ConeInfo(new_cone_extreme_a.str, new_cone_extreme_b.str, new_cone_radius, selected_material));
-				is_added = true;
-			}
+			ImGui::SliderFloat3("Extreme 1", new_cc_extreme_a.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat3("Extreme 2", new_cc_extreme_b.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Radius", &new_cc_radius, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 		}
 		else if (object_type == MODEL)
 		{
-			static std::filesystem::path selected_file;
-
 			ImGui::Text("Choose 3D Model");
 			draw_help("Choose .obj file containing 3D model to load. New files can be added to \"assets/obj\" folder");
 
 			draw_files(selected_file, "3D Models", "assets/obj/");
 
-			if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
+			draw_modal("3D model loading failed", "This file can't be loaded as 3D obj model");
+		}
+
+		if (!world_info_.materials_.empty())
+			ImGui::SliderInt("Material id", &selected_material, 0, (int32_t)world_info_.materials_.size() - 1);
+
+		if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
+		{
+			if (is_rendering_)
+				renderer_->deallocate_world();
+
+			if (object_type == SPHERE)
 			{
-				TriangleInfo* triangle_list = nullptr;
+				world_info_.add_object(new SphereInfo(new_sphere_center.str, new_sphere_radius, selected_material, name));
+			}
+			else if (object_type == PLANE)
+			{
+				world_info_.add_object(new PlaneInfo(new_plane_normal.str, new_plane_offset, selected_material, name));
+			}
+			else if (object_type == CYLINDER)
+			{
+				world_info_.add_object(new CylinderInfo(new_cc_extreme_a.str, new_cc_extreme_b.str, new_cc_radius, selected_material, name));
+			}
+			else if (object_type == CONE)
+			{
+				world_info_.add_object(new ConeInfo(new_cc_extreme_a.str, new_cc_extreme_b.str, new_cc_radius, selected_material, name));
+			}
+			else if (object_type == MODEL)
+			{
+				Vertex* triangle_list = nullptr;
 				uint64_t triangle_count = 0;
-				world_info_.load_model(selected_file.u8string(), selected_material, triangle_list, triangle_count);
+				world_info_.load_model(selected_file.u8string(), triangle_list, triangle_count);
 
 				if (triangle_count == 0)
 					ImGui::OpenPopup("3D model loading failed");
 				else
-				{
-					if (is_rendering_)
-						renderer_->deallocate_world();
-					world_info_.add_object(new ModelInfo(triangle_list, triangle_count, selected_material));
-					is_added = true;
-				}
+					world_info_.add_object(new ModelInfo(triangle_list, triangle_count, selected_material, name));
 			}
 
-			draw_modal("3D model loading failed", "This file can't be loaded as 3D obj model");
+			is_added = true;
 		}
 
 		if (is_rendering_ && is_added)
@@ -844,7 +690,7 @@ void RtInterface::edit_object()
 			ObjectInfo* current_object = world_info_.objects_[i];
 
 			ImGui::PushID(i);
-			if (ImGui::TreeNode("Object", "%u-%s-%s-%s", i, object_types[current_object->type], material_types[world_info_.materials_[current_object->material_id]->type], texture_types[world_info_.textures_[world_info_.materials_[current_object->material_id]->texture_id]->type]))
+			if (ImGui::TreeNode("Material", "%s (%u)", current_object->name.c_str(), i))
 			{
 				ImGui::Text("Object type: %s", object_types[current_object->type]);
 
@@ -852,96 +698,78 @@ void RtInterface::edit_object()
 				{
 					ImGui::Text("Triangle count: %llu", ((ModelInfo*)current_object)->triangle_count);
 				}
-
-				if (ImGui::TreeNode("Material"))
+				else if (current_object->type == UNKNOWN_OBJECT)
 				{
-					ImGui::Text("Object's material id: %u", current_object->material_id);
-					static int32_t selected_material = 0;
-					draw_materials(world_info_.textures_.data(), world_info_.materials_.data(), (int32_t)world_info_.materials_.size(), selected_material);
-
-					if (ImGui::Button("Set material", {ImGui::GetContentRegionAvail().x, 0}))
-					{
-						current_object->material_id = selected_material;
-						is_edited = true;
-					}
-					ImGui::TreePop();
+					ImGui::Text("Object properties can't be set for type Unknown_Object");
+					return;
 				}
 
-				if (ImGui::TreeNode("Properties"))
+				if (current_object->type == SPHERE)
 				{
-					if (current_object->type == UNKNOWN_OBJECT)
-					{
-						ImGui::Text("Object properties can't be set for type Unknown_Object");
-					}
-					else if (current_object->type == SPHERE)
-					{
-						const auto current_sphere = (SphereInfo*)current_object;
+					const auto current_sphere = (SphereInfo*)current_object;
 
-						is_edited |= ImGui::SliderFloat3("Center", current_sphere->center.arr, -UINT8_MAX, UINT8_MAX,"%.3f",
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat("Radius", &current_sphere->radius, -UINT16_MAX, UINT16_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						draw_help("Radius of sphere can be negative for refractive spheres to make sphere hollow");
-					}
-					else if (current_object->type == TRIANGLE)
-					{
-						const auto current_triangle = (TriangleInfo*)current_object;
+					is_edited |= ImGui::SliderFloat3("Center", current_sphere->center.arr, -UINT8_MAX, UINT8_MAX,"%.3f",
+						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+					is_edited |= ImGui::SliderFloat("Radius", &current_sphere->radius, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+					draw_help("Radius of sphere can be negative for refractive spheres to make sphere hollow");
+				}
+				else if (current_object->type == PLANE)
+				{
+					const auto current_plane = (PlaneInfo*)current_object;
 
-						is_edited |= ImGui::SliderFloat3("Vertex 0", current_triangle->v0.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat3("Vertex 1", current_triangle->v1.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat3("Vertex 2", current_triangle->v2.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-					}
-					else if (current_object->type == PLANE)
-					{
-						const auto current_plane = (PlaneInfo*)current_object;
+					is_edited |= ImGui::SliderFloat3("Normal", current_plane->normal.arr, -1.0f, 1.0f, "%.3f", 
+						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+					is_edited |= ImGui::SliderFloat("Offset", &current_plane->offset, -UINT16_MAX, UINT16_MAX, "%.3f", 
+						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+					draw_help("Displacement from center position along normal");
+				}
+				else if (current_object->type == CYLINDER)
+				{
+					const auto current_cylinder = (CylinderInfo*)current_object;
 
-						is_edited |= ImGui::SliderFloat3("Normal", current_plane->normal.arr, -1.0f, 1.0f, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat("Offset", &current_plane->offset, -UINT16_MAX, UINT16_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						draw_help("Displacement from center position along normal");
-					}
-					else if (current_object->type == CYLINDER)
-					{
-						const auto current_cylinder = (CylinderInfo*)current_object;
+					is_edited |= ImGui::SliderFloat3("Extreme 1", current_cylinder->extreme_a.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
+						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+					is_edited |= ImGui::SliderFloat3("Extreme 2", current_cylinder->extreme_b.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
+						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+					is_edited |= ImGui::SliderFloat("Radius", &current_cylinder->radius, 0.0f, UINT8_MAX, "%.3f", 
+						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				}
+				else if (current_object->type == CONE)
+				{
+					const auto current_cone = (ConeInfo*)current_object;
 
-						is_edited |= ImGui::SliderFloat3("Extreme 1", current_cylinder->extreme_a.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat3("Extreme 2", current_cylinder->extreme_b.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat("Radius", &current_cylinder->radius, 0.0f, UINT8_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-					}
-					else if (current_object->type == CONE)
-					{
-						const auto current_cone = (ConeInfo*)current_object;
+					is_edited |= ImGui::SliderFloat3("Extreme 1", current_cone->extreme_a.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
+						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+					is_edited |= ImGui::SliderFloat3("Extreme 2", current_cone->extreme_b.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
+						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+					is_edited |= ImGui::SliderFloat("Radius", &current_cone->radius, 0.0f, UINT8_MAX, "%.3f", 
+						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+				}
+				else if (current_object->type == MODEL)
+				{
+					const auto current_model = (ModelInfo*)current_object;
 
-						is_edited |= ImGui::SliderFloat3("Extreme 1", current_cone->extreme_a.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat3("Extreme 2", current_cone->extreme_b.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderFloat("Radius", &current_cone->radius, 0.0f, UINT8_MAX, "%.3f", 
-							ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-					}
-					else if (current_object->type == MODEL)
-					{
-						const auto current_model = (ModelInfo*)current_object;
+					is_edited |= ImGui::SliderFloat3("Translation", current_model->translation.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
+							ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
+					is_edited |= ImGui::SliderFloat3("Scale", current_model->scale.arr, 0.001f, UINT8_MAX, "%.3f", 
+							ImGuiSliderFlags_AlwaysClamp);
+					is_edited |= ImGui::SliderAngle("Rotation x", &current_model->rotation.arr[0], 0.0f, 360.0f, "%.3f", 
+							ImGuiSliderFlags_AlwaysClamp);
+					is_edited |= ImGui::SliderAngle("Rotation y", &current_model->rotation.arr[1], 0.0f, 360.0f, "%.3f", 
+							ImGuiSliderFlags_AlwaysClamp);
+					is_edited |= ImGui::SliderAngle("Rotation z", &current_model->rotation.arr[2], 0.0f, 360.0f, "%.3f", 
+							ImGuiSliderFlags_AlwaysClamp);
+				}
 
-						is_edited |= ImGui::SliderFloat3("Translation", current_model->translation.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
-								ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
-						is_edited |= ImGui::SliderFloat3("Scale", current_model->scale.arr, 0.001f, UINT8_MAX, "%.3f", 
-								ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderAngle("Rotation x", &current_model->rotation.arr[0], 0.0f, 360.0f, "%.3f", 
-								ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderAngle("Rotation y", &current_model->rotation.arr[1], 0.0f, 360.0f, "%.3f", 
-								ImGuiSliderFlags_AlwaysClamp);
-						is_edited |= ImGui::SliderAngle("Rotation z", &current_model->rotation.arr[2], 0.0f, 360.0f, "%.3f", 
-								ImGuiSliderFlags_AlwaysClamp);
-					}
-					ImGui::TreePop();
+				ImGui::Text("Object's material id: %u", current_object->material_id);
+				static int32_t selected_material = 0;
+				ImGui::SliderInt("Material id", &selected_material, 0, (int32_t)world_info_.materials_.size() - 1);
+
+				if (ImGui::Button("Set material", {ImGui::GetContentRegionAvail().x, 0}))
+				{
+					current_object->material_id = selected_material;
+					is_edited = true;
 				}
 
 				if (ImGui::Button("Delete object", {ImGui::GetContentRegionAvail().x, 0}))
