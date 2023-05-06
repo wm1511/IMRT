@@ -5,7 +5,13 @@
 class Texture
 {
 public:
+	__host__ __device__ Texture() {}
 	__host__ __device__ virtual ~Texture() {}
+
+	__host__ __device__ Texture(const Texture&) = delete;
+	__host__ __device__ Texture(Texture&&) = delete;
+	__host__ __device__ Texture& operator=(const Texture&) = delete;
+	__host__ __device__ Texture& operator=(Texture&&) = delete;
 
 	__host__ __device__ [[nodiscard]] virtual float3 color(float2 uv) const = 0;
 	__host__ __device__ virtual void update(TextureInfo* texture_info) = 0;

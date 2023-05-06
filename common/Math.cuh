@@ -622,8 +622,6 @@ inline __host__ __device__ void rotate_point_z(float3& v, const float rz)
 
 inline __host__ __device__ void transform_point(float3& v, const float3 t, const float3 s, const float3 r)
 {
-    translate_point(v, t);
-
     scale_point(v, s);
 
 	if (r.x > 0.0f)
@@ -634,6 +632,8 @@ inline __host__ __device__ void transform_point(float3& v, const float3 t, const
 
 	if (r.z > 0.0f)
 		rotate_point_z(v, r.z);
+
+    translate_point(v, t);
 }
 
 // Random
@@ -672,12 +672,12 @@ inline __host__ __device__ uint32_t xoshiro(uint4* random_state)
 	return result;
 }
 
-inline __host__ __device__ float3 disk_random(uint32_t* random_state)
+inline __host__ __device__ float2 disk_random(uint32_t* random_state)
 {
-	float3 v;
+	float2 v;
 	do
 	{
-		v = 2.0f * make_float3(pcg(random_state), pcg(random_state), 0.0f) - make_float3(1.0f, 1.0f, 0.0f);
+		v = 2.0f * make_float2(pcg(random_state), pcg(random_state)) - make_float2(1.0f, 1.0f);
 	} while (dot(v, v) >= 1.0f);
 	return v;
 }

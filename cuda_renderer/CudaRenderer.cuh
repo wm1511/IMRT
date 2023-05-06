@@ -17,7 +17,8 @@ public:
 	CudaRenderer& operator=(const CudaRenderer&) = delete;
 	CudaRenderer& operator=(CudaRenderer&&) = delete;
 
-	float* render() override;
+	bool uses_host_memory() override { return false; }
+	void render() override;
 	void refresh_buffer() override;
 	void refresh_camera() override;
 	void refresh_texture(int32_t index) const override;
@@ -26,6 +27,7 @@ public:
 	void recreate_camera() override;
 	void recreate_image() override;
 	void recreate_sky() override;
+	void map_frame_memory() override;
 	void allocate_world() override;
 	void deallocate_world() const override;
 
@@ -39,10 +41,10 @@ private:
 	dim3 threads_;
 
 	uint4* xoshiro_state_ = nullptr, * xoshiro_initial_ = nullptr;
-    float4* frame_buffer_ = nullptr, * accumulation_buffer_ = nullptr;
+	float4* frame_buffer_ = nullptr, * accumulation_buffer_ = nullptr;
 	TextureInfo** device_texture_data_ = nullptr, ** host_texture_data_ = nullptr;
-    MaterialInfo** device_material_data_ = nullptr, ** host_material_data_ = nullptr;
-    ObjectInfo** device_object_data_ = nullptr, ** host_object_data_ = nullptr;
-    World** world_ = nullptr;
-    Camera** camera_ = nullptr;
+	MaterialInfo** device_material_data_ = nullptr, ** host_material_data_ = nullptr;
+	ObjectInfo** device_object_data_ = nullptr, ** host_object_data_ = nullptr;
+	World** world_ = nullptr;
+	Camera** camera_ = nullptr;
 };

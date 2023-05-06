@@ -1,10 +1,10 @@
 #pragma once
+#include "Frame.hpp"
 #include "../abstract/IDrawable.hpp"
 #include "../abstract/IRenderer.hpp"
 #include "../info/RenderInfo.hpp"
 #include "../info/WorldInfo.hpp"
 #include "../info/SkyInfo.hpp"
-#include "Frame.hpp"
 
 class RtInterface final : public IDrawable
 {
@@ -34,7 +34,7 @@ private:
 
 	std::unique_ptr<Frame> frame_ = nullptr;
 	std::chrono::time_point<std::chrono::steady_clock> last_frame_time_ = std::chrono::high_resolution_clock::now();
-	float* frame_data_ = nullptr;
+
 	std::unique_ptr<IRenderer> renderer_ = nullptr;
 	RenderInfo render_info_{};
 	WorldInfo world_info_{};

@@ -65,7 +65,7 @@ RtInterface::~RtInterface()
 
 void RtInterface::draw()
 {
-	ImGui::ShowDemoWindow();
+	//ImGui::ShowDemoWindow();
 
 	{
 		ImGui::Begin("Render settings");
@@ -104,9 +104,11 @@ void RtInterface::draw()
 			{
 				frame_ = std::make_unique<Frame>(render_info_.width, render_info_.height);
 
-				render_info_.image_handle = frame_->get_image_memory_handle();
-				render_info_.image_size = sizeof(float) * 4 * render_info_.height * render_info_.width;
-				
+				render_info_.frame_handle = frame_->get_image_memory_handle();
+				render_info_.frame_size = sizeof(float) * 4 * render_info_.height * render_info_.width;
+				delete[] render_info_.frame_data;
+				render_info_.frame_data = new float[render_info_.frame_size];
+
 				renderer_->recreate_image();
 				renderer_->recreate_camera();
 				renderer_->refresh_buffer();
@@ -116,10 +118,10 @@ void RtInterface::draw()
 			frames_rendered_++;
 			render_info_.frames_since_refresh++;
 
-			frame_data_ = renderer_->render();
+			renderer_->render();
 
-			if (frame_data_)
-				frame_->set_data(frame_data_);
+			if (renderer_->uses_host_memory())
+				frame_->set_data(render_info_.frame_data);
 		}
 
 		ImGui::Text("Last render time: %llu ms", render_time_);
@@ -147,12 +149,12 @@ void RtInterface::draw()
 
 	{
 		ImGui::Begin("Viewport");
-		render_info_.width = (uint32_t)ImGui::GetContentRegionAvail().x;
-		render_info_.height = (uint32_t)ImGui::GetContentRegionAvail().y;
+		render_info_.width = static_cast<uint32_t>(ImGui::GetContentRegionAvail().x);
+		render_info_.height = static_cast<uint32_t>(ImGui::GetContentRegionAvail().y);
 
 		if (frame_) 
-			ImGui::Image((ImU64)frame_->get_descriptor_set(),
-				{(float)frame_->get_width(), (float)frame_->get_height()},
+			ImGui::Image(reinterpret_cast<ImU64>(frame_->get_descriptor_set()),
+				{static_cast<float>(frame_->get_width()), static_cast<float>(frame_->get_height())},
 				ImVec2(1, 0), ImVec2(0, 1));
 
 		if (is_rendering_ && ImGui::IsWindowFocused())
@@ -175,34 +177,34 @@ void RtInterface::move_camera()
 
 	if (ImGui::IsKeyDown(ImGuiKey_W))
 	{
-		render_info_.camera_position -= render_info_.camera_direction * camera_movement_speed_ * (float)render_time_;
+		render_info_.camera_position -= render_info_.camera_direction * camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_S))
 	{
-		render_info_.camera_position += render_info_.camera_direction * camera_movement_speed_ * (float)render_time_;
+		render_info_.camera_position += render_info_.camera_direction * camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_A))
 	{
 		const float3 displacement = normalize(cross(render_info_.camera_direction, make_float3(0.0f, -1.0f, 0.0f)));
-		render_info_.camera_position -= displacement * camera_movement_speed_ * (float)render_time_;
+		render_info_.camera_position -= displacement * camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_D))
 	{
 		const float3 displacement = normalize(cross(render_info_.camera_direction, make_float3(0.0f, -1.0f, 0.0f)));
-		render_info_.camera_position += displacement * camera_movement_speed_ * (float)render_time_;
+		render_info_.camera_position += displacement * camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_E))
 	{
-		render_info_.camera_position.y += camera_movement_speed_ * (float)render_time_;
+		render_info_.camera_position.y += camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_Q))
 	{
-		render_info_.camera_position.y -= camera_movement_speed_ * (float)render_time_;
+		render_info_.camera_position.y -= camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 
@@ -337,11 +339,10 @@ void RtInterface::add_texture()
 		static int32_t texture_type = UNKNOWN_TEXTURE;
 		static char name[64] = "";
 
-		static Float3 new_solid_color{0.0f, 0.0f, 0.0f};
 		static int32_t new_image_width{0}, new_image_height{0}, new_image_components{0};
 		static std::filesystem::path selected_file;
-		static Float3 new_checker_color_a{0.0f, 0.0f, 0.0f};
-		static Float3 new_checker_color_b{1.0f, 1.0f, 1.0f};
+		static Float3 new_color_a{0.0f, 0.0f, 0.0f};
+		static Float3 new_color_b{1.0f, 1.0f, 1.0f};
 		static float new_checker_tile_size{0.1f};
 
 		ImGui::Combo("Texture type", &texture_type, texture_types, IM_ARRAYSIZE(texture_types));
@@ -356,7 +357,7 @@ void RtInterface::add_texture()
 
 		if (texture_type == SOLID)
 		{
-			ImGui::ColorEdit3("Color", new_solid_color.arr, ImGuiColorEditFlags_Float);
+			ImGui::ColorEdit3("Color", new_color_a.arr, ImGuiColorEditFlags_Float);
 		}
 		else if (texture_type == IMAGE)
 		{
@@ -369,8 +370,8 @@ void RtInterface::add_texture()
 		}
 		else if (texture_type == CHECKER)
 		{
-			ImGui::ColorEdit3("Color 1", new_checker_color_a.arr, ImGuiColorEditFlags_Float);
-			ImGui::ColorEdit3("Color 2", new_checker_color_b.arr, ImGuiColorEditFlags_Float);
+			ImGui::ColorEdit3("Color 1", new_color_a.arr, ImGuiColorEditFlags_Float);
+			ImGui::ColorEdit3("Color 2", new_color_b.arr, ImGuiColorEditFlags_Float);
 			ImGui::SliderFloat("Tile size", &new_checker_tile_size, 0.001f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 		}
 
@@ -381,7 +382,7 @@ void RtInterface::add_texture()
 
 			if (texture_type == SOLID)
 			{
-				world_info_.add_texture(new SolidInfo(new_solid_color.str, name));
+				world_info_.add_texture(new SolidInfo(new_color_a.str, name));
 			}
 			else if (texture_type == IMAGE)
 			{
@@ -397,7 +398,7 @@ void RtInterface::add_texture()
 			}
 			else if (texture_type == CHECKER)
 			{
-				world_info_.add_texture(new CheckerInfo(new_checker_color_a.str, new_checker_color_b.str, new_checker_tile_size, name));
+				world_info_.add_texture(new CheckerInfo(new_color_a.str, new_color_b.str, new_checker_tile_size, name));
 			}
 
 			is_added = true;
@@ -432,7 +433,7 @@ void RtInterface::edit_texture()
 				}
 				else if (current_texture->type == SOLID)
 				{
-					const auto current_solid = (SolidInfo*)current_texture;
+					const auto current_solid = static_cast<SolidInfo*>(current_texture);
 					is_edited |= ImGui::ColorEdit3("Color", current_solid->albedo.arr, ImGuiColorEditFlags_Float);
 				}
 				else if (current_texture->type == IMAGE)
@@ -441,7 +442,7 @@ void RtInterface::edit_texture()
 				}
 				else if (current_texture->type == CHECKER)
 				{
-					const auto current_checker = (CheckerInfo*)current_texture;
+					const auto current_checker = static_cast<CheckerInfo*>(current_texture);
 					is_edited |= ImGui::ColorEdit3("Color 1", current_checker->albedo_a.arr, ImGuiColorEditFlags_Float);
 					is_edited |= ImGui::ColorEdit3("Color 2", current_checker->albedo_b.arr, ImGuiColorEditFlags_Float);
 					is_edited |= ImGui::SliderFloat("Tile size", &current_checker->tile_size, 0.001f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
@@ -494,7 +495,7 @@ void RtInterface::add_material()
 		}
 
 		if (material_type != REFRACTIVE && !world_info_.textures_.empty())
-			ImGui::SliderInt("Texture id", &selected_texture, 0, (int32_t)world_info_.textures_.size() - 1);
+			ImGui::SliderInt("Texture id", &selected_texture, 0, static_cast<int32_t>(world_info_.textures_.size()) - 1);
 
 		if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
 		{
@@ -537,13 +538,13 @@ void RtInterface::edit_material()
 
 				if (current_material->type == SPECULAR)
 				{
-					const auto current_specular = (SpecularInfo*)current_material;
+					const auto current_specular = static_cast<SpecularInfo*>(current_material);
 					is_edited |= ImGui::SliderFloat("Fuzziness", &current_specular->fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 					draw_help("Fuzziness of material reflection");
 				}
 				else if (current_material->type == REFRACTIVE)
 				{
-					const auto current_refractive = (RefractiveInfo*)current_material;
+					const auto current_refractive = static_cast<RefractiveInfo*>(current_material);
 					is_edited |= ImGui::SliderFloat("Refractive index", &current_refractive->refractive_index, 0.0f, 4.0f, "%.3f", 
 						ImGuiSliderFlags_AlwaysClamp);
 					draw_help("Index of refraction between air and current material");
@@ -553,7 +554,7 @@ void RtInterface::edit_material()
 				{
 					ImGui::Text("Material's texture: %s (%u)", world_info_.textures_[current_material->texture_id]->name.c_str(), current_material->texture_id);
 					static int32_t selected_texture = 0;
-					ImGui::SliderInt("Texture id", &selected_texture, 0, (int32_t)world_info_.textures_.size() - 1);
+					ImGui::SliderInt("Texture id", &selected_texture, 0, static_cast<int32_t>(world_info_.textures_.size()) - 1);
 
 					if (ImGui::Button("Set texture", {ImGui::GetContentRegionAvail().x, 0}))
 					{
@@ -602,7 +603,7 @@ void RtInterface::add_object()
 			return;
 		}
 
-		ImGui::InputText("Material name", name, IM_ARRAYSIZE(name));
+		ImGui::InputText("Object name", name, IM_ARRAYSIZE(name));
 
 		if (object_type == SPHERE)
 		{
@@ -633,7 +634,7 @@ void RtInterface::add_object()
 		}
 
 		if (!world_info_.materials_.empty())
-			ImGui::SliderInt("Material id", &selected_material, 0, (int32_t)world_info_.materials_.size() - 1);
+			ImGui::SliderInt("Material id", &selected_material, 0, static_cast<int32_t>(world_info_.materials_.size()) - 1);
 
 		if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
 		{
@@ -696,7 +697,7 @@ void RtInterface::edit_object()
 
 				if (current_object->type == MODEL)
 				{
-					ImGui::Text("Triangle count: %llu", ((ModelInfo*)current_object)->triangle_count);
+					ImGui::Text("Triangle count: %llu", static_cast<ModelInfo*>(current_object)->triangle_count);
 				}
 				else if (current_object->type == UNKNOWN_OBJECT)
 				{
@@ -706,7 +707,7 @@ void RtInterface::edit_object()
 
 				if (current_object->type == SPHERE)
 				{
-					const auto current_sphere = (SphereInfo*)current_object;
+					const auto current_sphere = static_cast<SphereInfo*>(current_object);
 
 					is_edited |= ImGui::SliderFloat3("Center", current_sphere->center.arr, -UINT8_MAX, UINT8_MAX,"%.3f",
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
@@ -716,7 +717,7 @@ void RtInterface::edit_object()
 				}
 				else if (current_object->type == PLANE)
 				{
-					const auto current_plane = (PlaneInfo*)current_object;
+					const auto current_plane = static_cast<PlaneInfo*>(current_object);
 
 					is_edited |= ImGui::SliderFloat3("Normal", current_plane->normal.arr, -1.0f, 1.0f, "%.3f", 
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
@@ -726,7 +727,7 @@ void RtInterface::edit_object()
 				}
 				else if (current_object->type == CYLINDER)
 				{
-					const auto current_cylinder = (CylinderInfo*)current_object;
+					const auto current_cylinder = static_cast<CylinderInfo*>(current_object);
 
 					is_edited |= ImGui::SliderFloat3("Extreme 1", current_cylinder->extreme_a.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
@@ -737,7 +738,7 @@ void RtInterface::edit_object()
 				}
 				else if (current_object->type == CONE)
 				{
-					const auto current_cone = (ConeInfo*)current_object;
+					const auto current_cone = static_cast<ConeInfo*>(current_object);
 
 					is_edited |= ImGui::SliderFloat3("Extreme 1", current_cone->extreme_a.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
@@ -748,12 +749,12 @@ void RtInterface::edit_object()
 				}
 				else if (current_object->type == MODEL)
 				{
-					const auto current_model = (ModelInfo*)current_object;
+					const auto current_model = static_cast<ModelInfo*>(current_object);
 
 					is_edited |= ImGui::SliderFloat3("Translation", current_model->translation.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
 					is_edited |= ImGui::SliderFloat3("Scale", current_model->scale.arr, 0.001f, UINT8_MAX, "%.3f", 
-							ImGuiSliderFlags_AlwaysClamp);
+							ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
 					is_edited |= ImGui::SliderAngle("Rotation x", &current_model->rotation.arr[0], 0.0f, 360.0f, "%.3f", 
 							ImGuiSliderFlags_AlwaysClamp);
 					is_edited |= ImGui::SliderAngle("Rotation y", &current_model->rotation.arr[1], 0.0f, 360.0f, "%.3f", 
@@ -764,7 +765,7 @@ void RtInterface::edit_object()
 
 				ImGui::Text("Object's material id: %u", current_object->material_id);
 				static int32_t selected_material = 0;
-				ImGui::SliderInt("Material id", &selected_material, 0, (int32_t)world_info_.materials_.size() - 1);
+				ImGui::SliderInt("Material id", &selected_material, 0, static_cast<int32_t>(world_info_.materials_.size()) - 1);
 
 				if (ImGui::Button("Set material", {ImGui::GetContentRegionAvail().x, 0}))
 				{
@@ -880,38 +881,50 @@ void RtInterface::save_image() const
 		static const char* image_formats[]{"HDR", "PNG", "BMP", "TGA", "JPG"};
 		static int32_t format = 0;
 		static char buffer[128];
+
 		ImGui::Combo("Image format", &format, image_formats, IM_ARRAYSIZE(image_formats));
-		ImGui::InputText("Filename", buffer, sizeof buffer);
+		ImGui::InputText("Filename", buffer, IM_ARRAYSIZE(buffer));
 
 		if (ImGui::Button("Save", {ImGui::GetContentRegionAvail().x, 0}))
 		{
-			/*if (frame_data_)
+			if (is_rendering_ && !renderer_->uses_host_memory())
+					renderer_->map_frame_memory();
+
+			if (render_info_.frame_data)
 			{
+				bool saving_success = false;
 				const auto output_path = std::filesystem::path("output") / buffer;
 
 				if (format == 0)
-					stbi_write_hdr((output_path.u8string() + ".hdr").c_str(), (int32_t)render_info_.width, (int32_t)render_info_.height, 4, frame_data_);
+				{
+					saving_success = stbi_write_hdr((output_path.u8string() + ".hdr").c_str(), static_cast<int32_t>(render_info_.width), static_cast<int32_t>(render_info_.height), 4, render_info_.frame_data);
+				}
 				else
 				{
 					const uint32_t image_size = 4 * render_info_.width * render_info_.height;
 					const auto data = new uint8_t[image_size];
 					for (uint32_t i = 0; i <= image_size; i++)
-						data[i] = (uint8_t)(clamp(frame_data_[i], 0.0f, 1.0f) * 255.99f);
+						data[i] = static_cast<uint8_t>(clamp(render_info_.frame_data[i], 0.0f, 1.0f) * 255.99f);
 
 					if (format == 1)
-						stbi_write_png((output_path.u8string() + ".png").c_str(), (int32_t)render_info_.width, (int32_t)render_info_.height, 4, data, 4 * render_info_.width);
+						saving_success = stbi_write_png((output_path.u8string() + ".png").c_str(), static_cast<int32_t>(render_info_.width), static_cast<int32_t>(render_info_.height), 4, data, 4 * render_info_.width);
 					else if (format == 2)
-						stbi_write_bmp((output_path.u8string() + ".bmp").c_str(), (int32_t)render_info_.width, (int32_t)render_info_.height, 4, data);
+						saving_success = stbi_write_bmp((output_path.u8string() + ".bmp").c_str(), static_cast<int32_t>(render_info_.width), static_cast<int32_t>(render_info_.height), 4, data);
 					else if (format == 3)
-						stbi_write_tga((output_path.u8string() + ".tga").c_str(), (int32_t)render_info_.width, (int32_t)render_info_.height, 4, data);
+						saving_success = stbi_write_tga((output_path.u8string() + ".tga").c_str(), static_cast<int32_t>(render_info_.width), static_cast<int32_t>(render_info_.height), 4, data);
 					else if (format == 4)
-						stbi_write_jpg((output_path.u8string() + ".jpg").c_str(), (int32_t)render_info_.width, (int32_t)render_info_.height, 4, data, 90);
+						saving_success = stbi_write_jpg((output_path.u8string() + ".jpg").c_str(), static_cast<int32_t>(render_info_.width), static_cast<int32_t>(render_info_.height), 4, data, 90);
 
 					delete[] data;
 				}
+
+				if (!saving_success)
+					ImGui::OpenPopup("Saving failed");
 			}
-			else*/
+			else
+			{
 				ImGui::OpenPopup("Saving failed");
+			}
 		}
 
 		draw_modal("Saving failed", "Image was not rendered yet");

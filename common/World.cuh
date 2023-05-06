@@ -72,6 +72,11 @@ public:
 		delete[] textures_;
 	}
 
+	__host__ __device__ World(const World&) = delete;
+	__host__ __device__ World(World&&) = delete;
+	__host__ __device__ World& operator=(const World&) = delete;
+	__host__ __device__ World& operator=(World&&) = delete;
+
 	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection) const
 	{
 		Intersection temp_intersection{};

@@ -8,11 +8,24 @@
 class Object
 {
 public:
+	__host__ __device__ explicit Object(Material* material)
+	{
+		material_ = material;
+	}
+
 	__host__ __device__ virtual ~Object() {}
+
+	__host__ __device__ Object(const Object&) = delete;
+	__host__ __device__ Object(Object&&) = delete;
+	__host__ __device__ Object& operator=(const Object&) = delete;
+	__host__ __device__ Object& operator=(Object&&) = delete;
 
 	__host__ __device__ virtual bool intersect(const Ray& ray, Intersection& intersection) const = 0;
 	__host__ __device__ virtual Boundary bound() = 0;
-	__host__ __device__ virtual void update(ObjectInfo* object_info, Material* material) = 0;
+	__host__ __device__ virtual void update(ObjectInfo*, Material* material)
+	{
+		material_ = material;
+	}
 
 	Material* material_ = nullptr;
 };
@@ -20,13 +33,8 @@ public:
 class Sphere final : public Object
 {
 public:
-	Sphere() = default;
-
 	__host__ __device__ Sphere(const SphereInfo* sphere_info, Material* material)
-		: center_(sphere_info->center.str), radius_(sphere_info->radius)
-	{
-		material_ = material;
-	}
+		: Object(material), center_(sphere_info->center.str), radius_(sphere_info->radius) {}
 
 	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection) const override
 	{
@@ -76,10 +84,10 @@ public:
 
 	__host__ __device__ void update(ObjectInfo* object_info, Material* material) override
 	{
+		Object::update(object_info, material);
 		const SphereInfo* sphere_info = (SphereInfo*)object_info;
 		center_ = sphere_info->center.str;
 		radius_ = sphere_info->radius;
-		material_ = material;
 	}
 
 	__host__ __device__ Boundary bound() override
@@ -95,9 +103,8 @@ private:
 class Triangle final : public Object
 {
 public:
-	Triangle() = default;
-
 	__host__ __device__ Triangle(const Vertex* first_vertex, Material* material)
+		: Object(material)
 	{
 		const Vertex v0 = *first_vertex;
 		const Vertex v1 = *(first_vertex + 1);
@@ -109,7 +116,6 @@ public:
 		normal_average_ = (v0.normal + v1.normal + v2.normal) / 3.0f;
 		min_uv_ = fminf(v0.uv, v1.uv, v2.uv);
 		max_uv_ = fmaxf(v0.uv, v1.uv, v2.uv);
-		material_ = material;
 	}
 
 	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection) const override
@@ -148,11 +154,6 @@ public:
 		return true;
 	}
 
-	__host__ __device__ void update(ObjectInfo*, Material* material) override
-	{
-		material_ = material;
-	}
-
 	__host__ __device__ Triangle& transform(const float3 translation, const float3 scale, const float3 rotation)
 	{
 		transform_point(v0_, translation, scale, rotation);
@@ -180,13 +181,8 @@ private:
 class Plane final : public Object
 {
 public:
-	Plane() = default;
-
 	__host__ __device__ Plane(const PlaneInfo* plane_info, Material* material)
-		: normal_(normalize(plane_info->normal.str)), offset_(plane_info->offset)
-	{
-		material_ = material;
-	}
+		: Object(material), normal_(normalize(plane_info->normal.str)), offset_(plane_info->offset) {}
 
 	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection) const override
 	{
@@ -210,10 +206,10 @@ public:
 
 	__host__ __device__ void update(ObjectInfo* object_info, Material* material) override
 	{
+		Object::update(object_info, material);
 		const PlaneInfo* plane_info = (PlaneInfo*)object_info;
 		normal_ = plane_info->normal.str;
 		offset_ = plane_info->offset;
-		material_ = material;
 	}
 
 	__host__ __device__ Boundary bound() override
@@ -229,13 +225,8 @@ private:
 class Cylinder final : public Object
 {
 public:
-	Cylinder() = default;
-
 	__host__ __device__ Cylinder(const CylinderInfo* cylinder_info, Material* material)
-		: extreme_a_(cylinder_info->extreme_a.str), extreme_b_(cylinder_info->extreme_b.str), radius_(cylinder_info->radius)
-	{
-		material_ = material;
-	}
+		: Object(material), extreme_a_(cylinder_info->extreme_a.str), extreme_b_(cylinder_info->extreme_b.str), radius_(cylinder_info->radius) {}
 
 	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection) const override
 	{
@@ -316,11 +307,11 @@ public:
 
 	__host__ __device__ void update(ObjectInfo* object_info, Material* material) override
 	{
+		Object::update(object_info, material);
 		const CylinderInfo* cylinder_info = (CylinderInfo*)object_info;
 		extreme_a_ = cylinder_info->extreme_a.str;
 		extreme_b_ = cylinder_info->extreme_b.str;
 		radius_ = cylinder_info->radius;
-		material_ = material;
 	}
 
 	__host__ __device__ Boundary bound() override
@@ -338,13 +329,8 @@ private:
 class Cone final : public Object
 {
 public:
-	Cone() = default;
-
 	__host__ __device__ Cone(const ConeInfo* cone_info, Material* material)
-		: extreme_a_(cone_info->extreme_a.str), extreme_b_(cone_info->extreme_b.str), radius_(cone_info->radius)
-	{
-		material_ = material;
-	}
+		: Object(material), extreme_a_(cone_info->extreme_a.str), extreme_b_(cone_info->extreme_b.str), radius_(cone_info->radius) {}
 
 	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection) const override
 	{
@@ -411,11 +397,11 @@ public:
 
 	__host__ __device__ void update(ObjectInfo* object_info, Material* material) override
 	{
+		Object::update(object_info, material);
 		const ConeInfo* cone_info = (ConeInfo*)object_info;
 		extreme_a_ = cone_info->extreme_a.str;
 		extreme_b_ = cone_info->extreme_b.str;
 		radius_ = cone_info->radius;
-		material_ = material;
 	}
 
 	__host__ __device__ Boundary bound() override
@@ -434,19 +420,26 @@ class Model final : public Object
 {
 public:
 	__host__ __device__ Model(const ModelInfo* model_info, Material* material)
-		: triangle_count_(model_info->triangle_count)
+		: Object(material), triangle_count_(model_info->triangle_count)
 	{
-		material_ = material;
-		triangles_ = (Triangle*)malloc(sizeof(Triangle) * triangle_count_);
+		triangles_ = new Triangle*[triangle_count_];
 
 		for (uint64_t i = 0; i < triangle_count_; i++)
-			triangles_[i] = Triangle(&model_info->usable_vertices[3 * i], material);
+			triangles_[i] = new Triangle(&model_info->usable_vertices[3 * i], material);
 	}
 
 	__host__ __device__ ~Model() override
 	{
-		free(triangles_);
+		for (uint64_t i = 0; i < triangle_count_; i++)
+			delete triangles_[i];
+
+		delete[] triangles_;
 	}
+
+	__host__ __device__ Model(const Model&) = delete;
+	__host__ __device__ Model(Model&&) = delete;
+	__host__ __device__ Model& operator=(const Model&) = delete;
+	__host__ __device__ Model& operator=(Model&&) = delete;
 
 	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection) const override
 	{
@@ -455,7 +448,7 @@ public:
 
 		for (uint64_t i = 0; i < triangle_count_; i++)
 		{
-			if (triangles_[i].intersect(ray, temp_intersection))
+			if (triangles_[i]->intersect(ray, temp_intersection))
 			{
 				intersected = true;
 				intersection = temp_intersection;
@@ -467,12 +460,14 @@ public:
 
 	__host__ __device__ void update(ObjectInfo* object_info, Material* material) override
 	{
+		Object::update(object_info, material);
 		const ModelInfo* model_info = (ModelInfo*)object_info;
 
-		material_ = material;
-
 		for (uint64_t i = 0; i < triangle_count_; i++)
-			triangles_[i] = Triangle(&model_info->usable_vertices[3 * i], material).transform(model_info->translation.str, model_info->scale.str, model_info->rotation.str);
+		{
+			new(triangles_[i]) Triangle(&model_info->usable_vertices[3 * i], material);
+			triangles_[i]->transform(model_info->translation.str, model_info->scale.str, model_info->rotation.str);
+		}
 	}
 
 	__host__ __device__ Boundary bound() override
@@ -480,12 +475,12 @@ public:
 		Boundary boundary{};
 
 		for (uint64_t i = 0; i < triangle_count_; i++)
-			boundary = unite(boundary, triangles_[i].bound());
+			boundary = unite(boundary, triangles_[i]->bound());
 
 		return boundary;
 	}
 
 private:
-	Triangle* triangles_ = nullptr;
+	Triangle** triangles_ = nullptr;
 	uint64_t triangle_count_{};
 };

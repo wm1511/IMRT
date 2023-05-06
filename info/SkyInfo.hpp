@@ -45,14 +45,14 @@ struct SkyInfo
 
 		for (int32_t i = 0; i < 9; i++)
 		{
-			sky_config_x.arr[i] = (float)local_state_x->configs[0][i];
-			sky_config_y.arr[i] = (float)local_state_y->configs[1][i];
-			sky_config_z.arr[i] = (float)local_state_z->configs[2][i];
+			sky_config_x.arr[i] = static_cast<float>(local_state_x->configs[0][i]);
+			sky_config_y.arr[i] = static_cast<float>(local_state_y->configs[1][i]);
+			sky_config_z.arr[i] = static_cast<float>(local_state_z->configs[2][i]);
 		}
 
-		sun_radiance.arr[0] = (float)local_state_x->radiances[0];
-		sun_radiance.arr[1] = (float)local_state_y->radiances[1];
-		sun_radiance.arr[2] = (float)local_state_z->radiances[2];
+		sun_radiance.arr[0] = static_cast<float>(local_state_x->radiances[0]);
+		sun_radiance.arr[1] = static_cast<float>(local_state_y->radiances[1]);
+		sun_radiance.arr[2] = static_cast<float>(local_state_z->radiances[2]);
 
 		arhosekskymodelstate_free(local_state_x);
 		arhosekskymodelstate_free(local_state_y);

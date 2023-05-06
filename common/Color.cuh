@@ -53,7 +53,7 @@ __host__ __device__ inline float3 sample_sky(const Ray& ray, const SkyInfo& sky_
     return result.str * 0.05f;
 }
 
-__host__ __device__ inline float3 calculate_color(const Ray& ray, World** world, const SkyInfo sky_info, const int32_t max_depth, uint32_t* random_state)
+__host__ __device__ inline float3 calculate_color(const Ray& ray, World** world, const SkyInfo& sky_info, const int32_t max_depth, uint32_t* random_state)
 {
 	Ray current_ray = ray;
     float3 current_absorption = make_float3(1.0f);

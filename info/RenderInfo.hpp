@@ -11,9 +11,10 @@ enum RenderMode
 
 struct RenderInfo
 {
-	// Image
-	int64_t image_handle{-1};
-	uint64_t image_size{};
+	// Frame
+	int64_t frame_handle{-1};
+	uint64_t frame_size{};
+	float* frame_data = nullptr;
 	// Quality
 	int32_t samples_per_pixel{100}, max_depth{10}, render_mode{0};
 	uint32_t height = 0, width = 0, frames_since_refresh{0};

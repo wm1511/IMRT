@@ -7,10 +7,22 @@
 class Material
 {
 public:
+	__host__ __device__ explicit Material(Texture* texture)
+	{
+		texture_ = texture;
+	}
 	__host__ __device__ virtual ~Material() {}
 
+	__host__ __device__ Material(const Material&) = delete;
+	__host__ __device__ Material(Material&&) = delete;
+	__host__ __device__ Material& operator=(const Material&) = delete;
+	__host__ __device__ Material& operator=(Material&&) = delete;
+
 	__host__ __device__ virtual bool scatter(Ray& ray, const Intersection& intersection, float3& absorption, uint32_t* random_state) const = 0;
-	__host__ __device__ virtual void update(MaterialInfo* material_info, Texture* texture) = 0;
+	__host__ __device__ virtual void update(MaterialInfo*, Texture* texture)
+	{
+		texture_ = texture;
+	}
 
 	Texture* texture_ = nullptr;
 };
@@ -18,10 +30,7 @@ public:
 class Diffuse final : public Material
 {
 public:
-	__host__ __device__ explicit Diffuse(const DiffuseInfo*, Texture* texture)
-	{
-		texture_ = texture;
-	}
+	__host__ __device__ Diffuse(const DiffuseInfo*, Texture* texture) : Material(texture) {}
 
 	__host__ __device__ bool scatter(Ray& ray, const Intersection& intersection, float3& absorption, uint32_t* random_state) const override
 	{
@@ -30,21 +39,13 @@ public:
 		absorption = texture_->color(intersection.uv);
 		return true;
 	}
-
-	__host__ __device__ void update(MaterialInfo*, Texture* texture) override
-	{
-		texture_ = texture;
-	}
 };
 
 class Specular final : public Material
 {
 public:
-	__host__ __device__ explicit Specular(const SpecularInfo* specular_info, Texture* texture)
-		: fuzziness_(specular_info->fuzziness)
-	{
-		texture_ = texture;
-	}
+	__host__ __device__ Specular(const SpecularInfo* specular_info, Texture* texture)
+		: Material(texture), fuzziness_(specular_info->fuzziness) {}
 
 	__host__ __device__ bool scatter(Ray& ray, const Intersection& intersection, float3& absorption, uint32_t* random_state) const override
 	{
@@ -56,9 +57,9 @@ public:
 
 	__host__ __device__ void update(MaterialInfo* material, Texture* texture) override
 	{
+		Material::update(material, texture);
 		const SpecularInfo* specular_info = (SpecularInfo*)material;
 		fuzziness_ = specular_info->fuzziness;
-		texture_ = texture;
 	}
 
 private:
@@ -68,11 +69,8 @@ private:
 class Refractive final : public Material
 {
 public:
-	__host__ __device__ explicit Refractive(const RefractiveInfo* refractive_info, Texture* texture)
-		: refractive_index_(refractive_info->refractive_index)
-	{
-		texture_ = texture;
-	}
+	__host__ __device__ Refractive(const RefractiveInfo* refractive_info, Texture* texture)
+		 : Material(texture), refractive_index_(refractive_info->refractive_index) {}
 
 	__host__ __device__ bool scatter(Ray& ray, const Intersection& intersection, float3& absorption, uint32_t* random_state) const override
 	{
@@ -147,20 +145,12 @@ private:
 class Isotropic final : public Material
 {
 public:
-	__host__ __device__ explicit Isotropic(const IsotropicInfo*, Texture* texture)
-	{
-		texture_ = texture;
-	}
+	__host__ __device__ explicit Isotropic(const IsotropicInfo*, Texture* texture) : Material(texture) {}
 
 	__host__ __device__ bool scatter(Ray& ray, const Intersection& intersection, float3& absorption, uint32_t* random_state) const override
 	{
 		ray = Ray(intersection.point, sphere_random(random_state));
 		absorption = texture_->color(intersection.uv);
 		return true;
-	}
-
-	__host__ __device__ void update(MaterialInfo*, Texture* texture) override
-	{
-		texture_ = texture;
 	}
 };

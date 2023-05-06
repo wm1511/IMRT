@@ -134,7 +134,7 @@ void Frame::release_memory()
 void Frame::set_data(const void* data)
 {
 	const VkDevice device = App::get_device();
-	const uint64_t staging_buffer_size = static_cast<uint64_t>(16) * width_ * height_;
+	const uint64_t staging_buffer_size = 4 * sizeof(float) * width_ * height_;
 
 	if (!staging_buffer_)
 	{
@@ -232,7 +232,7 @@ int64_t Frame::get_image_memory_handle() const
 	handle_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
 	handle_info.memory = memory_;
 
-	const auto vkGetMemoryWin32HandleKHR = (PFN_vkGetMemoryWin32HandleKHR) vkGetDeviceProcAddr(device, "vkGetMemoryWin32HandleKHR");
+	const auto vkGetMemoryWin32HandleKHR = reinterpret_cast<PFN_vkGetMemoryWin32HandleKHR>(vkGetDeviceProcAddr(device, "vkGetMemoryWin32HandleKHR"));
 
     if (!vkGetMemoryWin32HandleKHR)
         throw std::runtime_error("Failed to obtain vkGetMemoryWin32HandleKHR function pointer");
@@ -240,7 +240,7 @@ int64_t Frame::get_image_memory_handle() const
     if (vkGetMemoryWin32HandleKHR(device, &handle_info, &handle) != VK_SUCCESS)
 		throw std::runtime_error("Failed to execute vkGetMemoryWin32HandleKHR");
 
-	return (int64_t)handle;
+	return reinterpret_cast<int64_t>(handle);
 
 #elif defined(__linux__) || defined(__APPLE__)
 	int64_t handle = -1;

@@ -11,7 +11,7 @@ __host__ void check_cuda(const cudaError_t result, char const* const func, const
 {
     if (result)
     {
-	    printf("CUDA error = %u at %s: %i '%s' \n", (int32_t)result, file, line, func);
+	    printf("CUDA error = %u at %s: %i '%s' \n", static_cast<int32_t>(result), file, line, func);
         cudaDeviceReset();
         abort();
     }
@@ -136,9 +136,9 @@ CudaRenderer::CudaRenderer(const RenderInfo* render_info, const WorldInfo* world
     blocks_ = dim3((width + thread_x - 1) / thread_x, (height + thread_y - 1) / thread_y);
     threads_ = dim3(thread_x, thread_y);
 
-    CCE(cudaMalloc((void**)&accumulation_buffer_, sizeof(float4) * width * height));
-    CCE(cudaMalloc((void**)&xoshiro_initial_, sizeof(uint4) * width * height));
-    CCE(cudaMalloc((void**)&xoshiro_state_, sizeof(uint4) * width * height));
+    CCE(cudaMalloc(reinterpret_cast<void**>(&accumulation_buffer_), sizeof(float4) * width * height));
+    CCE(cudaMalloc(reinterpret_cast<void**>(&xoshiro_initial_), sizeof(uint4) * width * height));
+    CCE(cudaMalloc(reinterpret_cast<void**>(&xoshiro_state_), sizeof(uint4) * width * height));
 
     random_init<<<blocks_, threads_>>>(width, height, xoshiro_initial_);
     CCE(cudaGetLastError());
@@ -148,7 +148,7 @@ CudaRenderer::CudaRenderer(const RenderInfo* render_info, const WorldInfo* world
     
     allocate_world();
     
-    CCE(cudaMalloc((void**)&camera_, sizeof(Camera*)));
+    CCE(cudaMalloc(reinterpret_cast<void**>(&camera_), sizeof(Camera*)));
     create_camera<<<1, 1>>>(camera_, *render_info_);
     CCE(cudaGetLastError());
     CCE(cudaDeviceSynchronize());
@@ -156,7 +156,7 @@ CudaRenderer::CudaRenderer(const RenderInfo* render_info, const WorldInfo* world
     if (sky_info_->buffered_hdr_data)
     {
         const uint64_t hdr_size = sizeof(float3) * sky_info_->hdr_width * sky_info_->hdr_height;
-	    CCE(cudaMalloc((void**)&sky_info_->usable_hdr_data, hdr_size));
+	    CCE(cudaMalloc(reinterpret_cast<void**>(&sky_info_->usable_hdr_data), hdr_size));
     	CCE(cudaMemcpy(sky_info_->usable_hdr_data, sky_info_->buffered_hdr_data, hdr_size, cudaMemcpyHostToDevice));
     }
 }
@@ -179,22 +179,26 @@ CudaRenderer::~CudaRenderer()
     cudaDeviceReset();
 }
 
-float* CudaRenderer::render()
+void CudaRenderer::render()
 {
     fetch_frame_buffer();
 
     if (render_info_->render_mode == PROGRESSIVE)
-	    render_pixel_progressive<<<blocks_, threads_>>>(frame_buffer_, accumulation_buffer_, camera_, world_, *sky_info_, *render_info_, xoshiro_state_);
+    {
+    	render_pixel_progressive<<<blocks_, threads_>>>(frame_buffer_, accumulation_buffer_, camera_, world_, *sky_info_, *render_info_, xoshiro_state_);
+    }
     else if (render_info_->render_mode == STATIC)
+    {
+        CCE(cudaMemset(frame_buffer_, 0, render_info_->frame_size));
+
 	    for (int32_t i = 0; i < render_info_->samples_per_pixel; i++)
-			render_pixel_static<<<blocks_, threads_>>>(frame_buffer_, camera_, world_, *sky_info_, *render_info_, xoshiro_state_);
+	    	render_pixel_static<<<blocks_, threads_>>>(frame_buffer_, camera_, world_, *sky_info_, *render_info_, xoshiro_state_);
+    }
 
 	CCE(cudaGetLastError());
     CCE(cudaDeviceSynchronize());
 
     CCE(cudaFree(frame_buffer_));
-
-    return nullptr;
 }
 
 void CudaRenderer::refresh_buffer()
@@ -296,9 +300,9 @@ void CudaRenderer::recreate_image()
     CCE(cudaFree(xoshiro_state_));
     CCE(cudaFree(xoshiro_initial_));
     CCE(cudaFree(accumulation_buffer_));
-    CCE(cudaMalloc((void**)&accumulation_buffer_, sizeof(float4) * width * height));
-    CCE(cudaMalloc((void**)&xoshiro_initial_, sizeof(uint4) * width * height));
-    CCE(cudaMalloc((void**)&xoshiro_state_, sizeof(uint4) * width * height));
+    CCE(cudaMalloc(reinterpret_cast<void**>(&accumulation_buffer_), sizeof(float4) * width * height));
+    CCE(cudaMalloc(reinterpret_cast<void**>(&xoshiro_initial_), sizeof(uint4) * width * height));
+    CCE(cudaMalloc(reinterpret_cast<void**>(&xoshiro_state_), sizeof(uint4) * width * height));
 
     random_init<<<blocks_, threads_>>>(width, height, xoshiro_initial_);
     CCE(cudaGetLastError());
@@ -312,11 +316,20 @@ void CudaRenderer::recreate_sky()
     if (sky_info_->buffered_hdr_data)
     {
         const uint64_t hdr_size = sizeof(float3) * sky_info_->hdr_width * sky_info_->hdr_height;
-	    CCE(cudaMalloc((void**)&sky_info_->usable_hdr_data, hdr_size));
+	    CCE(cudaMalloc(reinterpret_cast<void**>(&sky_info_->usable_hdr_data), hdr_size));
     	CCE(cudaMemcpy(sky_info_->usable_hdr_data, sky_info_->buffered_hdr_data, hdr_size, cudaMemcpyHostToDevice));
     }
     else
         sky_info_->usable_hdr_data = nullptr;
+}
+
+void CudaRenderer::map_frame_memory()
+{
+    fetch_frame_buffer();
+
+	CCE(cudaMemcpy(render_info_->frame_data, frame_buffer_, render_info_->frame_size, cudaMemcpyDeviceToHost));
+
+    CCE(cudaFree(frame_buffer_));
 }
 
 void CudaRenderer::allocate_world()
@@ -335,23 +348,23 @@ void CudaRenderer::allocate_world()
     {
         if (texture_data[i]->type == SOLID)
         {
-	        CCE(cudaMalloc((void**)&host_texture_data_[i], sizeof(SolidInfo)));
+	        CCE(cudaMalloc(reinterpret_cast<void**>(&host_texture_data_[i]), sizeof(SolidInfo)));
 			CCE(cudaMemcpy(host_texture_data_[i], texture_data[i], sizeof(SolidInfo), cudaMemcpyHostToDevice));
         }
     	else if (texture_data[i]->type == IMAGE)
         {
-            const auto image_data = (ImageInfo*)texture_data[i];
+            const auto image_data = dynamic_cast<ImageInfo*>(texture_data[i]);
             const uint64_t image_size = sizeof(float) * image_data->width * image_data->height * 3;
 
-            CCE(cudaMalloc((void**)&image_data->usable_data, image_size));
+            CCE(cudaMalloc(reinterpret_cast<void**>(&image_data->usable_data), image_size));
 			CCE(cudaMemcpy(image_data->usable_data, image_data->buffered_data, image_size, cudaMemcpyHostToDevice));
 
-	        CCE(cudaMalloc((void**)&host_texture_data_[i], sizeof(ImageInfo)));
+	        CCE(cudaMalloc(reinterpret_cast<void**>(&host_texture_data_[i]), sizeof(ImageInfo)));
 			CCE(cudaMemcpy(host_texture_data_[i], image_data, sizeof(ImageInfo), cudaMemcpyHostToDevice));
         }
         else if (texture_data[i]->type == CHECKER)
         {
-	        CCE(cudaMalloc((void**)&host_texture_data_[i], sizeof(CheckerInfo)));
+	        CCE(cudaMalloc(reinterpret_cast<void**>(&host_texture_data_[i]), sizeof(CheckerInfo)));
 			CCE(cudaMemcpy(host_texture_data_[i], texture_data[i], sizeof(CheckerInfo), cudaMemcpyHostToDevice));
         }
     }
@@ -360,22 +373,22 @@ void CudaRenderer::allocate_world()
     {
         if (material_data[i]->type == DIFFUSE)
         {
-	        CCE(cudaMalloc((void**)&host_material_data_[i], sizeof(DiffuseInfo)));
+	        CCE(cudaMalloc(reinterpret_cast<void**>(&host_material_data_[i]), sizeof(DiffuseInfo)));
 			CCE(cudaMemcpy(host_material_data_[i], material_data[i], sizeof(DiffuseInfo), cudaMemcpyHostToDevice));
         }
         else if (material_data[i]->type == SPECULAR)
         {
-	        CCE(cudaMalloc((void**)&host_material_data_[i], sizeof(SpecularInfo)));
+	        CCE(cudaMalloc(reinterpret_cast<void**>(&host_material_data_[i]), sizeof(SpecularInfo)));
 			CCE(cudaMemcpy(host_material_data_[i], material_data[i], sizeof(SpecularInfo), cudaMemcpyHostToDevice));
         }
         else if (material_data[i]->type == REFRACTIVE)
         {
-	        CCE(cudaMalloc((void**)&host_material_data_[i], sizeof(RefractiveInfo)));
+	        CCE(cudaMalloc(reinterpret_cast<void**>(&host_material_data_[i]), sizeof(RefractiveInfo)));
 			CCE(cudaMemcpy(host_material_data_[i], material_data[i], sizeof(RefractiveInfo), cudaMemcpyHostToDevice));
         }
     	else if (material_data[i]->type == ISOTROPIC)
         {
-	        CCE(cudaMalloc((void**)&host_material_data_[i], sizeof(IsotropicInfo)));
+	        CCE(cudaMalloc(reinterpret_cast<void**>(&host_material_data_[i]), sizeof(IsotropicInfo)));
 			CCE(cudaMemcpy(host_material_data_[i], material_data[i], sizeof(IsotropicInfo), cudaMemcpyHostToDevice));
         }
     }
@@ -384,46 +397,53 @@ void CudaRenderer::allocate_world()
     {
         if (object_data[i]->type == SPHERE)
         {
-	        CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(SphereInfo)));
+	        CCE(cudaMalloc(reinterpret_cast<void**>(&host_object_data_[i]), sizeof(SphereInfo)));
 			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(SphereInfo), cudaMemcpyHostToDevice));
         }
     	else if (object_data[i]->type == PLANE)
         {
-	        CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(PlaneInfo)));
+	        CCE(cudaMalloc(reinterpret_cast<void**>(&host_object_data_[i]), sizeof(PlaneInfo)));
 			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(PlaneInfo), cudaMemcpyHostToDevice));
         }
     	else if (object_data[i]->type == CYLINDER)
         {
-	        CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(CylinderInfo)));
+	        CCE(cudaMalloc(reinterpret_cast<void**>(&host_object_data_[i]), sizeof(CylinderInfo)));
 			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(CylinderInfo), cudaMemcpyHostToDevice));
         }
     	else if (object_data[i]->type == CONE)
         {
-	        CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(ConeInfo)));
+	        CCE(cudaMalloc(reinterpret_cast<void**>(&host_object_data_[i]), sizeof(ConeInfo)));
 			CCE(cudaMemcpy(host_object_data_[i], object_data[i], sizeof(ConeInfo), cudaMemcpyHostToDevice));
         }
         else if (object_data[i]->type == MODEL)
         {
-	        const auto model_data = (ModelInfo*)object_data[i];
+	        const auto model_data = dynamic_cast<ModelInfo*>(object_data[i]);
 
-            CCE(cudaMalloc((void**)&model_data->usable_vertices, 3 * model_data->triangle_count * sizeof(Vertex)));
+            CCE(cudaMalloc(reinterpret_cast<void**>(&model_data->usable_vertices), 3 * model_data->triangle_count * sizeof(Vertex)));
 			CCE(cudaMemcpy(model_data->usable_vertices, model_data->buffered_vertices, 3 * model_data->triangle_count * sizeof(Vertex), cudaMemcpyHostToDevice));
 
-            CCE(cudaMalloc((void**)&host_object_data_[i], sizeof(ModelInfo)));
+            CCE(cudaMalloc(reinterpret_cast<void**>(&host_object_data_[i]), sizeof(ModelInfo)));
 			CCE(cudaMemcpy(host_object_data_[i], model_data, sizeof(ModelInfo), cudaMemcpyHostToDevice));
         }
     }
 
-    CCE(cudaMalloc((void**)&device_texture_data_, texture_count * sizeof(TextureInfo*)));
-    CCE(cudaMalloc((void**)&device_material_data_, material_count * sizeof(MaterialInfo*)));
-    CCE(cudaMalloc((void**)&device_object_data_, object_count * sizeof(ObjectInfo*)));
+    CCE(cudaMalloc(reinterpret_cast<void**>(&device_texture_data_), texture_count * sizeof(TextureInfo*)));
+    CCE(cudaMalloc(reinterpret_cast<void**>(&device_material_data_), material_count * sizeof(MaterialInfo*)));
+    CCE(cudaMalloc(reinterpret_cast<void**>(&device_object_data_), object_count * sizeof(ObjectInfo*)));
 	CCE(cudaMemcpy(device_texture_data_, host_texture_data_, texture_count * sizeof(TextureInfo*), cudaMemcpyHostToDevice));
 	CCE(cudaMemcpy(device_material_data_, host_material_data_, material_count * sizeof(MaterialInfo*), cudaMemcpyHostToDevice));
 	CCE(cudaMemcpy(device_object_data_, host_object_data_, object_count * sizeof(ObjectInfo*), cudaMemcpyHostToDevice));
 
-    CCE(cudaMalloc((void**)&world_, sizeof(World*)));
-    create_world<<<1, 1>>>(device_object_data_, device_material_data_, device_texture_data_, (int32_t)object_count, (int32_t)material_count, (int32_t)texture_count, world_);
-    CCE(cudaGetLastError());
+    CCE(cudaMalloc(reinterpret_cast<void**>(&world_), sizeof(World*)));
+    create_world<<<1, 1>>>(
+        device_object_data_, 
+        device_material_data_, 
+        device_texture_data_, 
+        static_cast<int32_t>(object_count), 
+        static_cast<int32_t>(material_count), 
+        static_cast<int32_t>(texture_count), world_);
+
+	CCE(cudaGetLastError());
     CCE(cudaDeviceSynchronize());
 }
 
@@ -441,7 +461,7 @@ void CudaRenderer::deallocate_world() const
     for (uint64_t i = 0; i < world_info_->objects_.size(); i++)
     {
         if (world_info_->objects_[i]->type == MODEL)
-            CCE(cudaFree(((ModelInfo*)world_info_->objects_[i])->usable_vertices));
+            CCE(cudaFree(dynamic_cast<ModelInfo*>(world_info_->objects_[i])->usable_vertices));
 
 	    CCE(cudaFree(host_object_data_[i]));
     }
@@ -454,7 +474,7 @@ void CudaRenderer::deallocate_world() const
 	for (uint64_t i = 0; i < world_info_->textures_.size(); i++)
     {
         if (world_info_->textures_[i]->type == IMAGE)
-            CCE(cudaFree(((ImageInfo*)world_info_->textures_[i])->usable_data));
+            CCE(cudaFree(dynamic_cast<ImageInfo*>(world_info_->textures_[i])->usable_data));
 
 	    CCE(cudaFree(host_texture_data_[i]));
     }
@@ -470,21 +490,20 @@ void CudaRenderer::fetch_frame_buffer()
 
 #if defined(_WIN32)
     handle_desc.type = cudaExternalMemoryHandleTypeOpaqueWin32;
-    handle_desc.handle.win32.handle = (void*)render_info_->image_handle;
+    handle_desc.handle.win32.handle = reinterpret_cast<void*>(render_info_->frame_handle);
 #elif defined(__linux__) || defined(__APPLE__)
     handle_desc.type = cudaExternalMemoryHandleTypeOpaqueFd;
-    handle_desc.handle.fd = image_handle;
+    handle_desc.handle.fd = render_info_->frame_handle;
 #endif
 
-    handle_desc.size = render_info_->image_size;
+    handle_desc.size = render_info_->frame_size;
 
     cudaExternalMemory_t external_memory = {};
     CCE(cudaImportExternalMemory(&external_memory, &handle_desc));
 
     cudaExternalMemoryBufferDesc buffer_desc = {};
-    buffer_desc.size = render_info_->image_size;
+    buffer_desc.size = render_info_->frame_size;
     buffer_desc.offset = 0;
 
-    CCE(cudaExternalMemoryGetMappedBuffer((void**)&frame_buffer_, external_memory, &buffer_desc));
-    CCE(cudaMemset(frame_buffer_, 0, render_info_->image_size));
+    CCE(cudaExternalMemoryGetMappedBuffer(reinterpret_cast<void**>(&frame_buffer_), external_memory, &buffer_desc));
 }

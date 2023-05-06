@@ -28,7 +28,7 @@ public:
 
 	__host__ __device__ Ray cast_ray(uint32_t* random_state, const float screen_x, const float screen_y) const
 	{
-		const float3 random_on_lens = lens_radius_ * disk_random(random_state);
+		const float2 random_on_lens = lens_radius_ * disk_random(random_state);
 		const float3 ray_offset = u_ * random_on_lens.x + v_ * random_on_lens.y;
 		return {origin_ + ray_offset, starting_point_ + screen_x * horizontal_map_ + screen_y * vertical_map_ - origin_ - ray_offset};
 	}

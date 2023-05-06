@@ -9,7 +9,7 @@ WorldInfo::WorldInfo()
 	textures_[0] = new CheckerInfo({0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, 0.05f, "DemoChecker");
 	textures_[1] = new SolidInfo({0.5f, 0.5f, 0.5f}, "DemoGray");
 	textures_[2] = new SolidInfo({0.2f, 0.2f, 0.8f}, "DemoBlue");
-	materials_[0] = new DiffuseInfo(0, "DemoDiffuseGray");
+	materials_[0] = new DiffuseInfo(0, "DemoDiffuseChecker");
 	materials_[1] = new RefractiveInfo(1.5f, "DemoRefractive");
 	materials_[2] = new SpecularInfo(0.1f, 1, "DemoFuzzySpecular");
 	materials_[3] = new DiffuseInfo(2, "DemoDiffuseBlue");
