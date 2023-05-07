@@ -3,7 +3,7 @@
 #include <string>
 #include <utility>
 
-enum MaterialType
+enum class MaterialType
 {
 	UNKNOWN_MATERIAL,
 	DIFFUSE,
@@ -23,7 +23,9 @@ struct MaterialInfo
 	MaterialInfo& operator=(const MaterialInfo&) = delete;
 	MaterialInfo& operator=(MaterialInfo&&) = default;
 
-	MaterialType type{UNKNOWN_MATERIAL};
+	[[nodiscard]] virtual uint64_t get_size() const = 0;
+
+	MaterialType type{MaterialType::UNKNOWN_MATERIAL};
 	int32_t texture_id{0};
 	std::string name{};
 };
@@ -31,13 +33,23 @@ struct MaterialInfo
 struct DiffuseInfo final : MaterialInfo
 {
 	explicit DiffuseInfo(const int32_t texture_info, std::string material_name)
-		: MaterialInfo(DIFFUSE, texture_info, std::move(material_name)) {}
+		: MaterialInfo(MaterialType::DIFFUSE, texture_info, std::move(material_name)) {}
+
+	[[nodiscard]] uint64_t get_size() const override
+	{
+		return sizeof(DiffuseInfo);
+	}
 };
 
 struct SpecularInfo final : MaterialInfo
 {
 	SpecularInfo(const float fuzziness, const int32_t texture_info, std::string material_name)
-		: MaterialInfo(SPECULAR, texture_info, std::move(material_name)), fuzziness(fuzziness) {}
+		: MaterialInfo(MaterialType::SPECULAR, texture_info, std::move(material_name)), fuzziness(fuzziness) {}
+
+	[[nodiscard]] uint64_t get_size() const override
+	{
+		return sizeof(SpecularInfo);
+	}
 
 	float fuzziness{};
 };
@@ -45,7 +57,12 @@ struct SpecularInfo final : MaterialInfo
 struct RefractiveInfo final : MaterialInfo
 {
 	explicit RefractiveInfo(const float refractive_index, std::string material_name)
-		: MaterialInfo(REFRACTIVE, NULL, std::move(material_name)), refractive_index(refractive_index) {}
+		: MaterialInfo(MaterialType::REFRACTIVE, NULL, std::move(material_name)), refractive_index(refractive_index) {}
+
+	[[nodiscard]] uint64_t get_size() const override
+	{
+		return sizeof(RefractiveInfo);
+	}
 
 	float refractive_index{};
 };
@@ -53,5 +70,10 @@ struct RefractiveInfo final : MaterialInfo
 struct IsotropicInfo final : MaterialInfo
 {
 	explicit IsotropicInfo(const int32_t texture_info, std::string material_name)
-		: MaterialInfo(ISOTROPIC, texture_info, std::move(material_name)) {}
+		: MaterialInfo(MaterialType::ISOTROPIC, texture_info, std::move(material_name)) {}
+
+	[[nodiscard]] uint64_t get_size() const override
+	{
+		return sizeof(IsotropicInfo);
+	}
 };

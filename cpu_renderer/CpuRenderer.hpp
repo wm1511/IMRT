@@ -10,7 +10,7 @@
 class CpuRenderer final : public IRenderer
 {
 public:
-	CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_info, SkyInfo* sky_info);
+	CpuRenderer(RenderInfo*& render_info, WorldInfo*& world_info, SkyInfo*& sky_info);
 	~CpuRenderer() override;
 
 	CpuRenderer(const CpuRenderer&) = delete;
@@ -35,9 +35,9 @@ private:
 	void random_init() const;
 	void random_refresh() const;
 
-	const RenderInfo* render_info_;
-	const WorldInfo* world_info_;
-	SkyInfo* sky_info_;
+	RenderInfo render_info_{};
+	WorldInfo world_info_{};
+	SkyInfo sky_info_{};
 
 	uint4* xoshiro_state_ = nullptr, * xoshiro_initial_ = nullptr;
     float4* accumulation_buffer_ = nullptr;

@@ -53,16 +53,6 @@ static void draw_modal(const char* id, const char* message)
 	}
 }
 
-RtInterface::RtInterface()
-{
-	sky_info_.create_sky();
-}
-
-RtInterface::~RtInterface()
-{
-	sky_info_.clear_hdr();
-}
-
 void RtInterface::draw()
 {
 	//ImGui::ShowDemoWindow();
@@ -74,25 +64,35 @@ void RtInterface::draw()
 		if (starting_disabled)
 			ImGui::BeginDisabled();
 
-		if (ImGui::Button("CPU render", {ImGui::GetContentRegionAvail().x / 2, 0}))
+        ImGui::RadioButton("CPU", &render_device_, enum_cast(RenderDevice::CPU)); ImGui::SameLine();
+        ImGui::RadioButton("CUDA", &render_device_, enum_cast(RenderDevice::CUDA)); ImGui::SameLine();
+        ImGui::RadioButton("OPTIX", &render_device_, enum_cast(RenderDevice::OPTIX));
+
+		if (!is_rendering_)
+		{
+			//if (render_device_ == enum_cast())
+		}
+
+		if (ImGui::Button("Start rendering", {ImGui::GetContentRegionAvail().x / 2, 0}))
 		{
 			frames_rendered_ = 0;
-			render_info_.frames_since_refresh = 0;
+			render_info_->frames_since_refresh = 0;
 			is_rendering_ = true;
-			renderer_ = std::make_unique<CpuRenderer>(&render_info_, &world_info_, &sky_info_);
+			renderer_ = std::make_unique<CpuRenderer>(render_info_, world_info_, sky_info_);
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("CUDA render", {ImGui::GetContentRegionAvail().x, 0}))
 		{
 			frames_rendered_ = 0;
-			render_info_.frames_since_refresh = 0;
+			render_info_->frames_since_refresh = 0;
 			is_rendering_ = true;
-			renderer_ = std::make_unique<CudaRenderer>(&render_info_, &world_info_, &sky_info_);
+			renderer_ = std::make_unique<CudaRenderer>(render_info_, world_info_, sky_info_);
 		}
 		if (starting_disabled)
 			ImGui::EndDisabled();
 
-		if (ImGui::Button("Stop rendering", {ImGui::GetContentRegionAvail().x, 0}) || (render_info_.render_mode == STATIC && frames_rendered_ != 0))
+		if (ImGui::Button("Stop rendering", {ImGui::GetContentRegionAvail().x, 0}) ||
+			(render_info_->render_mode == enum_cast(RenderMode::STATIC) && frames_rendered_ != 0))
 		{
 			renderer_.reset();
 			is_rendering_ = false;
@@ -100,33 +100,33 @@ void RtInterface::draw()
 
 		if (is_rendering_)
 		{
-			if (!frame_ || render_info_.width != frame_->get_width() || render_info_.height != frame_->get_height())
+			if (!frame_ || render_info_->width != frame_->get_width() || render_info_->height != frame_->get_height())
 			{
-				frame_ = std::make_unique<Frame>(render_info_.width, render_info_.height);
+				frame_ = std::make_unique<Frame>(render_info_->width, render_info_->height);
 
-				render_info_.frame_handle = frame_->get_image_memory_handle();
-				render_info_.frame_size = sizeof(float) * 4 * render_info_.height * render_info_.width;
-				delete[] render_info_.frame_data;
-				render_info_.frame_data = new float[render_info_.frame_size];
+				render_info_->frame_handle = frame_->get_image_memory_handle();
+				render_info_->frame_size = sizeof(float) * 4 * render_info_->height * render_info_->width;
+				delete[] render_info_->frame_data;
+				render_info_->frame_data = new float[render_info_->frame_size];
 
 				renderer_->recreate_image();
 				renderer_->recreate_camera();
 				renderer_->refresh_buffer();
-				render_info_.frames_since_refresh = 0;
+				render_info_->frames_since_refresh = 0;
 			}
 
 			frames_rendered_++;
-			render_info_.frames_since_refresh++;
+			render_info_->frames_since_refresh++;
 
 			renderer_->render();
 
 			if (renderer_->uses_host_memory())
-				frame_->set_data(render_info_.frame_data);
+				frame_->set_data(render_info_->frame_data);
 		}
 
 		ImGui::Text("Last render time: %llu ms", render_time_);
 		ImGui::Text("Frames rendered: %llu", frames_rendered_);
-		ImGui::Text("Frames rendered since last refresh: %u", render_info_.frames_since_refresh);
+		ImGui::Text("Frames rendered since last refresh: %u", render_info_->frames_since_refresh);
 
 		ImGui::Separator();
 		edit_settings();
@@ -149,8 +149,8 @@ void RtInterface::draw()
 
 	{
 		ImGui::Begin("Viewport");
-		render_info_.width = static_cast<uint32_t>(ImGui::GetContentRegionAvail().x);
-		render_info_.height = static_cast<uint32_t>(ImGui::GetContentRegionAvail().y);
+		render_info_->width = static_cast<uint32_t>(ImGui::GetContentRegionAvail().x);
+		render_info_->height = static_cast<uint32_t>(ImGui::GetContentRegionAvail().y);
 
 		if (frame_) 
 			ImGui::Image(reinterpret_cast<ImU64>(frame_->get_descriptor_set()),
@@ -171,53 +171,53 @@ void RtInterface::draw()
 	}
 }
 
-void RtInterface::move_camera()
+void RtInterface::move_camera() const
 {
 	bool is_moved = false;
 
 	if (ImGui::IsKeyDown(ImGuiKey_W))
 	{
-		render_info_.camera_position -= render_info_.camera_direction * camera_movement_speed_ * static_cast<float>(render_time_);
+		render_info_->camera_position -= render_info_->camera_direction * camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_S))
 	{
-		render_info_.camera_position += render_info_.camera_direction * camera_movement_speed_ * static_cast<float>(render_time_);
+		render_info_->camera_position += render_info_->camera_direction * camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_A))
 	{
-		const float3 displacement = normalize(cross(render_info_.camera_direction, make_float3(0.0f, -1.0f, 0.0f)));
-		render_info_.camera_position -= displacement * camera_movement_speed_ * static_cast<float>(render_time_);
+		const float3 displacement = normalize(cross(render_info_->camera_direction, make_float3(0.0f, -1.0f, 0.0f)));
+		render_info_->camera_position -= displacement * camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_D))
 	{
-		const float3 displacement = normalize(cross(render_info_.camera_direction, make_float3(0.0f, -1.0f, 0.0f)));
-		render_info_.camera_position += displacement * camera_movement_speed_ * static_cast<float>(render_time_);
+		const float3 displacement = normalize(cross(render_info_->camera_direction, make_float3(0.0f, -1.0f, 0.0f)));
+		render_info_->camera_position += displacement * camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_E))
 	{
-		render_info_.camera_position.y += camera_movement_speed_ * static_cast<float>(render_time_);
+		render_info_->camera_position.y += camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_Q))
 	{
-		render_info_.camera_position.y -= camera_movement_speed_ * static_cast<float>(render_time_);
+		render_info_->camera_position.y -= camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 
 	if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
 	{
-		render_info_.angle_x += ImGui::GetMouseDragDelta().x * camera_rotation_speed_;
-		render_info_.angle_y += ImGui::GetMouseDragDelta().y * camera_rotation_speed_;
-		render_info_.angle_x = fmodf(render_info_.angle_x, k2Pi);
-		render_info_.angle_y = clamp(render_info_.angle_y, -kHalfPi, kHalfPi);
-		render_info_.camera_direction = make_float3(
-			cos(render_info_.angle_y) * -sin(render_info_.angle_x),
-			-sin(render_info_.angle_y),
-			-cos(render_info_.angle_x) * cos(render_info_.angle_y));
+		render_info_->angle_x += ImGui::GetMouseDragDelta().x * camera_rotation_speed_;
+		render_info_->angle_y += ImGui::GetMouseDragDelta().y * camera_rotation_speed_;
+		render_info_->angle_x = fmodf(render_info_->angle_x, k2Pi);
+		render_info_->angle_y = clamp(render_info_->angle_y, -kHalfPi, kHalfPi);
+		render_info_->camera_direction = make_float3(
+			cos(render_info_->angle_y) * -sin(render_info_->angle_x),
+			-sin(render_info_->angle_y),
+			-cos(render_info_->angle_x) * cos(render_info_->angle_y));
 		ImGui::ResetMouseDragDelta();
 		is_moved =  true;
 	}
@@ -226,33 +226,33 @@ void RtInterface::move_camera()
 	{
 		renderer_->refresh_camera();
 		renderer_->refresh_buffer();
-		render_info_.frames_since_refresh = 0;
+		render_info_->frames_since_refresh = 0;
 	}
 }
 
-void RtInterface::edit_settings()
+void RtInterface::edit_settings() const
 {
 	if (ImGui::CollapsingHeader("Quality settings", ImGuiTreeNodeFlags_DefaultOpen))
     {
 		bool is_edited = false;
-		is_edited |= ImGui::RadioButton("Progressive render", &render_info_.render_mode, PROGRESSIVE); ImGui::SameLine();
-        is_edited |= ImGui::RadioButton("Static render", &render_info_.render_mode, STATIC);
+		is_edited |= ImGui::RadioButton("Progressive render", &render_info_->render_mode, enum_cast(RenderMode::PROGRESSIVE)); ImGui::SameLine();
+        is_edited |= ImGui::RadioButton("Static render", &render_info_->render_mode, enum_cast(RenderMode::STATIC));
 
-		if (render_info_.render_mode == PROGRESSIVE)
+		if (render_info_->render_mode == enum_cast(RenderMode::PROGRESSIVE))
 			ImGui::BeginDisabled();
 		if (ImGui::TreeNode("Samples per pixel"))
 		{
-			ImGui::SliderInt("##SamplesPerPixel", &render_info_.samples_per_pixel, 1, INT16_MAX, "%d",
+			ImGui::SliderInt("##SamplesPerPixel", &render_info_->samples_per_pixel, 1, INT16_MAX, "%d",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			draw_help("Count of samples generated for each pixel");
 			ImGui::TreePop();
 		}
-		if (render_info_.render_mode == PROGRESSIVE)
+		if (render_info_->render_mode == enum_cast(RenderMode::PROGRESSIVE))
 			ImGui::EndDisabled();
 
 		if (ImGui::TreeNode("Recursion depth"))
 		{
-			is_edited |= ImGui::SliderInt("##RecursionDepth", &render_info_.max_depth, 1, INT8_MAX, "%d", ImGuiSliderFlags_AlwaysClamp);
+			is_edited |= ImGui::SliderInt("##RecursionDepth", &render_info_->max_depth, 1, INT8_MAX, "%d", ImGuiSliderFlags_AlwaysClamp);
 			draw_help("Maximum depth, that recursion can achieve before being stopped");
 			ImGui::TreePop();
 		}
@@ -260,7 +260,7 @@ void RtInterface::edit_settings()
 		if (is_rendering_ && is_edited)
 		{
 			renderer_->refresh_buffer();
-			render_info_.frames_since_refresh = 0;
+			render_info_->frames_since_refresh = 0;
 		}
     }
 }
@@ -272,42 +272,42 @@ void RtInterface::edit_camera()
 		bool is_edited = false;
 	    if (ImGui::TreeNode("Position"))
 		{
-			is_edited |= ImGui::SliderFloat("##CameraX", &render_info_.camera_position.x, -UINT16_MAX, UINT16_MAX, "%.3f",
+			is_edited |= ImGui::SliderFloat("##CameraX", &render_info_->camera_position.x, -UINT16_MAX, UINT16_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SameLine(); ImGui::Text("x");
-	    	is_edited |= ImGui::SliderFloat("##CameraY", &render_info_.camera_position.y, -UINT16_MAX, UINT16_MAX, "%.3f",
+	    	is_edited |= ImGui::SliderFloat("##CameraY", &render_info_->camera_position.y, -UINT16_MAX, UINT16_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SameLine(); ImGui::Text("y");
-	    	is_edited |= ImGui::SliderFloat("##CameraZ", &render_info_.camera_position.z, -UINT16_MAX, UINT16_MAX, "%.3f",
+	    	is_edited |= ImGui::SliderFloat("##CameraZ", &render_info_->camera_position.z, -UINT16_MAX, UINT16_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SameLine(); ImGui::Text("z");
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Angle offset"))
 		{
-			is_edited |= ImGui::SliderAngle("degrees x", &render_info_.angle_x, 0.0f, 360.0f, "%.3f");
-			is_edited |= ImGui::SliderAngle("degrees y", &render_info_.angle_y, -90.0f, 90.0f, "%.3f");
+			is_edited |= ImGui::SliderAngle("degrees x", &render_info_->angle_x, 0.0f, 360.0f, "%.3f");
+			is_edited |= ImGui::SliderAngle("degrees y", &render_info_->angle_y, -90.0f, 90.0f, "%.3f");
 
-			render_info_.camera_direction = normalize(make_float3(
-			cos(render_info_.angle_x) * -sin(render_info_.angle_x),
-			-sin(render_info_.angle_y),
-			-cos(render_info_.angle_x) * cos(render_info_.angle_y)));
+			render_info_->camera_direction = normalize(make_float3(
+			cos(render_info_->angle_x) * -sin(render_info_->angle_x),
+			-sin(render_info_->angle_y),
+			-cos(render_info_->angle_x) * cos(render_info_->angle_y)));
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Vertical field of view"))
 		{
-			is_edited |= ImGui::SliderAngle("degrees", &render_info_.fov, 0.0f, 180.0f, "%.3f");
+			is_edited |= ImGui::SliderAngle("degrees", &render_info_->fov, 0.0f, 180.0f, "%.3f");
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Aperture"))
 		{
-			is_edited |= ImGui::SliderFloat("##Aperture", &render_info_.aperture, 0.0f, UINT8_MAX, "%.3f",
+			is_edited |= ImGui::SliderFloat("##Aperture", &render_info_->aperture, 0.0f, UINT8_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Focus distance"))
 		{
-			is_edited |= ImGui::SliderFloat("##FocusDist", &render_info_.focus_distance, 0.0f, UINT8_MAX, "%.3f",
+			is_edited |= ImGui::SliderFloat("##FocusDist", &render_info_->focus_distance, 0.0f, UINT8_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::TreePop();
 		}
@@ -326,17 +326,17 @@ void RtInterface::edit_camera()
 		{
 			renderer_->refresh_camera();
 			renderer_->refresh_buffer();
-			render_info_.frames_since_refresh = 0;
+			render_info_->frames_since_refresh = 0;
 		}
 	}
 }
 
-void RtInterface::add_texture()
+void RtInterface::add_texture() const
 {
 	if (ImGui::CollapsingHeader("Add texture"))
 	{
 		bool is_added = false;
-		static int32_t texture_type = UNKNOWN_TEXTURE;
+		static int32_t texture_type = enum_cast(TextureType::UNKNOWN_TEXTURE);
 		static char name[64] = "";
 
 		static int32_t new_image_width{0}, new_image_height{0}, new_image_components{0};
@@ -347,7 +347,7 @@ void RtInterface::add_texture()
 
 		ImGui::Combo("Texture type", &texture_type, texture_types, IM_ARRAYSIZE(texture_types));
 
-		if (texture_type == UNKNOWN_TEXTURE)
+		if (texture_type == enum_cast(TextureType::UNKNOWN_TEXTURE))
 		{
 			ImGui::Text("Texture of type Unknown_Texture can't be instantiated");
 			return;
@@ -355,11 +355,11 @@ void RtInterface::add_texture()
 
 		ImGui::InputText("Texture name", name, IM_ARRAYSIZE(name));
 
-		if (texture_type == SOLID)
+		if (texture_type == enum_cast(TextureType::SOLID))
 		{
 			ImGui::ColorEdit3("Color", new_color_a.arr, ImGuiColorEditFlags_Float);
 		}
-		else if (texture_type == IMAGE)
+		else if (texture_type == enum_cast(TextureType::IMAGE))
 		{
 			ImGui::Text("Choose image");
 			draw_help("Choose image file for texture creation. New files can be added to \"assets/tex\" folder");
@@ -368,7 +368,7 @@ void RtInterface::add_texture()
 
 			draw_modal("Texture loading failed", "This file can't be loaded as image");
 		}
-		else if (texture_type == CHECKER)
+		else if (texture_type == enum_cast(TextureType::CHECKER))
 		{
 			ImGui::ColorEdit3("Color 1", new_color_a.arr, ImGuiColorEditFlags_Float);
 			ImGui::ColorEdit3("Color 2", new_color_b.arr, ImGuiColorEditFlags_Float);
@@ -380,11 +380,11 @@ void RtInterface::add_texture()
 			if (is_rendering_)
 				renderer_->deallocate_world();
 
-			if (texture_type == SOLID)
+			if (texture_type == enum_cast(TextureType::SOLID))
 			{
-				world_info_.add_texture(new SolidInfo(new_color_a.str, name));
+				world_info_->add_texture<SolidInfo>(new_color_a.str, name);
 			}
-			else if (texture_type == IMAGE)
+			else if (texture_type == enum_cast(TextureType::IMAGE))
 			{
 				if (!stbi_info(selected_file.u8string().c_str(), &new_image_width, &new_image_height, &new_image_components))
 				{
@@ -393,12 +393,12 @@ void RtInterface::add_texture()
 				else
 				{
 					float* new_image_data = stbi_loadf(selected_file.u8string().c_str(), &new_image_width, &new_image_height, &new_image_components, 3);
-					world_info_.add_texture(new ImageInfo(new_image_data, new_image_width, new_image_height, name));
+					world_info_->add_texture<ImageInfo>(new_image_data, new_image_width, new_image_height, name);
 				}
 			}
-			else if (texture_type == CHECKER)
+			else if (texture_type == enum_cast(TextureType::CHECKER))
 			{
-				world_info_.add_texture(new CheckerInfo(new_color_a.str, new_color_b.str, new_checker_tile_size, name));
+				world_info_->add_texture<CheckerInfo>(new_color_a.str, new_color_b.str, new_checker_tile_size, name);
 			}
 
 			is_added = true;
@@ -408,41 +408,41 @@ void RtInterface::add_texture()
 		{
 			renderer_->allocate_world();
 			renderer_->refresh_buffer();
-			render_info_.frames_since_refresh = 0;
+			render_info_->frames_since_refresh = 0;
 		}
 	}
 }
 
-void RtInterface::edit_texture()
+void RtInterface::edit_texture() const
 {
 	if (ImGui::CollapsingHeader("Texture list"))
 	{
 		bool is_edited = false;
 
-		for (int32_t i = 0; i < world_info_.textures_.size(); i++)
+		for (int32_t i = 0; i < world_info_->textures_.size(); i++)
 		{
-			TextureInfo* current_texture = world_info_.textures_[i];
+			TextureInfo* current_texture = world_info_->textures_[i];
 			ImGui::PushID(i);
 			if (ImGui::TreeNode("Texture", "%s (%u)", current_texture->name.c_str(), i))
 			{
-				ImGui::Text("Texture type: %s", texture_types[current_texture->type]);
+				ImGui::Text("Texture type: %s", texture_types[enum_cast(current_texture->type)]);
 
-				if (current_texture->type == UNKNOWN_TEXTURE)
+				if (current_texture->type == TextureType::UNKNOWN_TEXTURE)
 				{
 					ImGui::Text("Texture properties can't be set for type Unknown_Texture");
 				}
-				else if (current_texture->type == SOLID)
+				else if (current_texture->type == TextureType::SOLID)
 				{
-					const auto current_solid = static_cast<SolidInfo*>(current_texture);
+					const auto current_solid = dynamic_cast<SolidInfo*>(current_texture);
 					is_edited |= ImGui::ColorEdit3("Color", current_solid->albedo.arr, ImGuiColorEditFlags_Float);
 				}
-				else if (current_texture->type == IMAGE)
+				else if (current_texture->type == TextureType::IMAGE)
 				{
 					ImGui::Text("Image properties can't be edited");
 				}
-				else if (current_texture->type == CHECKER)
+				else if (current_texture->type == TextureType::CHECKER)
 				{
-					const auto current_checker = static_cast<CheckerInfo*>(current_texture);
+					const auto current_checker = dynamic_cast<CheckerInfo*>(current_texture);
 					is_edited |= ImGui::ColorEdit3("Color 1", current_checker->albedo_a.arr, ImGuiColorEditFlags_Float);
 					is_edited |= ImGui::ColorEdit3("Color 2", current_checker->albedo_b.arr, ImGuiColorEditFlags_Float);
 					is_edited |= ImGui::SliderFloat("Tile size", &current_checker->tile_size, 0.001f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
@@ -455,18 +455,18 @@ void RtInterface::edit_texture()
 			{
 				renderer_->refresh_texture(i);
 				renderer_->refresh_buffer();
-				render_info_.frames_since_refresh = 0;
+				render_info_->frames_since_refresh = 0;
 			}
 		}
 	}
 }
 
-void RtInterface::add_material()
+void RtInterface::add_material() const
 {
 	if (ImGui::CollapsingHeader("Add material"))
 	{
 		bool is_added = false;
-		static int32_t material_type = UNKNOWN_MATERIAL;
+		static int32_t material_type = enum_cast(MaterialType::UNKNOWN_MATERIAL);
 		static int32_t selected_texture = 0;
 		static char name[64] = "";
 
@@ -475,7 +475,7 @@ void RtInterface::add_material()
 
 		ImGui::Combo("Material type", &material_type, material_types, IM_ARRAYSIZE(material_types));
 
-		if (material_type == UNKNOWN_MATERIAL)
+		if (material_type == enum_cast(MaterialType::UNKNOWN_MATERIAL))
 		{
 			ImGui::Text("Material of type Unknown_Material can't be instantiated");
 			return;
@@ -483,33 +483,33 @@ void RtInterface::add_material()
 
 		ImGui::InputText("Material name", name, IM_ARRAYSIZE(name));
 
-		if (material_type == SPECULAR)
+		if (material_type == enum_cast(MaterialType::SPECULAR))
 		{
 			ImGui::SliderFloat("Fuzziness", &new_specular_fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 			draw_help("Fuzziness of material reflection");
 		}
-		else if (material_type == REFRACTIVE)
+		else if (material_type == enum_cast(MaterialType::REFRACTIVE))
 		{
 			ImGui::SliderFloat("Refractive index", &new_refractive_index_of_refraction, 0.0f, 4.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 			draw_help("Index of refraction between air and current material");
 		}
 
-		if (material_type != REFRACTIVE && !world_info_.textures_.empty())
-			ImGui::SliderInt("Texture id", &selected_texture, 0, static_cast<int32_t>(world_info_.textures_.size()) - 1);
+		if (material_type != enum_cast(MaterialType::REFRACTIVE) && !world_info_->textures_.empty())
+			ImGui::SliderInt("Texture id", &selected_texture, 0, static_cast<int32_t>(world_info_->textures_.size()) - 1);
 
 		if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
 		{
 			if (is_rendering_)
 				renderer_->deallocate_world();
 
-			if (material_type == DIFFUSE)
-				world_info_.add_material(new DiffuseInfo(selected_texture, name));
-			else if (material_type == SPECULAR)
-				world_info_.add_material(new SpecularInfo(new_specular_fuzziness, selected_texture, name));
-			else if (material_type == REFRACTIVE)
-				world_info_.add_material(new RefractiveInfo(new_refractive_index_of_refraction, name));
-			else if (material_type == ISOTROPIC)
-				world_info_.add_material(new IsotropicInfo(selected_texture, name));
+			if (material_type == enum_cast(MaterialType::DIFFUSE))
+				world_info_->add_material<DiffuseInfo>(selected_texture, name);
+			else if (material_type == enum_cast(MaterialType::SPECULAR))
+				world_info_->add_material<SpecularInfo>(new_specular_fuzziness, selected_texture, name);
+			else if (material_type == enum_cast(MaterialType::REFRACTIVE))
+				world_info_->add_material<RefractiveInfo>(new_refractive_index_of_refraction, name);
+			else if (material_type == enum_cast(MaterialType::ISOTROPIC))
+				world_info_->add_material<IsotropicInfo>(selected_texture, name);
 
 			is_added = true;
 		}
@@ -518,43 +518,43 @@ void RtInterface::add_material()
 		{
 			renderer_->allocate_world();
 			renderer_->refresh_buffer();
-			render_info_.frames_since_refresh = 0;
+			render_info_->frames_since_refresh = 0;
 		}
 	}
 }
 
-void RtInterface::edit_material()
+void RtInterface::edit_material() const
 {
 	if (ImGui::CollapsingHeader("Material list"))
 	{
 		bool is_edited = false;
-		for (int32_t i = 0; i < world_info_.materials_.size(); i++)
+		for (int32_t i = 0; i < world_info_->materials_.size(); i++)
 		{
-			MaterialInfo* current_material = world_info_.materials_[i];
+			MaterialInfo* current_material = world_info_->materials_[i];
 			ImGui::PushID(i);
 			if (ImGui::TreeNode("Material", "%s (%u)", current_material->name.c_str(), i))
 			{
-				ImGui::Text("Material type: %s", material_types[current_material->type]);
+				ImGui::Text("Material type: %s", material_types[enum_cast(current_material->type)]);
 
-				if (current_material->type == SPECULAR)
+				if (current_material->type == MaterialType::SPECULAR)
 				{
-					const auto current_specular = static_cast<SpecularInfo*>(current_material);
+					const auto current_specular = dynamic_cast<SpecularInfo*>(current_material);
 					is_edited |= ImGui::SliderFloat("Fuzziness", &current_specular->fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 					draw_help("Fuzziness of material reflection");
 				}
-				else if (current_material->type == REFRACTIVE)
+				else if (current_material->type == MaterialType::REFRACTIVE)
 				{
-					const auto current_refractive = static_cast<RefractiveInfo*>(current_material);
+					const auto current_refractive = dynamic_cast<RefractiveInfo*>(current_material);
 					is_edited |= ImGui::SliderFloat("Refractive index", &current_refractive->refractive_index, 0.0f, 4.0f, "%.3f", 
 						ImGuiSliderFlags_AlwaysClamp);
 					draw_help("Index of refraction between air and current material");
 				}
 
-				if (current_material->type != REFRACTIVE)
+				if (current_material->type != MaterialType::REFRACTIVE)
 				{
-					ImGui::Text("Material's texture: %s (%u)", world_info_.textures_[current_material->texture_id]->name.c_str(), current_material->texture_id);
+					ImGui::Text("Material's texture: %s (%u)", world_info_->textures_[current_material->texture_id]->name.c_str(), current_material->texture_id);
 					static int32_t selected_texture = 0;
-					ImGui::SliderInt("Texture id", &selected_texture, 0, static_cast<int32_t>(world_info_.textures_.size()) - 1);
+					ImGui::SliderInt("Texture id", &selected_texture, 0, static_cast<int32_t>(world_info_->textures_.size()) - 1);
 
 					if (ImGui::Button("Set texture", {ImGui::GetContentRegionAvail().x, 0}))
 					{
@@ -571,18 +571,18 @@ void RtInterface::edit_material()
 			{
 				renderer_->refresh_material(i);
 				renderer_->refresh_buffer();
-				render_info_.frames_since_refresh = 0;
+				render_info_->frames_since_refresh = 0;
 			}
 		}
 	}
 }
 
-void RtInterface::add_object()
+void RtInterface::add_object() const
 {
 	if (ImGui::CollapsingHeader("Add object"))
 	{
 		bool is_added = false;
-		static int32_t object_type = UNKNOWN_OBJECT;
+		static int32_t object_type = enum_cast(ObjectType::UNKNOWN_OBJECT);
 		static int32_t selected_material = 0;
 		static char name[64] = "";
 
@@ -597,7 +597,7 @@ void RtInterface::add_object()
 		
 		ImGui::Combo("Object type", &object_type, object_types, IM_ARRAYSIZE(object_types));
 
-		if (object_type == UNKNOWN_OBJECT)
+		if (object_type == enum_cast(ObjectType::UNKNOWN_OBJECT))
 		{
 			ImGui::Text("Object of type Unknown_Object can't be instantiated");
 			return;
@@ -605,25 +605,25 @@ void RtInterface::add_object()
 
 		ImGui::InputText("Object name", name, IM_ARRAYSIZE(name));
 
-		if (object_type == SPHERE)
+		if (object_type == enum_cast(ObjectType::SPHERE))
 		{
 			ImGui::SliderFloat3("Center", new_sphere_center.arr, -UINT16_MAX, UINT16_MAX,"%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SliderFloat("Radius", &new_sphere_radius, -UINT8_MAX, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			draw_help("Radius of sphere can be negative for refractive spheres to make sphere hollow");
 		}
-		else if (object_type == PLANE)
+		else if (object_type == enum_cast(ObjectType::PLANE))
 		{
 			ImGui::SliderFloat3("Normal", new_plane_normal.arr, -1.0f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SliderFloat("Offset", &new_plane_offset, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			draw_help("Displacement from center position along normal");
 		}
-		else if (object_type == CYLINDER || object_type == CONE)
+		else if (object_type == enum_cast(ObjectType::CYLINDER) || object_type == enum_cast(ObjectType::CONE))
 		{
 			ImGui::SliderFloat3("Extreme 1", new_cc_extreme_a.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SliderFloat3("Extreme 2", new_cc_extreme_b.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SliderFloat("Radius", &new_cc_radius, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 		}
-		else if (object_type == MODEL)
+		else if (object_type == enum_cast(ObjectType::MODEL))
 		{
 			ImGui::Text("Choose 3D Model");
 			draw_help("Choose .obj file containing 3D model to load. New files can be added to \"assets/obj\" folder");
@@ -633,40 +633,40 @@ void RtInterface::add_object()
 			draw_modal("3D model loading failed", "This file can't be loaded as 3D obj model");
 		}
 
-		if (!world_info_.materials_.empty())
-			ImGui::SliderInt("Material id", &selected_material, 0, static_cast<int32_t>(world_info_.materials_.size()) - 1);
+		if (!world_info_->materials_.empty())
+			ImGui::SliderInt("Material id", &selected_material, 0, static_cast<int32_t>(world_info_->materials_.size()) - 1);
 
 		if (ImGui::Button("Create object", {ImGui::GetContentRegionAvail().x, 0}))
 		{
 			if (is_rendering_)
 				renderer_->deallocate_world();
 
-			if (object_type == SPHERE)
+			if (object_type == enum_cast(ObjectType::SPHERE))
 			{
-				world_info_.add_object(new SphereInfo(new_sphere_center.str, new_sphere_radius, selected_material, name));
+				world_info_->add_object<SphereInfo>(new_sphere_center.str, new_sphere_radius, selected_material, name);
 			}
-			else if (object_type == PLANE)
+			else if (object_type == enum_cast(ObjectType::PLANE))
 			{
-				world_info_.add_object(new PlaneInfo(new_plane_normal.str, new_plane_offset, selected_material, name));
+				world_info_->add_object<PlaneInfo>(new_plane_normal.str, new_plane_offset, selected_material, name);
 			}
-			else if (object_type == CYLINDER)
+			else if (object_type == enum_cast(ObjectType::CYLINDER))
 			{
-				world_info_.add_object(new CylinderInfo(new_cc_extreme_a.str, new_cc_extreme_b.str, new_cc_radius, selected_material, name));
+				world_info_->add_object<CylinderInfo>(new_cc_extreme_a.str, new_cc_extreme_b.str, new_cc_radius, selected_material, name);
 			}
-			else if (object_type == CONE)
+			else if (object_type == enum_cast(ObjectType::CONE))
 			{
-				world_info_.add_object(new ConeInfo(new_cc_extreme_a.str, new_cc_extreme_b.str, new_cc_radius, selected_material, name));
+				world_info_->add_object<ConeInfo>(new_cc_extreme_a.str, new_cc_extreme_b.str, new_cc_radius, selected_material, name);
 			}
-			else if (object_type == MODEL)
+			else if (object_type == enum_cast(ObjectType::MODEL))
 			{
 				Vertex* triangle_list = nullptr;
 				uint64_t triangle_count = 0;
-				world_info_.load_model(selected_file.u8string(), triangle_list, triangle_count);
+				world_info_->load_model(selected_file.u8string(), triangle_list, triangle_count);
 
 				if (triangle_count == 0)
 					ImGui::OpenPopup("3D model loading failed");
 				else
-					world_info_.add_object(new ModelInfo(triangle_list, triangle_count, selected_material, name));
+					world_info_->add_object<ModelInfo>(triangle_list, triangle_count, selected_material, name);
 			}
 
 			is_added = true;
@@ -676,38 +676,38 @@ void RtInterface::add_object()
 		{
 			renderer_->allocate_world();
 			renderer_->refresh_buffer();
-			render_info_.frames_since_refresh = 0;
+			render_info_->frames_since_refresh = 0;
 		}
 	}
 }
 
-void RtInterface::edit_object()
+void RtInterface::edit_object() const
 {
 	if (ImGui::CollapsingHeader("Object list"))
 	{
 		bool is_edited = false, is_deleted = false;
-		for (int32_t i = 0; i < world_info_.objects_.size(); i++)
+		for (int32_t i = 0; i < world_info_->objects_.size(); i++)
 		{
-			ObjectInfo* current_object = world_info_.objects_[i];
+			ObjectInfo* current_object = world_info_->objects_[i];
 
 			ImGui::PushID(i);
 			if (ImGui::TreeNode("Material", "%s (%u)", current_object->name.c_str(), i))
 			{
-				ImGui::Text("Object type: %s", object_types[current_object->type]);
+				ImGui::Text("Object type: %s", object_types[enum_cast(current_object->type)]);
 
-				if (current_object->type == MODEL)
+				if (current_object->type == ObjectType::MODEL)
 				{
 					ImGui::Text("Triangle count: %llu", static_cast<ModelInfo*>(current_object)->triangle_count);
 				}
-				else if (current_object->type == UNKNOWN_OBJECT)
+				else if (current_object->type == ObjectType::UNKNOWN_OBJECT)
 				{
 					ImGui::Text("Object properties can't be set for type Unknown_Object");
 					return;
 				}
 
-				if (current_object->type == SPHERE)
+				if (current_object->type == ObjectType::SPHERE)
 				{
-					const auto current_sphere = static_cast<SphereInfo*>(current_object);
+					const auto current_sphere = dynamic_cast<SphereInfo*>(current_object);
 
 					is_edited |= ImGui::SliderFloat3("Center", current_sphere->center.arr, -UINT8_MAX, UINT8_MAX,"%.3f",
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
@@ -715,9 +715,9 @@ void RtInterface::edit_object()
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 					draw_help("Radius of sphere can be negative for refractive spheres to make sphere hollow");
 				}
-				else if (current_object->type == PLANE)
+				else if (current_object->type == ObjectType::PLANE)
 				{
-					const auto current_plane = static_cast<PlaneInfo*>(current_object);
+					const auto current_plane = dynamic_cast<PlaneInfo*>(current_object);
 
 					is_edited |= ImGui::SliderFloat3("Normal", current_plane->normal.arr, -1.0f, 1.0f, "%.3f", 
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
@@ -725,9 +725,9 @@ void RtInterface::edit_object()
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 					draw_help("Displacement from center position along normal");
 				}
-				else if (current_object->type == CYLINDER)
+				else if (current_object->type == ObjectType::CYLINDER)
 				{
-					const auto current_cylinder = static_cast<CylinderInfo*>(current_object);
+					const auto current_cylinder = dynamic_cast<CylinderInfo*>(current_object);
 
 					is_edited |= ImGui::SliderFloat3("Extreme 1", current_cylinder->extreme_a.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
@@ -736,9 +736,9 @@ void RtInterface::edit_object()
 					is_edited |= ImGui::SliderFloat("Radius", &current_cylinder->radius, 0.0f, UINT8_MAX, "%.3f", 
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				}
-				else if (current_object->type == CONE)
+				else if (current_object->type == ObjectType::CONE)
 				{
-					const auto current_cone = static_cast<ConeInfo*>(current_object);
+					const auto current_cone = dynamic_cast<ConeInfo*>(current_object);
 
 					is_edited |= ImGui::SliderFloat3("Extreme 1", current_cone->extreme_a.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
@@ -747,9 +747,9 @@ void RtInterface::edit_object()
 					is_edited |= ImGui::SliderFloat("Radius", &current_cone->radius, 0.0f, UINT8_MAX, "%.3f", 
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				}
-				else if (current_object->type == MODEL)
+				else if (current_object->type == ObjectType::MODEL)
 				{
-					const auto current_model = static_cast<ModelInfo*>(current_object);
+					const auto current_model = dynamic_cast<ModelInfo*>(current_object);
 
 					is_edited |= ImGui::SliderFloat3("Translation", current_model->translation.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
@@ -765,7 +765,7 @@ void RtInterface::edit_object()
 
 				ImGui::Text("Object's material id: %u", current_object->material_id);
 				static int32_t selected_material = 0;
-				ImGui::SliderInt("Material id", &selected_material, 0, static_cast<int32_t>(world_info_.materials_.size()) - 1);
+				ImGui::SliderInt("Material id", &selected_material, 0, static_cast<int32_t>(world_info_->materials_.size()) - 1);
 
 				if (ImGui::Button("Set material", {ImGui::GetContentRegionAvail().x, 0}))
 				{
@@ -777,7 +777,7 @@ void RtInterface::edit_object()
 				{
 					if (is_rendering_)
 						renderer_->deallocate_world();
-					world_info_.remove_object(i);
+					world_info_->remove_object(i);
 					is_deleted = true;
 				}
 
@@ -795,14 +795,14 @@ void RtInterface::edit_object()
 						renderer_->allocate_world();
 
 					renderer_->refresh_buffer();
-					render_info_.frames_since_refresh = 0;
+					render_info_->frames_since_refresh = 0;
 				}
 			}
 		}
 	}
 }
 
-void RtInterface::edit_sky()
+void RtInterface::edit_sky() const
 {
 	if (ImGui::CollapsingHeader("Environment"))
 	{
@@ -821,7 +821,7 @@ void RtInterface::edit_sky()
 			sky_changed |= ImGui::SliderAngle("Solar elevation", &elevation, 0.0f, 90.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 
 			if (sky_changed)
-				sky_info_.create_sky(turbidity, ground_albedo[0], ground_albedo[1], ground_albedo[2], elevation);
+				sky_info_->create_sky(turbidity, ground_albedo[0], ground_albedo[1], ground_albedo[2], elevation);
 
 			ImGui::TreePop();
 		}
@@ -833,18 +833,18 @@ void RtInterface::edit_sky()
 
 			draw_files(selected_file, "HDR Files", "assets/hdr/");
 
-			exposure_changed |= ImGui::SliderFloat("Exposure", &sky_info_.hdr_exposure, 0.0f, 16.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			exposure_changed |= ImGui::SliderFloat("Exposure", &sky_info_->hdr_exposure, 0.0f, 16.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 			draw_help("Adjust brightness of HDR environment map");
 
 			if (ImGui::Button("Set HDR", {ImGui::GetContentRegionAvail().x, 0}))
 			{
-				if (!sky_info_.check_hdr(selected_file.u8string().c_str()))
+				if (!sky_info_->check_hdr(selected_file.u8string().c_str()))
 				{
 					ImGui::OpenPopup("HDR loading failed");
 				}
 				else
 				{
-					sky_info_.load_hdr(selected_file.u8string().c_str());
+					sky_info_->load_hdr(selected_file.u8string().c_str());
 					hdr_changed = true;
 				}
 			}
@@ -853,7 +853,7 @@ void RtInterface::edit_sky()
 
 			if (ImGui::Button("Clear HDR", {ImGui::GetContentRegionAvail().x, 0}))
 			{
-				sky_info_.clear_hdr();
+				sky_info_->clear_hdr();
 				hdr_changed = true;
 			}
 
@@ -869,7 +869,7 @@ void RtInterface::edit_sky()
 				renderer_->recreate_sky();
 
 			renderer_->refresh_buffer();
-			render_info_.frames_since_refresh = 0;
+			render_info_->frames_since_refresh = 0;
 		}
 	}
 }
@@ -890,30 +890,30 @@ void RtInterface::save_image() const
 			if (is_rendering_ && !renderer_->uses_host_memory())
 					renderer_->map_frame_memory();
 
-			if (render_info_.frame_data)
+			if (render_info_->frame_data)
 			{
 				bool saving_success = false;
 				const auto output_path = std::filesystem::path("output") / buffer;
 
 				if (format == 0)
 				{
-					saving_success = stbi_write_hdr((output_path.u8string() + ".hdr").c_str(), static_cast<int32_t>(render_info_.width), static_cast<int32_t>(render_info_.height), 4, render_info_.frame_data);
+					saving_success = stbi_write_hdr((output_path.u8string() + ".hdr").c_str(), static_cast<int32_t>(render_info_->width), static_cast<int32_t>(render_info_->height), 4, render_info_->frame_data);
 				}
 				else
 				{
-					const uint32_t image_size = 4 * render_info_.width * render_info_.height;
+					const uint32_t image_size = 4 * render_info_->width * render_info_->height;
 					const auto data = new uint8_t[image_size];
 					for (uint32_t i = 0; i <= image_size; i++)
-						data[i] = static_cast<uint8_t>(clamp(render_info_.frame_data[i], 0.0f, 1.0f) * 255.99f);
+						data[i] = static_cast<uint8_t>(clamp(render_info_->frame_data[i], 0.0f, 1.0f) * 255.99f);
 
 					if (format == 1)
-						saving_success = stbi_write_png((output_path.u8string() + ".png").c_str(), static_cast<int32_t>(render_info_.width), static_cast<int32_t>(render_info_.height), 4, data, 4 * render_info_.width);
+						saving_success = stbi_write_png((output_path.u8string() + ".png").c_str(), static_cast<int32_t>(render_info_->width), static_cast<int32_t>(render_info_->height), 4, data, 4 * render_info_->width);
 					else if (format == 2)
-						saving_success = stbi_write_bmp((output_path.u8string() + ".bmp").c_str(), static_cast<int32_t>(render_info_.width), static_cast<int32_t>(render_info_.height), 4, data);
+						saving_success = stbi_write_bmp((output_path.u8string() + ".bmp").c_str(), static_cast<int32_t>(render_info_->width), static_cast<int32_t>(render_info_->height), 4, data);
 					else if (format == 3)
-						saving_success = stbi_write_tga((output_path.u8string() + ".tga").c_str(), static_cast<int32_t>(render_info_.width), static_cast<int32_t>(render_info_.height), 4, data);
+						saving_success = stbi_write_tga((output_path.u8string() + ".tga").c_str(), static_cast<int32_t>(render_info_->width), static_cast<int32_t>(render_info_->height), 4, data);
 					else if (format == 4)
-						saving_success = stbi_write_jpg((output_path.u8string() + ".jpg").c_str(), static_cast<int32_t>(render_info_.width), static_cast<int32_t>(render_info_.height), 4, data, 90);
+						saving_success = stbi_write_jpg((output_path.u8string() + ".jpg").c_str(), static_cast<int32_t>(render_info_->width), static_cast<int32_t>(render_info_->height), 4, data, 90);
 
 					delete[] data;
 				}

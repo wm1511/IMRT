@@ -3,10 +3,17 @@
 
 #include <cstdint>
 
-enum RenderMode
+enum class RenderMode
 {
 	PROGRESSIVE,
 	STATIC
+};
+
+enum class RenderDevice
+{
+	CPU,
+	CUDA,
+	OPTIX
 };
 
 struct RenderInfo

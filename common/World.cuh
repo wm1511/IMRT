@@ -14,46 +14,13 @@ public:
 		objects_ = new Object*[object_count];
 
 		for (int32_t i = 0; i < texture_count; i++)
-		{
-			const auto texture_info = texture_data[i];
-
-			if (texture_info->type == SOLID)
-				textures_[i] = new Solid((SolidInfo*)texture_info);
-			else if (texture_info->type == IMAGE)
-				textures_[i] = new Image((ImageInfo*)texture_info);
-			else if (texture_info->type == CHECKER)
-				textures_[i] = new Checker((CheckerInfo*)texture_info);
-		}
+			textures_[i] = create_texture(texture_data[i]);
 
 		for (int32_t i = 0; i < material_count; i++)
-		{
-			const auto material_info = material_data[i];
-
-			if (material_info->type == DIFFUSE)
-				materials_[i] = new Diffuse((DiffuseInfo*)material_info, textures_[material_info->texture_id]);
-			else if (material_info->type == SPECULAR)
-				materials_[i] = new Specular((SpecularInfo*)material_info, textures_[material_info->texture_id]);
-			else if (material_info->type == REFRACTIVE)
-				materials_[i] = new Refractive((RefractiveInfo*)material_info, textures_[material_info->texture_id]);
-			else if (material_info->type == ISOTROPIC)
-				materials_[i] = new Isotropic((IsotropicInfo*)material_info, textures_[material_info->texture_id]);
-		}
+			materials_[i] = create_material(material_data[i]);
 
 		for (int32_t i = 0; i < object_count; i++)
-		{
-			const auto object_info = object_data[i];
-
-			if (object_info->type == SPHERE)
-				objects_[i] = new Sphere((SphereInfo*)object_info, materials_[object_info->material_id]);
-			else if (object_info->type == PLANE)
-				objects_[i] = new Plane((PlaneInfo*)object_info, materials_[object_info->material_id]);
-			else if (object_info->type == CYLINDER)
-				objects_[i] = new Cylinder((CylinderInfo*)object_info, materials_[object_info->material_id]);
-			else if (object_info->type == CONE)
-				objects_[i] = new Cone((ConeInfo*)object_info, materials_[object_info->material_id]);
-			else if (object_info->type == MODEL)
-				objects_[i] = new Model((ModelInfo*)object_info, materials_[object_info->material_id]);
-		}
+			objects_[i] = create_object(object_data[i]);
 	}
 
 	__host__ __device__ ~World()
@@ -110,6 +77,45 @@ public:
 	__host__ __device__ void update_object(const int32_t index, ObjectInfo* object_info) const
 	{
 		objects_[index]->update(object_info, materials_[object_info->material_id]);
+	}
+
+	__host__ __device__ Texture* create_texture(TextureInfo* texture_info) const
+	{
+		if (texture_info->type == TextureType::SOLID)
+			return new Solid((SolidInfo*)texture_info);
+		if (texture_info->type == TextureType::IMAGE)
+			return new Image((ImageInfo*)texture_info);
+		if (texture_info->type == TextureType::CHECKER)
+			return new Checker((CheckerInfo*)texture_info);
+		return nullptr;
+	}
+
+	__host__ __device__ Material* create_material(MaterialInfo* material_info) const
+	{
+		if (material_info->type == MaterialType::DIFFUSE)
+			return new Diffuse((DiffuseInfo*)material_info, textures_[material_info->texture_id]);
+		if (material_info->type == MaterialType::SPECULAR)
+			return new Specular((SpecularInfo*)material_info, textures_[material_info->texture_id]);
+		if (material_info->type == MaterialType::REFRACTIVE)
+			return new Refractive((RefractiveInfo*)material_info, textures_[material_info->texture_id]);
+		if (material_info->type == MaterialType::ISOTROPIC)
+			return new Isotropic((IsotropicInfo*)material_info, textures_[material_info->texture_id]);
+		return nullptr;
+	}
+
+	__host__ __device__ Object* create_object(ObjectInfo* object_info) const
+	{
+		if (object_info->type == ObjectType::SPHERE)
+			return new Sphere((SphereInfo*)object_info, materials_[object_info->material_id]);
+		if (object_info->type == ObjectType::PLANE)
+			return new Plane((PlaneInfo*)object_info, materials_[object_info->material_id]);
+		if (object_info->type == ObjectType::CYLINDER)
+			return new Cylinder((CylinderInfo*)object_info, materials_[object_info->material_id]);
+		if (object_info->type == ObjectType::CONE)
+			return new Cone((ConeInfo*)object_info, materials_[object_info->material_id]);
+		if (object_info->type == ObjectType::MODEL)
+			return new Model((ModelInfo*)object_info, materials_[object_info->material_id]);
+		return nullptr;
 	}
 
 private:

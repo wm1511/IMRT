@@ -6,21 +6,40 @@
 #include <vector>
 #include <string>
 
+template <typename E>
+constexpr std::underlying_type_t<E> enum_cast(E e) noexcept
+{
+	return static_cast<std::underlying_type_t<E>>(e);
+}
+
 class WorldInfo
 {
 public:
 	WorldInfo();
 	~WorldInfo();
 
-	WorldInfo(const WorldInfo&) = delete;
-	WorldInfo(WorldInfo&&) = delete;
-	WorldInfo operator=(const WorldInfo&) = delete;
-	WorldInfo operator=(WorldInfo&&) = delete;
+	WorldInfo(const WorldInfo&) = default;
+	WorldInfo(WorldInfo&&) = default;
+	WorldInfo& operator=(const WorldInfo&) = default;
+	WorldInfo& operator=(WorldInfo&&) = default;
 
 	void load_model(const std::string& model_path, Vertex*& vertices, uint64_t& triangle_count) const;
-	void add_object(ObjectInfo* new_object);
-	void add_material(MaterialInfo* new_material);
-	void add_texture(TextureInfo* new_texture);
+
+	template <typename T, typename... Args> void add_object(Args&&... args)
+	{
+		objects_.push_back(new T(std::forward<Args>(args)...));
+	}
+
+	template <typename T, typename... Args> void add_material(Args&&... args)
+	{
+		materials_.push_back(new T(std::forward<Args>(args)...));
+	}
+
+	template <typename T, typename... Args> void add_texture(Args&&... args)
+	{
+		textures_.push_back(new T(std::forward<Args>(args)...));
+	}
+
 	void remove_object(int32_t object_index);
 
 	std::vector<TextureInfo*> textures_{3};

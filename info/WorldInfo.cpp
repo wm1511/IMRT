@@ -86,21 +86,6 @@ void WorldInfo::load_model(const std::string& model_path, Vertex*& vertices, uin
 	}
 }
 
-void WorldInfo::add_object(ObjectInfo* new_object)
-{
-	objects_.push_back(new_object);
-}
-
-void WorldInfo::add_material(MaterialInfo* new_material)
-{
-	materials_.push_back(new_material);
-}
-
-void WorldInfo::add_texture(TextureInfo* new_texture)
-{
-	textures_.push_back(new_texture);
-}
-
 void WorldInfo::remove_object(const int32_t object_index)
 {
 	if (*(objects_.end() - 1) != objects_[object_index])

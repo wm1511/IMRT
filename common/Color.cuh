@@ -36,16 +36,15 @@ __host__ __device__ inline float3 sample_sky(const Ray& ray, const SkyInfo& sky_
     const float ray_m = cos_gamma * cos_gamma;
 	const float zenith = sqrt(abs_cos_theta);
 
-	const SkyConfig configs[3]{sky_info.sky_config_x, sky_info.sky_config_y, sky_info.sky_config_z};
     Float3 result{};
 
     for (int32_t i = 0; i < 3; i++)
     {
-	    const SkyConfig config = configs[i];
+	    const auto config = sky_info.sky_config[i];
 
-    	const float exp_m = exp(config.arr[4] * acos(cos_gamma));
-    	const float mie_m = (1.0f + cos_gamma * cos_gamma) / pow(1.0f + config.arr[8] * config.arr[8] - 2.0f * config.arr[8] * cos_gamma, 1.5f);
-    	const float sample = (1.0f + config.arr[0] * exp(config.arr[1] / (abs_cos_theta + 0.01f))) * (config.arr[2] + config.arr[3] * exp_m + config.arr[5] * ray_m + config.arr[6] * mie_m + config.arr[7] * zenith);
+    	const float exp_m = exp(config[4] * acos(cos_gamma));
+    	const float mie_m = (1.0f + cos_gamma * cos_gamma) / pow(1.0f + config[8] * config[8] - 2.0f * config[8] * cos_gamma, 1.5f);
+    	const float sample = (1.0f + config[0] * exp(config[1] / (abs_cos_theta + 0.01f))) * (config[2] + config[3] * exp_m + config[5] * ray_m + config[6] * mie_m + config[7] * zenith);
 
     	result.arr[i] = sample * sky_info.sun_radiance.arr[i];
     }

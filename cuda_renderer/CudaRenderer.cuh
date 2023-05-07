@@ -9,7 +9,7 @@
 class CudaRenderer final : public IRenderer
 {
 public:
-	CudaRenderer(const RenderInfo* render_info, const WorldInfo* world_info, SkyInfo* sky_info);
+	CudaRenderer(RenderInfo*& render_info, WorldInfo*& world_info, SkyInfo*& sky_info);
 	~CudaRenderer() override;
 
 	CudaRenderer(const CudaRenderer&) = delete;
@@ -34,9 +34,9 @@ public:
 private:
 	void fetch_frame_buffer();
 
-	const RenderInfo* render_info_;
-	const WorldInfo* world_info_;
-	SkyInfo* sky_info_;
+	RenderInfo render_info_{};
+	WorldInfo world_info_{};
+	SkyInfo sky_info_{};
 	dim3 blocks_;
 	dim3 threads_;
 
