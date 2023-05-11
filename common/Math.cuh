@@ -1,5 +1,6 @@
 #pragma once
 #include <cuda_runtime.h>
+#include <cstdint>
 
 #ifndef __CUDACC__
 #include <cmath>

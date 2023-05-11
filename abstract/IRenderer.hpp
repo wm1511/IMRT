@@ -6,7 +6,6 @@ class IRenderer
 public:
 	virtual ~IRenderer() = default;
 
-	virtual bool uses_host_memory() = 0;
 	virtual void render() = 0;
 	virtual void refresh_buffer() = 0;
 	virtual void refresh_camera() = 0;

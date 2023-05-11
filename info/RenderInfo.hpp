@@ -18,12 +18,15 @@ enum class RenderDevice
 
 struct RenderInfo
 {
+	// Configuration
+	RenderMode render_mode{RenderMode::PROGRESSIVE};
+	RenderDevice render_device{RenderDevice::CPU};
 	// Frame
-	int64_t frame_handle{-1};
+	void* frame_handle = nullptr;
 	uint64_t frame_size{};
 	float* frame_data = nullptr;
 	// Quality
-	int32_t samples_per_pixel{100}, max_depth{10}, render_mode{0};
+	int32_t samples_per_pixel{100}, max_depth{10};
 	uint32_t height = 0, width = 0, frames_since_refresh{0};
 	// Camera
 	float3 camera_position{0.0f, 0.0f, -4.0f}, camera_direction{0.0f, 0.0f, -1.0f};

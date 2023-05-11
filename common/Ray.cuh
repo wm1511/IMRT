@@ -1,6 +1,8 @@
 #pragma once
 #include "Math.cuh"
 
+#include <cfloat>
+
 class Ray
 {
 public:

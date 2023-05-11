@@ -10,7 +10,7 @@
 class CpuRenderer final : public IRenderer
 {
 public:
-	CpuRenderer(RenderInfo*& render_info, WorldInfo*& world_info, SkyInfo*& sky_info);
+	CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info);
 	~CpuRenderer() override;
 
 	CpuRenderer(const CpuRenderer&) = delete;
@@ -18,7 +18,6 @@ public:
 	CpuRenderer& operator=(const CpuRenderer&) = delete;
 	CpuRenderer& operator=(CpuRenderer&&) = delete;
 
-	bool uses_host_memory() override { return true; }
 	void render() override;
 	void refresh_buffer() override;
 	void refresh_camera() override;
@@ -35,9 +34,9 @@ private:
 	void random_init() const;
 	void random_refresh() const;
 
-	RenderInfo render_info_{};
-	WorldInfo world_info_{};
-	SkyInfo sky_info_{};
+	const RenderInfo* render_info_ = nullptr;
+	const WorldInfo* world_info_ = nullptr;
+	const SkyInfo* sky_info_ = nullptr;
 
 	uint4* xoshiro_state_ = nullptr, * xoshiro_initial_ = nullptr;
     float4* accumulation_buffer_ = nullptr;

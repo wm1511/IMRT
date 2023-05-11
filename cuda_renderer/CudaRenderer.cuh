@@ -1,15 +1,15 @@
 #pragma once
-#include "../abstract/IRenderer.hpp"
-#include "../info/RenderInfo.hpp"
-#include "../info/WorldInfo.hpp"
-
 #include "../common/Camera.cuh"
 #include "../common/Color.cuh"
+
+#include "../info/RenderInfo.hpp"
+#include "../info/WorldInfo.hpp"
+#include "../abstract/IRenderer.hpp"
 
 class CudaRenderer final : public IRenderer
 {
 public:
-	CudaRenderer(RenderInfo*& render_info, WorldInfo*& world_info, SkyInfo*& sky_info);
+	CudaRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info);
 	~CudaRenderer() override;
 
 	CudaRenderer(const CudaRenderer&) = delete;
@@ -17,7 +17,6 @@ public:
 	CudaRenderer& operator=(const CudaRenderer&) = delete;
 	CudaRenderer& operator=(CudaRenderer&&) = delete;
 
-	bool uses_host_memory() override { return false; }
 	void render() override;
 	void refresh_buffer() override;
 	void refresh_camera() override;
@@ -32,11 +31,10 @@ public:
 	void deallocate_world() const override;
 
 private:
-	void fetch_frame_buffer();
+	const RenderInfo* render_info_ = nullptr;
+	const WorldInfo* world_info_ = nullptr;
+	const SkyInfo* sky_info_ = nullptr;
 
-	RenderInfo render_info_{};
-	WorldInfo world_info_{};
-	SkyInfo sky_info_{};
 	dim3 blocks_;
 	dim3 threads_;
 

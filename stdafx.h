@@ -11,6 +11,7 @@
 #include "imgui/imgui_impl_vulkan.h"
 
 #include <filesystem>
+#include <fstream>
 #include <chrono>
 #include <string>
 #include <memory>

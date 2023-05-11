@@ -1,4 +1,7 @@
 #pragma once
+
+#include "Unions.hpp"
+
 extern "C"
 {
 #include "../sky/ArHosekSkyModel.h"

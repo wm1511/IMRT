@@ -220,7 +220,7 @@ void Frame::set_data(const void* data)
 	App::flush_command_buffer(command_buffer);
 }
 
-int64_t Frame::get_image_memory_handle() const
+void* Frame::get_image_memory_handle() const
 {
 	const VkDevice device = App::get_device();
 
@@ -240,10 +240,10 @@ int64_t Frame::get_image_memory_handle() const
     if (vkGetMemoryWin32HandleKHR(device, &handle_info, &handle) != VK_SUCCESS)
 		throw std::runtime_error("Failed to execute vkGetMemoryWin32HandleKHR");
 
-	return reinterpret_cast<int64_t>(handle);
+	return handle;
 
 #elif defined(__linux__) || defined(__APPLE__)
-	int64_t handle = -1;
+	int handle = -1;
 
 	VkMemoryGetFdInfoKHR handle_info = {};
 	handle_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
@@ -258,6 +258,6 @@ int64_t Frame::get_image_memory_handle() const
     if (vkGetMemoryFdKHR(device, &handle_info, &handle) != VK_SUCCESS)
 		throw std::runtime_error("Failed to execute vkGetMemoryFdKHR");
 
-	return handle;
+	return reinterpret_cast<void*>(handle);
 #endif
 }

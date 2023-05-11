@@ -14,7 +14,7 @@ public:
 	void set_data(const void* data);
 
 	[[nodiscard]] VkDescriptorSet get_descriptor_set() const { return descriptor_set_; }
-	[[nodiscard]] int64_t get_image_memory_handle() const;
+	[[nodiscard]] void* get_image_memory_handle() const;
 
 	[[nodiscard]] uint32_t get_width() const { return width_; }
 	[[nodiscard]] uint32_t get_height() const { return height_; }
