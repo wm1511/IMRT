@@ -43,26 +43,14 @@ inline __host__ void* fetch_external_memory(void* memory_handle, const uint64_t 
 	return buffer;
 }
 
-inline __host__ std::string read_ptx(const std::string& program_name)
+inline __host__ std::string read_shader(const std::string& program_name)
 {
-	int32_t device_number{};
-	cudaGetDevice(&device_number);
-
-	cudaDeviceProp device_prop{};
-	cudaGetDeviceProperties(&device_prop, device_number);
-
-	const std::string filename = program_name + ".compute_" + std::to_string(device_prop.major * 10 + device_prop.minor) + ".ptx";
-
-#ifdef _DEBUG
-	const std::filesystem::path path = std::filesystem::current_path() / "x64" / "Debug" / filename;
-#else
-	const std::filesystem::path path = std::filesystem::current_path() / "x64" / "Release" / filename;
-#endif
+	const std::filesystem::path path = std::filesystem::current_path() / "x64" / "Release" / program_name;
 
 	std::ifstream file(path, std::ios::in | std::ios::binary);
     const uint64_t size = file_size(path);
     std::string source(size, '\0');
-
+	
     file.read(source.data(), static_cast<int64_t>(size));
 	file.close();
 

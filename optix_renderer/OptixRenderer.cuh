@@ -7,9 +7,6 @@
 #include "../info/WorldInfo.hpp"
 #include "../abstract/IRenderer.hpp"
 
-#include <cuda.h>
-#include <optix_types.h>
-
 template <typename T>
 struct SbtRecord
 {
@@ -28,7 +25,8 @@ public:
 	OptixRenderer& operator=(const OptixRenderer&) = delete;
 	OptixRenderer& operator=(OptixRenderer&&) = delete;
 
-	void render() override;
+	void render_static() override;
+	void render_progressive() override;
 	void refresh_buffer() override;
 	void refresh_camera() override;
 	void refresh_object(int32_t index) const override;
@@ -46,6 +44,7 @@ private:
 	void create_programs();
 	void create_pipeline();
 	void create_sbt();
+	OptixTraversableHandle build_as();
 
 	const RenderInfo* render_info_ = nullptr;
 	const WorldInfo* world_info_ = nullptr;
@@ -59,12 +58,15 @@ private:
 	std::vector<OptixProgramGroup> raygen_programs_{};
 	std::vector<OptixProgramGroup> miss_programs_{};
 	std::vector<OptixProgramGroup> hit_programs_{};
-	CUdeviceptr raygen_record_buffer_{};
-	CUdeviceptr miss_record_buffer_{};
-	CUdeviceptr hit_record_buffer_{};
+	SbtRecord<RayGenData>* device_raygen_records_ = nullptr;
+	SbtRecord<MissData>* device_miss_records_ = nullptr;
+	SbtRecord<HitGroupData>* device_hit_records_ = nullptr;
+	float3* device_vertex_buffer_ = nullptr;
+	uint3* device_index_buffer_ = nullptr;
+	void* device_as_buffer_ = nullptr;
 
-	LaunchParams launch_params_{};
-	CUdeviceptr device_launch_params_{};
-	CUdeviceptr frame_buffer_{};
-	CUstream stream_{};
+	LaunchParams host_launch_params_{};
+	LaunchParams* device_launch_params_ = nullptr;
+
+	cudaStream_t stream_{};
 };

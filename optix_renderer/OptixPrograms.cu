@@ -1,11 +1,12 @@
 // ReSharper disable once CppPrecompiledHeaderIsNotIncluded
 #include "OptixPrograms.cuh"
-#include "../common/Math.cuh"
 #include "LaunchParams.hpp"
+
+#include "../common/Math.cuh"
 
 #include <optix_device.h>
 
-extern "C" __constant__ LaunchParams launch_params;
+__constant__ LaunchParams launch_params;
 
 extern "C" __global__ void __closesthit__radiance()
 {

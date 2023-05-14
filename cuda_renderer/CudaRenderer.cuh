@@ -17,7 +17,8 @@ public:
 	CudaRenderer& operator=(const CudaRenderer&) = delete;
 	CudaRenderer& operator=(CudaRenderer&&) = delete;
 
-	void render() override;
+	void render_static() override;
+	void render_progressive() override;
 	void refresh_buffer() override;
 	void refresh_camera() override;
 	void refresh_texture(int32_t index) const override;

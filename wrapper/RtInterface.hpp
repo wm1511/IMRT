@@ -33,6 +33,8 @@ private:
 	void edit_sky();
 	void save_image() const;
 
+	RenderMode render_mode_{RenderMode::PROGRESSIVE};
+	RenderDevice render_device_{RenderDevice::CPU};
 	std::unique_ptr<Frame> frame_ = nullptr;
 	std::chrono::time_point<std::chrono::steady_clock> last_frame_time_ = std::chrono::high_resolution_clock::now();
 

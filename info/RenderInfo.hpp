@@ -18,9 +18,6 @@ enum class RenderDevice
 
 struct RenderInfo
 {
-	// Configuration
-	RenderMode render_mode{RenderMode::PROGRESSIVE};
-	RenderDevice render_device{RenderDevice::CPU};
 	// Frame
 	void* frame_handle = nullptr;
 	uint64_t frame_size{};

@@ -41,7 +41,7 @@ void Frame::allocate_memory()
 	image_info.tiling = VK_IMAGE_TILING_LINEAR;
 	image_info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	image_info.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	image_info.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 	VkExternalMemoryImageCreateInfoKHR external_memory_image_info = {};
 	external_memory_image_info.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHR;
@@ -108,7 +108,7 @@ void Frame::allocate_memory()
 	if (vkCreateSampler(device, &sampler_info, nullptr, &sampler_) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create sampler");
 
-	descriptor_set_ = ImGui_ImplVulkan_AddTexture(sampler_, image_view_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	descriptor_set_ = ImGui_ImplVulkan_AddTexture(sampler_, image_view_, VK_IMAGE_LAYOUT_GENERAL);
 }
 
 void Frame::release_memory()

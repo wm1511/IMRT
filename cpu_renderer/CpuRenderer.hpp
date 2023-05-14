@@ -18,7 +18,8 @@ public:
 	CpuRenderer& operator=(const CpuRenderer&) = delete;
 	CpuRenderer& operator=(CpuRenderer&&) = delete;
 
-	void render() override;
+	void render_static() override;
+	void render_progressive() override;
 	void refresh_buffer() override;
 	void refresh_camera() override;
 	void refresh_object(int32_t index) const override;
@@ -34,6 +35,7 @@ private:
 	void random_init() const;
 	void random_refresh() const;
 
+private:
 	const RenderInfo* render_info_ = nullptr;
 	const WorldInfo* world_info_ = nullptr;
 	const SkyInfo* sky_info_ = nullptr;
