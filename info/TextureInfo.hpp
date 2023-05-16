@@ -48,11 +48,11 @@ struct SolidInfo final : TextureInfo
 struct ImageInfo final : TextureInfo
 {
 	explicit ImageInfo(float* data, const int32_t width, const int32_t height, std::string texture_name)
-		: TextureInfo(TextureType::IMAGE, std::move(texture_name)), buffered_data(data), width(width), height(height) {}
+		: TextureInfo(TextureType::IMAGE, std::move(texture_name)), h_data(data), width(width), height(height) {}
 
 	~ImageInfo() override
 	{
-		stbi_image_free(buffered_data);
+		stbi_image_free(h_data);
 	}
 
 	[[nodiscard]] uint64_t get_size() const override
@@ -65,8 +65,8 @@ struct ImageInfo final : TextureInfo
 	ImageInfo& operator=(const ImageInfo&) = delete;
 	ImageInfo& operator=(ImageInfo&&) = default;
 
-	float* buffered_data = nullptr;
-	float* usable_data = nullptr;
+	float* h_data = nullptr;
+	float* d_data = nullptr;
 	int32_t width{}, height{};
 };
 

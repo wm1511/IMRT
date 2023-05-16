@@ -227,6 +227,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClInclude Include="common\Utils.hpp" />
+    <ClInclude Include="info\CameraInfo.hpp" />
     <ClInclude Include="optix_renderer\LaunchParams.hpp" />
     <ClInclude Include="optix_renderer\OptixPrograms.cuh" />
     <ClInclude Include="cuda_renderer\CudaKernels.cuh" />
@@ -279,7 +280,6 @@
     <ClInclude Include="common\Boundary.cuh" />
     <ClInclude Include="common\Texture.cuh" />
     <ClInclude Include="cpu_renderer\CpuRenderer.hpp" />
-    <ClInclude Include="common\Camera.cuh" />
     <ClInclude Include="cuda_renderer\CudaRenderer.cuh" />
     <ClInclude Include="common\Intersection.cuh" />
     <ClInclude Include="common\Material.cuh" />

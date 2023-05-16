@@ -31,7 +31,7 @@ WorldInfo::~WorldInfo()
 		delete textures_[i];
 }
 
-void WorldInfo::load_model(const std::string& model_path, Vertex*& vertices, uint64_t& triangle_count) const
+void WorldInfo::load_model(const std::string& model_path, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) const
 {
 	tinyobj::ObjReaderConfig reader_config;
 	reader_config.vertex_color = false;
@@ -45,43 +45,47 @@ void WorldInfo::load_model(const std::string& model_path, Vertex*& vertices, uin
 	auto& attrib = reader.GetAttrib();
 	auto& shapes = reader.GetShapes();
 
-	for (uint64_t s = 0; s < shapes.size(); s++) 
-		triangle_count += shapes[s].mesh.num_face_vertices.size();
-
-	uint64_t vertex_index = 0;
-	vertices = new Vertex[3 * triangle_count];
-
-	for (uint64_t s = 0; s < shapes.size(); s++) 
+	for (const auto& shape : shapes)
 	{
-		for (uint64_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) 
+		size_t index_offset = 0;
+		for (size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++)
 		{
-		    for (size_t v = 0; v < 3; v++) 
+			for (size_t v = 0; v < 3; v++)
 			{
 				Vertex vertex{};
-				const tinyobj::index_t idx = shapes[s].mesh.indices[3 * f + v];
+				const auto index = shape.mesh.indices[index_offset + v];
 
-				vertex.position = make_float3(
-					attrib.vertices[3 * idx.vertex_index],
-					attrib.vertices[3 * idx.vertex_index + 1],
-					attrib.vertices[3 * idx.vertex_index + 2]);
-
-				if (idx.normal_index >= 0) 
+				vertex.position =
 				{
-					vertex.normal = make_float3(
-						attrib.normals[3 * idx.normal_index],
-						attrib.normals[3 * idx.normal_index + 1],
-						attrib.normals[3 * idx.normal_index + 2]);
+					attrib.vertices[3 * index.vertex_index + 0],
+					attrib.vertices[3 * index.vertex_index + 1],
+					attrib.vertices[3 * index.vertex_index + 2],
+				};
+
+				if (index.normal_index >= 0)
+				{
+					vertex.normal =
+					{
+						attrib.normals[3 * index.normal_index + 0],
+						attrib.normals[3 * index.normal_index + 1],
+						attrib.normals[3 * index.normal_index + 2],
+					};
 				}
 
-				if (idx.texcoord_index >= 0) 
+				if (index.texcoord_index >= 0)
 				{
-					vertex.uv = make_float2(
-						attrib.texcoords[2 * idx.texcoord_index],
-						attrib.texcoords[2 * idx.texcoord_index + 1]);
+					vertex.uv =
+					{
+						attrib.texcoords[2 * index.texcoord_index + 0],
+						attrib.texcoords[2 * index.texcoord_index + 1],
+					};
 				}
 
-				vertices[vertex_index++] = std::move(vertex);
+
+				vertices.push_back(vertex);
+				indices.push_back(indices.size());
 			}
+			index_offset += 3;
 		}
 	}
 }

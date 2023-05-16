@@ -102,12 +102,13 @@ struct Vertex
 struct ModelInfo final : ObjectInfo
 {
 	ModelInfo() = default;
-	ModelInfo(Vertex* vertices, const uint64_t triangle_count, const int32_t material_info, std::string object_name)
-		: ObjectInfo(ObjectType::MODEL, material_info, std::move(object_name)), buffered_vertices(vertices), triangle_count(triangle_count) {}
+	ModelInfo(Vertex* vertices, uint32_t* indices, const uint64_t vertex_count, const uint64_t index_count, const int32_t material_info, std::string object_name)
+		: ObjectInfo(ObjectType::MODEL, material_info, std::move(object_name)), h_vertices(vertices), h_indices(indices), vertex_count(vertex_count), index_count(index_count) {}
 
 	~ModelInfo() override
 	{
-		delete[] buffered_vertices;
+		delete[] h_indices;
+		delete[] h_vertices;
 	}
 
 	ModelInfo(const ModelInfo&) = delete;
@@ -123,7 +124,7 @@ struct ModelInfo final : ObjectInfo
 	Float3 translation{{0.0f, 0.0f, 0.0f}};
 	Float3 scale{{1.0f, 1.0f, 1.0f}};
 	Float3 rotation{{0.0f, 0.0f, 0.0f}};
-	Vertex* buffered_vertices = nullptr;
-	Vertex* usable_vertices = nullptr;
-	uint64_t triangle_count{};
+	Vertex* h_vertices = nullptr, * d_vertices = nullptr;
+	uint32_t* h_indices = nullptr, * d_indices = nullptr;
+	uint64_t vertex_count{}, index_count{};
 };

@@ -45,7 +45,12 @@ inline __host__ void* fetch_external_memory(void* memory_handle, const uint64_t 
 
 inline __host__ std::string read_shader(const std::string& program_name)
 {
+#ifdef _DEBUG
+	const std::filesystem::path path = std::filesystem::current_path() / "x64" / "Debug" / program_name;
+#else
 	const std::filesystem::path path = std::filesystem::current_path() / "x64" / "Release" / program_name;
+#endif
+
 
 	std::ifstream file(path, std::ios::in | std::ios::binary);
     const uint64_t size = file_size(path);

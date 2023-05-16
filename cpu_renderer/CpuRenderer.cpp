@@ -1,8 +1,8 @@
 #include "stdafx.h"
 #include "CpuRenderer.hpp"
 
-CpuRenderer::CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info)
-	: render_info_(render_info), world_info_(world_info), sky_info_(sky_info)
+CpuRenderer::CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info)
+	: render_info_(render_info), world_info_(world_info), sky_info_(sky_info), camera_info_(camera_info)
 {
 	const uint64_t image_size = static_cast<uint64_t>(render_info_->width) * render_info_->height;
 
@@ -14,22 +14,12 @@ CpuRenderer::CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_i
 	random_refresh();
 	allocate_world();
 
-	camera_ = new Camera(
-		render_info_->camera_position,
-		render_info_->camera_direction,
-		render_info_->fov,
-		static_cast<float>(render_info_->width) / static_cast<float>(render_info_->height),
-		render_info_->aperture,
-		render_info_->focus_distance);
-
-	if (sky_info_->buffered_hdr_data)
-		sky_info_->usable_hdr_data = reinterpret_cast<float3*>(sky_info_->buffered_hdr_data);
+	if (sky_info_->h_hdr_data)
+		sky_info_->d_hdr_data = reinterpret_cast<float3*>(sky_info_->h_hdr_data);
 }
 
 CpuRenderer::~CpuRenderer()
 {
-	delete camera_;
-
 	deallocate_world();
 
 	delete[] xoshiro_state_;
@@ -59,7 +49,7 @@ void CpuRenderer::render_static()
 
 				const float u = (static_cast<float>(x) + pcg(&local_random_state)) / static_cast<float>(width);
 				const float v = (static_cast<float>(y) + pcg(&local_random_state)) / static_cast<float>(height);
-				const Ray ray = camera_->cast_ray(&local_random_state, u, v);
+				const Ray ray = cast_ray(&local_random_state, u, v, *camera_info_);
 				const float3 color = sqrt(calculate_color(ray, &world_, *sky_info_, render_info_->max_depth, &local_random_state));
 
 				frame_data[pixel_index << 2] += color.x / static_cast<float>(render_info_->samples_per_pixel);
@@ -89,7 +79,7 @@ void CpuRenderer::render_progressive()
 
 			const float u = (static_cast<float>(x) + pcg(&local_random_state)) / static_cast<float>(width);
 			const float v = (static_cast<float>(y) + pcg(&local_random_state)) / static_cast<float>(height);
-			const Ray ray = camera_->cast_ray(&local_random_state, u, v);
+			const Ray ray = cast_ray(&local_random_state, u, v, *camera_info_);
 			const float3 color = sqrt(calculate_color(ray, &world_, *sky_info_, render_info_->max_depth, &local_random_state));
 
 			accumulation_buffer_[pixel_index] += make_float4(color, 1.0f);
@@ -110,16 +100,6 @@ void CpuRenderer::refresh_buffer()
 	random_refresh();
 }
 
-void CpuRenderer::refresh_camera()
-{
-	camera_->update(
-		render_info_->camera_position,
-		render_info_->camera_direction,
-		render_info_->fov,
-		render_info_->aperture,
-		render_info_->focus_distance);
-}
-
 void CpuRenderer::refresh_object(const int32_t index) const
 {
 	world_->update_object(index, world_info_->objects_[index]);
@@ -133,18 +113,6 @@ void CpuRenderer::refresh_material(const int32_t index) const
 void CpuRenderer::refresh_texture(const int32_t index) const
 {
 	world_->update_texture(index, world_info_->textures_[index]);
-}
-
-void CpuRenderer::recreate_camera()
-{
-	delete camera_;
-	camera_ = new Camera(
-		render_info_->camera_position,
-		render_info_->camera_direction,
-		render_info_->fov,
-		static_cast<float>(render_info_->width) / static_cast<float>(render_info_->height),
-		render_info_->aperture,
-		render_info_->focus_distance);
 }
 
 void CpuRenderer::recreate_image()
@@ -164,10 +132,10 @@ void CpuRenderer::recreate_image()
 
 void CpuRenderer::recreate_sky()
 {
-	if (sky_info_->buffered_hdr_data)
-		sky_info_->usable_hdr_data = reinterpret_cast<float3*>(sky_info_->buffered_hdr_data);
+	if (sky_info_->h_hdr_data)
+		sky_info_->d_hdr_data = reinterpret_cast<float3*>(sky_info_->h_hdr_data);
 	else
-		sky_info_->usable_hdr_data = nullptr;
+		sky_info_->d_hdr_data = nullptr;
 }
 
 void CpuRenderer::random_init() const
@@ -194,23 +162,23 @@ void CpuRenderer::random_refresh() const
 
 void CpuRenderer::allocate_world()
 {
-	const auto texture_data = world_info_->textures_;
-	const auto material_data = world_info_->materials_;
-	const auto object_data = world_info_->objects_;
+	auto texture_data = world_info_->textures_;
+	auto material_data = world_info_->materials_;
+	auto object_data = world_info_->objects_;
 	const auto texture_count = texture_data.size();
 	const auto material_count = material_data.size();
 	const auto object_count = object_data.size();
 
-	texture_data_ = const_cast<TextureInfo**>(texture_data.data());
-	material_data_ = const_cast<MaterialInfo**>(material_data.data());
-	object_data_ = const_cast<ObjectInfo**>(object_data.data());
+	texture_data_ = texture_data.data();
+	material_data_ = material_data.data();
+	object_data_ = object_data.data();
 
 	for (int32_t i = 0; i < static_cast<int32_t>(texture_count); i++)
 	{
 		if (texture_data_[i]->type == TextureType::IMAGE)
 		{
 			const auto image_data = dynamic_cast<ImageInfo*>(texture_data_[i]);
-			image_data->usable_data = image_data->buffered_data;
+			image_data->d_data = image_data->h_data;
 		}
 	}
 
@@ -219,7 +187,8 @@ void CpuRenderer::allocate_world()
 		if (object_data_[i]->type == ObjectType::MODEL)
 		{
 			const auto model_data = dynamic_cast<ModelInfo*>(object_data_[i]);
-			model_data->usable_vertices = model_data->buffered_vertices;
+			model_data->d_vertices = model_data->h_vertices;
+			model_data->d_indices = model_data->h_indices;
 		}
 	}
 

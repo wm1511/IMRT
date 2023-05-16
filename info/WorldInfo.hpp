@@ -23,7 +23,7 @@ public:
 	WorldInfo& operator=(const WorldInfo&) = default;
 	WorldInfo& operator=(WorldInfo&&) = default;
 
-	void load_model(const std::string& model_path, Vertex*& vertices, uint64_t& triangle_count) const;
+	void load_model(const std::string& model_path, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) const;
 
 	template <typename T, typename... Args> void add_object(Args&&... args)
 	{

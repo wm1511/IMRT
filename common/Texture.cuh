@@ -42,7 +42,7 @@ class Image final : public Texture
 {
 public:
 	__host__ __device__ explicit Image(const ImageInfo* image_info)
-		: data_(image_info->usable_data), width_(image_info->width), height_(image_info->height) {}
+		: data_(image_info->d_data), width_(image_info->width), height_(image_info->height) {}
 
 	__host__ __device__ [[nodiscard]] float3 color(const float2 uv) const override
 	{
@@ -61,7 +61,7 @@ public:
 	__host__ __device__ void update(TextureInfo* texture) override
 	{
 		const ImageInfo* image_info = (ImageInfo*)texture;
-		data_ = image_info->usable_data;
+		data_ = image_info->d_data;
 		width_ = image_info->width;
 		height_ = image_info->height;
 	}

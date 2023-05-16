@@ -5,6 +5,7 @@
 #include "../info/RenderInfo.hpp"
 #include "../info/WorldInfo.hpp"
 #include "../info/SkyInfo.hpp"
+#include "../info/CameraInfo.hpp"
 
 class RtInterface final : public IDrawable
 {
@@ -42,6 +43,7 @@ private:
 	WorldInfo world_info_{};
 	RenderInfo render_info_{};
 	SkyInfo sky_info_{};
+	CameraInfo camera_info_{};
 
 	float camera_movement_speed_ = 0.002f, camera_rotation_speed_ = 0.002f;
 	uint64_t render_time_ = 0, frames_rendered_ = 0;

@@ -103,12 +103,12 @@ private:
 class Triangle final : public Object
 {
 public:
-	__host__ __device__ Triangle(const Vertex* first_vertex, Material* material)
+	__host__ __device__ Triangle(const Vertex* vertices, const uint32_t* first_index, Material* material)
 		: Object(material)
 	{
-		const Vertex v0 = *first_vertex;
-		const Vertex v1 = *(first_vertex + 1);
-		const Vertex v2 = *(first_vertex + 2);
+		const Vertex v0 = vertices[first_index[0]];
+		const Vertex v1 = vertices[first_index[1]];
+		const Vertex v2 = vertices[first_index[2]];
 
 		v0_ = v0.position;
 		v1_ = v1.position;
@@ -420,12 +420,12 @@ class Model final : public Object
 {
 public:
 	__host__ __device__ Model(const ModelInfo* model_info, Material* material)
-		: Object(material), triangle_count_(model_info->triangle_count)
+		: Object(material), triangle_count_(model_info->index_count / 3)
 	{
 		triangles_ = new Triangle*[triangle_count_];
 
 		for (uint64_t i = 0; i < triangle_count_; i++)
-			triangles_[i] = new Triangle(&model_info->usable_vertices[3 * i], material);
+			triangles_[i] = new Triangle(model_info->d_vertices, &model_info->d_indices[3 * i], material);
 	}
 
 	__host__ __device__ ~Model() override
@@ -465,7 +465,7 @@ public:
 
 		for (uint64_t i = 0; i < triangle_count_; i++)
 		{
-			new(triangles_[i]) Triangle(&model_info->usable_vertices[3 * i], material);
+			new(triangles_[i]) Triangle(model_info->d_vertices, &model_info->d_indices[3 * i], material);
 			triangles_[i]->transform(model_info->translation.str, model_info->scale.str, model_info->rotation.str);
 		}
 	}

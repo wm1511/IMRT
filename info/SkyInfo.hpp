@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Unions.hpp"
 
 extern "C"
@@ -20,14 +19,14 @@ struct SkyInfo
 
 	void load_hdr(const char* filename)
 	{
-		stbi_image_free(buffered_hdr_data);
-		buffered_hdr_data = stbi_loadf(filename, &hdr_width, &hdr_height, &hdr_components, 3);
+		stbi_image_free(h_hdr_data);
+		h_hdr_data = stbi_loadf(filename, &hdr_width, &hdr_height, &hdr_components, 3);
 	}
 
 	void clear_hdr()
 	{
-		stbi_image_free(buffered_hdr_data);
-		buffered_hdr_data = nullptr;
+		stbi_image_free(h_hdr_data);
+		h_hdr_data = nullptr;
 	}
 
 	void create_sky(const float turbidity = 2.5f, const float albedo_x = 0.5f, const float albedo_y = 0.5f, const float albedo_z = 0.5f, const float elevation = 1.25f)
@@ -58,8 +57,8 @@ struct SkyInfo
 	Float3 sun_radiance{};
 	float sun_elevation{};
 
-	float* buffered_hdr_data = nullptr;
-	mutable float3* usable_hdr_data = nullptr;
+	float* h_hdr_data = nullptr;
+	mutable float3* d_hdr_data = nullptr;
 	float hdr_exposure{2.0f};
 	int32_t hdr_width{0}, hdr_height{0}, hdr_components{0};
 };

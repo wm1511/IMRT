@@ -58,6 +58,7 @@ RtInterface::RtInterface()
 {
 	check_cuda_optix();
 	sky_info_.create_sky();
+	camera_info_.update(static_cast<float>(render_info_.width), static_cast<float>(render_info_.height));
 }
 
 RtInterface::~RtInterface()
@@ -77,13 +78,13 @@ void RtInterface::draw()
 			ImGui::BeginDisabled();
 
 		if (!renderer_)
-			renderer_ = std::make_unique<CpuRenderer>(&render_info_, &world_info_, &sky_info_);
+			renderer_ = std::make_unique<CpuRenderer>(&render_info_, &world_info_, &sky_info_, &camera_info_);
 
 		if (ImGui::RadioButton("CPU", render_device_ == RenderDevice::CPU))
 		{
 			renderer_.reset();
 			render_device_ = RenderDevice::CPU;
-			renderer_ = std::make_unique<CpuRenderer>(&render_info_, &world_info_, &sky_info_);
+			renderer_ = std::make_unique<CpuRenderer>(&render_info_, &world_info_, &sky_info_, &camera_info_);
 		}
 
 		if (!supports_cuda_)
@@ -93,7 +94,7 @@ void RtInterface::draw()
         {
 			renderer_.reset();
 	        render_device_ = RenderDevice::CUDA;
-			renderer_ = std::make_unique<CudaRenderer>(&render_info_, &world_info_, &sky_info_);
+			renderer_ = std::make_unique<CudaRenderer>(&render_info_, &world_info_, &sky_info_, &camera_info_);
         }
 		if (!supports_cuda_)
 			ImGui::EndDisabled();
@@ -105,7 +106,7 @@ void RtInterface::draw()
         {
 			renderer_.reset();
 	        render_device_ = RenderDevice::OPTIX;
-			renderer_ = std::make_unique<OptixRenderer>(&render_info_, &world_info_, &sky_info_);
+			renderer_ = std::make_unique<OptixRenderer>(&render_info_, &world_info_, &sky_info_, &camera_info_);
         }
 		if (!supports_optix_)
 			ImGui::EndDisabled();
@@ -138,8 +139,9 @@ void RtInterface::draw()
 				delete[] render_info_.frame_data;
 				render_info_.frame_data = new float[render_info_.frame_size];
 
+				camera_info_.update(static_cast<float>(render_info_.width), static_cast<float>(render_info_.height));
 				renderer_->recreate_image();
-				renderer_->recreate_camera();
+				renderer_->refresh_camera();
 				renderer_->refresh_buffer();
 				render_info_.frames_since_refresh = 0;
 			}
@@ -233,53 +235,54 @@ void RtInterface::move_camera()
 
 	if (ImGui::IsKeyDown(ImGuiKey_W))
 	{
-		render_info_.camera_position -= render_info_.camera_direction * camera_movement_speed_ * static_cast<float>(render_time_);
+		camera_info_.position -= camera_info_.direction * camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_S))
 	{
-		render_info_.camera_position += render_info_.camera_direction * camera_movement_speed_ * static_cast<float>(render_time_);
+		camera_info_.position += camera_info_.direction * camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_A))
 	{
-		const float3 displacement = normalize(cross(render_info_.camera_direction, make_float3(0.0f, -1.0f, 0.0f)));
-		render_info_.camera_position -= displacement * camera_movement_speed_ * static_cast<float>(render_time_);
+		const float3 displacement = normalize(cross(camera_info_.direction, make_float3(0.0f, -1.0f, 0.0f)));
+		camera_info_.position -= displacement * camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_D))
 	{
-		const float3 displacement = normalize(cross(render_info_.camera_direction, make_float3(0.0f, -1.0f, 0.0f)));
-		render_info_.camera_position += displacement * camera_movement_speed_ * static_cast<float>(render_time_);
+		const float3 displacement = normalize(cross(camera_info_.direction, make_float3(0.0f, -1.0f, 0.0f)));
+		camera_info_.position += displacement * camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_E))
 	{
-		render_info_.camera_position.y += camera_movement_speed_ * static_cast<float>(render_time_);
+		camera_info_.position.y += camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 	if (ImGui::IsKeyDown(ImGuiKey_Q))
 	{
-		render_info_.camera_position.y -= camera_movement_speed_ * static_cast<float>(render_time_);
+		camera_info_.position.y -= camera_movement_speed_ * static_cast<float>(render_time_);
 		is_moved = true;
 	}
 
 	if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
 	{
-		render_info_.angle_x += ImGui::GetMouseDragDelta().x * camera_rotation_speed_;
-		render_info_.angle_y += ImGui::GetMouseDragDelta().y * camera_rotation_speed_;
-		render_info_.angle_x = fmodf(render_info_.angle_x, k2Pi);
-		render_info_.angle_y = clamp(render_info_.angle_y, -kHalfPi, kHalfPi);
-		render_info_.camera_direction = make_float3(
-			cos(render_info_.angle_y) * -sin(render_info_.angle_x),
-			-sin(render_info_.angle_y),
-			-cos(render_info_.angle_x) * cos(render_info_.angle_y));
+		camera_info_.angle_x += ImGui::GetMouseDragDelta().x * camera_rotation_speed_;
+		camera_info_.angle_y += ImGui::GetMouseDragDelta().y * camera_rotation_speed_;
+		camera_info_.angle_x = fmodf(camera_info_.angle_x, k2Pi);
+		camera_info_.angle_y = clamp(camera_info_.angle_y, -kHalfPi, kHalfPi);
+		camera_info_.direction = make_float3(
+			cos(camera_info_.angle_y) * -sin(camera_info_.angle_x),
+			-sin(camera_info_.angle_y),
+			-cos(camera_info_.angle_x) * cos(camera_info_.angle_y));
 		ImGui::ResetMouseDragDelta();
 		is_moved =  true;
 	}
 	
 	if (is_moved)
 	{
+		camera_info_.update(static_cast<float>(render_info_.width), static_cast<float>(render_info_.height));
 		renderer_->refresh_camera();
 		renderer_->refresh_buffer();
 		render_info_.frames_since_refresh = 0;
@@ -337,42 +340,42 @@ void RtInterface::edit_camera()
 		bool is_edited = false;
 	    if (ImGui::TreeNode("Position"))
 		{
-			is_edited |= ImGui::SliderFloat("##CameraX", &render_info_.camera_position.x, -UINT16_MAX, UINT16_MAX, "%.3f",
+			is_edited |= ImGui::SliderFloat("##CameraX", &camera_info_.position.x, -UINT16_MAX, UINT16_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SameLine(); ImGui::Text("x");
-	    	is_edited |= ImGui::SliderFloat("##CameraY", &render_info_.camera_position.y, -UINT16_MAX, UINT16_MAX, "%.3f",
+	    	is_edited |= ImGui::SliderFloat("##CameraY", &camera_info_.position.y, -UINT16_MAX, UINT16_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SameLine(); ImGui::Text("y");
-	    	is_edited |= ImGui::SliderFloat("##CameraZ", &render_info_.camera_position.z, -UINT16_MAX, UINT16_MAX, "%.3f",
+	    	is_edited |= ImGui::SliderFloat("##CameraZ", &camera_info_.position.z, -UINT16_MAX, UINT16_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SameLine(); ImGui::Text("z");
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Angle offset"))
 		{
-			is_edited |= ImGui::SliderAngle("degrees x", &render_info_.angle_x, 0.0f, 360.0f, "%.3f");
-			is_edited |= ImGui::SliderAngle("degrees y", &render_info_.angle_y, -90.0f, 90.0f, "%.3f");
+			is_edited |= ImGui::SliderAngle("degrees x", &camera_info_.angle_x, 0.0f, 360.0f, "%.3f");
+			is_edited |= ImGui::SliderAngle("degrees y", &camera_info_.angle_y, -90.0f, 90.0f, "%.3f");
 
-			render_info_.camera_direction = normalize(make_float3(
-			cos(render_info_.angle_x) * -sin(render_info_.angle_x),
-			-sin(render_info_.angle_y),
-			-cos(render_info_.angle_x) * cos(render_info_.angle_y)));
+			camera_info_.direction = normalize(make_float3(
+			cos(camera_info_.angle_x) * -sin(camera_info_.angle_x),
+			-sin(camera_info_.angle_y),
+			-cos(camera_info_.angle_x) * cos(camera_info_.angle_y)));
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Vertical field of view"))
 		{
-			is_edited |= ImGui::SliderAngle("degrees", &render_info_.fov, 0.0f, 180.0f, "%.3f");
+			is_edited |= ImGui::SliderAngle("degrees", &camera_info_.fov, 0.0f, 180.0f, "%.3f");
 			ImGui::TreePop();
 		}
-		if (ImGui::TreeNode("Aperture"))
+		if (ImGui::TreeNode("Lens radius"))
 		{
-			is_edited |= ImGui::SliderFloat("##Aperture", &render_info_.aperture, 0.0f, UINT8_MAX, "%.3f",
+			is_edited |= ImGui::SliderFloat("##LensRadius", &camera_info_.lens_radius, 0.0f, UINT8_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Focus distance"))
 		{
-			is_edited |= ImGui::SliderFloat("##FocusDist", &render_info_.focus_distance, 0.0f, UINT8_MAX, "%.3f",
+			is_edited |= ImGui::SliderFloat("##FocusDist", &camera_info_.focus_distance, 0.0f, UINT8_MAX, "%.3f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::TreePop();
 		}
@@ -389,6 +392,7 @@ void RtInterface::edit_camera()
 
 		if (is_rendering_ && is_edited)
 		{
+			camera_info_.update(static_cast<float>(render_info_.width), static_cast<float>(render_info_.height));
 			renderer_->refresh_camera();
 			renderer_->refresh_buffer();
 			render_info_.frames_since_refresh = 0;
@@ -724,14 +728,22 @@ void RtInterface::add_object()
 			}
 			else if (object_type == enum_cast(ObjectType::MODEL))
 			{
-				Vertex* triangle_list = nullptr;
-				uint64_t triangle_count = 0;
-				world_info_.load_model(selected_file.u8string(), triangle_list, triangle_count);
+				std::vector<Vertex> vertices_vector;
+				std::vector<uint32_t> indices_vector;
+				world_info_.load_model(selected_file.u8string(), vertices_vector, indices_vector);
 
-				if (triangle_count == 0)
+				if (vertices_vector.empty())
 					ImGui::OpenPopup("3D model loading failed");
 				else
-					world_info_.add_object<ModelInfo>(triangle_list, triangle_count, selected_material, name);
+				{
+					const auto vertices = new Vertex[vertices_vector.size()];
+					const auto indices = new uint32_t[indices_vector.size()];
+
+					memcpy_s(vertices, vertices_vector.size() * sizeof(Vertex), vertices_vector.data(), vertices_vector.size() * sizeof(Vertex));
+					memcpy_s(indices, indices_vector.size() * sizeof(uint32_t), indices_vector.data(), indices_vector.size() * sizeof(uint32_t));
+
+					world_info_.add_object<ModelInfo>(vertices, indices, vertices_vector.size(), indices_vector.size(), selected_material, name);
+				}
 			}
 
 			is_added = true;
@@ -762,7 +774,7 @@ void RtInterface::edit_object()
 
 				if (current_object->type == ObjectType::MODEL)
 				{
-					ImGui::Text("Triangle count: %llu", static_cast<ModelInfo*>(current_object)->triangle_count);
+					ImGui::Text("Triangle count: %llu", static_cast<ModelInfo*>(current_object)->vertex_count);
 				}
 				else if (current_object->type == ObjectType::UNKNOWN_OBJECT)
 				{

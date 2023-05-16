@@ -2,6 +2,7 @@
 #include "OptixRenderer.cuh"
 
 #include "../common/Utils.hpp"
+#include "../cuda_renderer/CudaKernels.cuh"
 
 #include <optix_stubs.h>
 #include <optix_function_table_definition.h>
@@ -13,55 +14,93 @@ static void context_log(unsigned int level, const char* tag, const char* message
 }
 #endif
 
-OptixRenderer::OptixRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info)
-	: render_info_(render_info), world_info_(world_info), sky_info_(sky_info)
+OptixRenderer::OptixRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info)
+	: render_info_(render_info), world_info_(world_info), sky_info_(sky_info), camera_info_(camera_info)
 {
+	const uint32_t width = render_info_->width;
+	const uint32_t height = render_info_->height;
+	constexpr int32_t thread_x = 16;
+	constexpr int32_t thread_y = 16;
+	auto blocks = dim3((width + thread_x - 1) / thread_x, (height + thread_y - 1) / thread_y);
+	auto threads = dim3(thread_x, thread_y);
+
 	init_optix();
 	create_modules();
 	create_programs();
+	h_launch_params_.traversable = build_as();
 	create_pipeline();
 	create_sbt();
-	host_launch_params_.traversable = build_as();
 
-	CCE(cudaMalloc(reinterpret_cast<void**>(&device_launch_params_), sizeof(LaunchParams)));
-	CCE(cudaMemcpy(device_launch_params_, &host_launch_params_, sizeof(LaunchParams), cudaMemcpyHostToDevice));
+	CCE(cudaMalloc(reinterpret_cast<void**>(&h_launch_params_.accumulation_buffer), sizeof(float4) * width * height));
+	CCE(cudaMalloc(reinterpret_cast<void**>(&xoshiro_initial_), sizeof(uint4) * width * height));
+	CCE(cudaMalloc(reinterpret_cast<void**>(&h_launch_params_.xoshiro_state), sizeof(uint4) * width * height));
+
+	random_init<<<blocks, threads>>>(width, height, xoshiro_initial_);
+	CCE(cudaGetLastError());
+	CCE(cudaDeviceSynchronize());
+
+	CCE(cudaMemcpy(h_launch_params_.xoshiro_state, xoshiro_initial_, sizeof(uint4) * width * height, cudaMemcpyDeviceToDevice));
+
+	if (sky_info_->h_hdr_data)
+	{
+		const uint64_t hdr_size = sizeof(float3) * sky_info_->hdr_width * sky_info_->hdr_height;
+		CCE(cudaMalloc(reinterpret_cast<void**>(&sky_info_->d_hdr_data), hdr_size));
+		CCE(cudaMemcpy(sky_info_->d_hdr_data, sky_info_->h_hdr_data, hdr_size, cudaMemcpyHostToDevice));
+	}
+
+	h_launch_params_.sky_info = *sky_info;
+	h_launch_params_.camera_info = *camera_info;
+
+	CCE(cudaMalloc(reinterpret_cast<void**>(&d_launch_params_), sizeof(LaunchParams)));
+	CCE(cudaMemcpy(d_launch_params_, &h_launch_params_, sizeof(LaunchParams), cudaMemcpyHostToDevice));
 }
 
 OptixRenderer::~OptixRenderer()
 {
+	if (sky_info_->h_hdr_data)
+		CCE(cudaFree(sky_info_->d_hdr_data));
+
+	CCE(cudaFree(h_launch_params_.xoshiro_state));
+	CCE(cudaFree(xoshiro_initial_));
+	CCE(cudaFree(h_launch_params_.accumulation_buffer));
+
 	CCE(cudaStreamDestroy(stream_));
-	CCE(cudaFree(device_launch_params_));
-	CCE(cudaFree(device_raygen_records_));
-	CCE(cudaFree(device_miss_records_));
-	CCE(cudaFree(device_hit_records_));
-	CCE(cudaFree(device_index_buffer_));
-	CCE(cudaFree(device_vertex_buffer_));
-	CCE(cudaFree(device_as_buffer_));
+	CCE(cudaFree(d_launch_params_));
+	CCE(cudaFree(d_raygen_records_));
+	CCE(cudaFree(d_miss_records_));
+	CCE(cudaFree(d_hit_records_));
+	CCE(cudaFree(d_index_buffer_));
+	CCE(cudaFree(d_vertex_buffer_));
+	CCE(cudaFree(d_as_buffer_));
 
 	cudaDeviceReset();
 }
 
 void OptixRenderer::render_static()
 {
+	//if (render_info_)
 }
 
 void OptixRenderer::render_progressive()
 {
 	const auto frame_buffer = static_cast<float4*>(fetch_external_memory(render_info_->frame_handle, render_info_->frame_size));
 
-	host_launch_params_.width = render_info_->width;
-	host_launch_params_.height = render_info_->height;
-	host_launch_params_.frame_buffer = frame_buffer;
+	h_launch_params_.width = render_info_->width;
+	h_launch_params_.height = render_info_->height;
+	h_launch_params_.frames_since_refresh = render_info_->frames_since_refresh;
+	h_launch_params_.frame_buffer = frame_buffer;
+	h_launch_params_.sky_info = *sky_info_;
+	h_launch_params_.camera_info = *camera_info_;
 
-	CCE(cudaMemcpy(device_launch_params_, &host_launch_params_, sizeof(LaunchParams), cudaMemcpyHostToDevice));
+	CCE(cudaMemcpy(d_launch_params_, &h_launch_params_, sizeof(LaunchParams), cudaMemcpyHostToDevice));
 
 	COE(optixLaunch(
 		pipeline_, stream_,
-		reinterpret_cast<CUdeviceptr>(device_launch_params_),
+		reinterpret_cast<CUdeviceptr>(d_launch_params_),
 		sizeof(LaunchParams),
 		&sbt_,
-		host_launch_params_.width,
-		host_launch_params_.height,
+		h_launch_params_.width,
+		h_launch_params_.height,
 		1));
 
 	CCE(cudaDeviceSynchronize());
@@ -72,10 +111,11 @@ void OptixRenderer::render_progressive()
 
 void OptixRenderer::refresh_buffer()
 {
-}
+	const uint32_t width = render_info_->width;
+	const uint32_t height = render_info_->height;
 
-void OptixRenderer::refresh_camera()
-{
+	CCE(cudaMemset(h_launch_params_.accumulation_buffer, 0, sizeof(float4) * width * height));
+	CCE(cudaMemcpy(h_launch_params_.xoshiro_state, xoshiro_initial_, sizeof(uint4) * width * height, cudaMemcpyDeviceToDevice));
 }
 
 void OptixRenderer::refresh_object(int32_t index) const
@@ -90,16 +130,47 @@ void OptixRenderer::refresh_texture(int32_t index) const
 {
 }
 
-void OptixRenderer::recreate_camera()
-{
-}
-
 void OptixRenderer::recreate_image()
 {
+	const uint32_t width = render_info_->width;
+	const uint32_t height = render_info_->height;
+	constexpr int32_t thread_x = 16;
+	constexpr int32_t thread_y = 16;
+	auto blocks = dim3((width + thread_x - 1) / thread_x, (height + thread_y - 1) / thread_y);
+	auto threads = dim3(thread_x, thread_y);
+
+	CCE(cudaFree(h_launch_params_.xoshiro_state));
+	CCE(cudaFree(xoshiro_initial_));
+	CCE(cudaFree(h_launch_params_.accumulation_buffer));
+	CCE(cudaMalloc(reinterpret_cast<void**>(&h_launch_params_.accumulation_buffer), sizeof(float4) * width * height));
+	CCE(cudaMalloc(reinterpret_cast<void**>(&xoshiro_initial_), sizeof(uint4) * width * height));
+	CCE(cudaMalloc(reinterpret_cast<void**>(&h_launch_params_.xoshiro_state), sizeof(uint4) * width * height));
+
+	random_init<<<blocks, threads>>>(width, height, xoshiro_initial_);
+	CCE(cudaGetLastError());
+	CCE(cudaDeviceSynchronize());
 }
 
 void OptixRenderer::recreate_sky()
 {
+	CCE(cudaFree(sky_info_->d_hdr_data));
+
+	if (sky_info_->h_hdr_data)
+	{
+		const uint64_t hdr_size = sizeof(float3) * sky_info_->hdr_width * sky_info_->hdr_height;
+		CCE(cudaMalloc(reinterpret_cast<void**>(&sky_info_->d_hdr_data), hdr_size));
+		CCE(cudaMemcpy(sky_info_->d_hdr_data, sky_info_->h_hdr_data, hdr_size, cudaMemcpyHostToDevice));
+	}
+	else
+		sky_info_->d_hdr_data = nullptr;
+}
+
+void OptixRenderer::map_frame_memory()
+{
+	const auto frame_buffer = static_cast<float4*>(fetch_external_memory(render_info_->frame_handle, render_info_->frame_size));
+
+	CCE(cudaMemcpy(render_info_->frame_data, frame_buffer, render_info_->frame_size, cudaMemcpyDeviceToHost));
+	CCE(cudaFree(frame_buffer));
 }
 
 void OptixRenderer::allocate_world()
@@ -117,6 +188,7 @@ void OptixRenderer::init_optix()
 	OptixDeviceContextOptions options{};
 
 #ifdef _DEBUG
+	options.validationMode = OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL;
 	options.logCallbackFunction = &context_log;
 	options.logCallbackLevel = 4;
 #endif
@@ -230,10 +302,14 @@ void OptixRenderer::create_pipeline()
 	pipeline_compile_options.usesMotionBlur = false;
 	pipeline_compile_options.numPayloadValues = 2;
 	pipeline_compile_options.numAttributeValues = 2;
+#ifdef _DEBUG
+	pipeline_compile_options.exceptionFlags = OPTIX_EXCEPTION_FLAG_DEBUG;
+#else
 	pipeline_compile_options.exceptionFlags = OPTIX_EXCEPTION_FLAG_NONE;
+#endif
 	pipeline_compile_options.pipelineLaunchParamsVariableName = "launch_params";
 
-	constexpr OptixPipelineLinkOptions pipeline_link_options{ 2 };
+	const OptixPipelineLinkOptions pipeline_link_options{ static_cast<uint32_t>(render_info_->max_depth < 32 ? render_info_->max_depth : 31) };
 
 	COE(optixPipelineCreate(
 		context_,
@@ -257,10 +333,10 @@ void OptixRenderer::create_sbt()
 		raygen_records.push_back(rec);
 	}
 
-	CCE(cudaMalloc(reinterpret_cast<void**>(&device_raygen_records_), raygen_records.size() * sizeof(SbtRecord<RayGenData>)));
-	CCE(cudaMemcpy(device_raygen_records_, raygen_records.data(), raygen_records.size() * sizeof(SbtRecord<RayGenData>), cudaMemcpyHostToDevice));
+	CCE(cudaMalloc(reinterpret_cast<void**>(&d_raygen_records_), raygen_records.size() * sizeof(SbtRecord<RayGenData>)));
+	CCE(cudaMemcpy(d_raygen_records_, raygen_records.data(), raygen_records.size() * sizeof(SbtRecord<RayGenData>), cudaMemcpyHostToDevice));
 
-	sbt_.raygenRecord = reinterpret_cast<CUdeviceptr>(device_raygen_records_);
+	sbt_.raygenRecord = reinterpret_cast<CUdeviceptr>(d_raygen_records_);
 
 	std::vector<SbtRecord<MissData>> miss_records;
 	for (const auto& miss_program : miss_programs_)
@@ -270,10 +346,10 @@ void OptixRenderer::create_sbt()
 		miss_records.push_back(rec);
 	}
 
-	CCE(cudaMalloc(reinterpret_cast<void**>(&device_miss_records_), miss_records.size() * sizeof(SbtRecord<MissData>)));
-	CCE(cudaMemcpy(device_miss_records_, miss_records.data(), miss_records.size() * sizeof(SbtRecord<MissData>), cudaMemcpyHostToDevice));
+	CCE(cudaMalloc(reinterpret_cast<void**>(&d_miss_records_), miss_records.size() * sizeof(SbtRecord<MissData>)));
+	CCE(cudaMemcpy(d_miss_records_, miss_records.data(), miss_records.size() * sizeof(SbtRecord<MissData>), cudaMemcpyHostToDevice));
 
-	sbt_.missRecordBase = reinterpret_cast<CUdeviceptr>(device_miss_records_);
+	sbt_.missRecordBase = reinterpret_cast<CUdeviceptr>(d_miss_records_);
 	sbt_.missRecordStrideInBytes = sizeof(SbtRecord<MissData>);
 	sbt_.missRecordCount = static_cast<uint32_t>(miss_records.size());
 
@@ -284,31 +360,54 @@ void OptixRenderer::create_sbt()
 		constexpr int32_t object_type = 0;
 		SbtRecord<HitGroupData> rec{};
 		COE(optixSbtRecordPackHeader(hit_programs_[object_type], &rec));
-		rec.data.object_id = i;
+		rec.data.vertex = d_vertex_buffer_;
+		rec.data.index = d_index_buffer_;
+		rec.data.color = make_float3(0.5f);
 		hitgroup_records.push_back(rec);
 	}
 
-	CCE(cudaMalloc(reinterpret_cast<void**>(&device_hit_records_), hitgroup_records.size() * sizeof(SbtRecord<HitGroupData>)));
-	CCE(cudaMemcpy(device_hit_records_, hitgroup_records.data(), hitgroup_records.size() * sizeof(SbtRecord<HitGroupData>), cudaMemcpyHostToDevice));
+	CCE(cudaMalloc(reinterpret_cast<void**>(&d_hit_records_), hitgroup_records.size() * sizeof(SbtRecord<HitGroupData>)));
+	CCE(cudaMemcpy(d_hit_records_, hitgroup_records.data(), hitgroup_records.size() * sizeof(SbtRecord<HitGroupData>), cudaMemcpyHostToDevice));
 
-	sbt_.hitgroupRecordBase = reinterpret_cast<CUdeviceptr>(device_hit_records_);
+	sbt_.hitgroupRecordBase = reinterpret_cast<CUdeviceptr>(d_hit_records_);
 	sbt_.hitgroupRecordStrideInBytes = sizeof(SbtRecord<HitGroupData>);
 	sbt_.hitgroupRecordCount = static_cast<uint32_t>(hitgroup_records.size());
 }
 
 OptixTraversableHandle OptixRenderer::build_as()
 {
-	std::vector<float3> vertices;
-	std::vector<int3> indices;
-	vertices.push_back(make_float3(-1.0f, 0.0f, 0.0f));
-	vertices.push_back(make_float3(1.0f, 0.0f, 0.0f));
-	vertices.push_back(make_float3(0.0f, 2.0f, 0.0f));
-	indices.push_back(make_int3(0, 1, 2));
+	std::vector<float> vertices
+	{
+		-1, -1,  1,
+		 1, -1,  1,
+		-1,  1,  1,
+		 1,  1,  1,
+		-1, -1, -1,
+		 1, -1, -1,
+		-1,  1, -1,
+		 1,  1, -1
+	};
 
-	CCE(cudaMalloc(reinterpret_cast<void**>(&device_vertex_buffer_), vertices.size() * sizeof(float3)));
-	CCE(cudaMemcpy(device_vertex_buffer_, vertices.data(), vertices.size() * sizeof(float3), cudaMemcpyHostToDevice));
-	CCE(cudaMalloc(reinterpret_cast<void**>(&device_index_buffer_), indices.size() * sizeof(uint3)));
-	CCE(cudaMemcpy(device_index_buffer_, indices.data(), indices.size() * sizeof(uint3), cudaMemcpyHostToDevice));
+	std::vector<uint32_t> indices
+	{
+		2, 6, 7,
+		2, 3, 7,
+		0, 4, 5,
+		0, 1, 5,
+		0, 2, 6,
+		0, 4, 6,
+		1, 3, 7,
+		1, 5, 7,
+		0, 2, 3,
+		0, 1, 3,
+		4, 6, 7,
+		4, 5, 7
+	};
+
+	CCE(cudaMalloc(reinterpret_cast<void**>(&d_vertex_buffer_), vertices.size() * sizeof(float)));
+	CCE(cudaMemcpy(d_vertex_buffer_, vertices.data(), vertices.size() * sizeof(float), cudaMemcpyHostToDevice));
+	CCE(cudaMalloc(reinterpret_cast<void**>(&d_index_buffer_), indices.size() * sizeof(uint32_t)));
+	CCE(cudaMemcpy(d_index_buffer_, indices.data(), indices.size() * sizeof(uint32_t), cudaMemcpyHostToDevice));
 
 	OptixTraversableHandle as_handle{ 0 };
 
@@ -318,12 +417,12 @@ OptixTraversableHandle OptixRenderer::build_as()
 	triangle_input.triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
 	triangle_input.triangleArray.vertexStrideInBytes = sizeof(float3);
 	triangle_input.triangleArray.numVertices = static_cast<uint32_t>(vertices.size());
-	triangle_input.triangleArray.vertexBuffers = reinterpret_cast<CUdeviceptr*>(&device_vertex_buffer_);
+	triangle_input.triangleArray.vertexBuffers = reinterpret_cast<CUdeviceptr*>(&d_vertex_buffer_);
 
 	triangle_input.triangleArray.indexFormat = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
 	triangle_input.triangleArray.indexStrideInBytes = sizeof(int3);
 	triangle_input.triangleArray.numIndexTriplets = static_cast<uint32_t>(indices.size());
-	triangle_input.triangleArray.indexBuffer = reinterpret_cast<CUdeviceptr>(device_index_buffer_);
+	triangle_input.triangleArray.indexBuffer = reinterpret_cast<CUdeviceptr>(d_index_buffer_);
 
 	uint32_t triangle_input_flags[1] = { 0 };
 
@@ -377,12 +476,12 @@ OptixTraversableHandle OptixRenderer::build_as()
 	uint64_t compacted_size;
 	CCE(cudaMemcpy(&compacted_size, compacted_size_buffer, sizeof(uint64_t), cudaMemcpyDeviceToHost));
 
-	CCE(cudaMalloc(&device_as_buffer_, compacted_size));
+	CCE(cudaMalloc(&d_as_buffer_, compacted_size));
 	COE(optixAccelCompact(
 		context_,
 		nullptr,
 		as_handle,
-		reinterpret_cast<CUdeviceptr>(device_as_buffer_),
+		reinterpret_cast<CUdeviceptr>(d_as_buffer_),
 		compacted_size,
 		&as_handle));
 
