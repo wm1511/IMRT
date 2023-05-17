@@ -4,16 +4,15 @@
 #include "World.cuh"
 #include "Material.cuh"
 
-__host__ __device__ inline Ray cast_ray(uint32_t* random_state, const float screen_x, const float screen_y, const CameraInfo& camera_info)
+__host__ __device__ __forceinline__ Ray cast_ray(uint32_t* random_state, const float screen_x, const float screen_y, const CameraInfo& camera_info)
 {
 	const float2 random_on_lens = camera_info.lens_radius * disk_random(random_state);
 	const float3 ray_offset = camera_info.u * random_on_lens.x + camera_info.v * random_on_lens.y;
-	return {
-		camera_info.position + ray_offset,
+	return {camera_info.position + ray_offset,
 		camera_info.starting_point + screen_x * camera_info.horizontal_map + screen_y * camera_info.vertical_map - camera_info.position - ray_offset};
 }
 
-__host__ __device__ inline float3 sample_hdr(const float3 direction, const SkyInfo& sky_info)
+__host__ __device__ __forceinline__ float3 sample_hdr(const float3 direction, const SkyInfo& sky_info)
 {
 	const float3 ray_direction = normalize(direction);
     const float longitude = atan2(ray_direction.z, ray_direction.x);
@@ -33,7 +32,7 @@ __host__ __device__ inline float3 sample_hdr(const float3 direction, const SkyIn
     return clamp(sky_info.d_hdr_data[hdr_texel_index], 0.0f, 1.0f);
 }
 
-__host__ __device__ inline float3 sample_sky(const float3 direction, const SkyInfo& sky_info)
+__host__ __device__ __forceinline__ float3 sample_sky(const float3 direction, const SkyInfo& sky_info)
 {
 	const float3 ray_direction = normalize(direction);
 	const float3 sun_direction = make_float3(0.0f, cos(kHalfPi - sky_info.sun_elevation), sin(kHalfPi - sky_info.sun_elevation));
@@ -60,7 +59,7 @@ __host__ __device__ inline float3 sample_sky(const float3 direction, const SkyIn
     return result.str * 0.05f;
 }
 
-__host__ __device__ inline float3 calculate_color(const Ray& ray, World** world, const SkyInfo& sky_info, const int32_t max_depth, uint32_t* random_state)
+__host__ __device__ __forceinline__ float3 calculate_color(const Ray& ray, World** world, const SkyInfo& sky_info, const int32_t max_depth, uint32_t* random_state)
 {
 	Ray current_ray = ray;
     float3 current_absorption = make_float3(1.0f);

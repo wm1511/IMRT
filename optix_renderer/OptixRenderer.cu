@@ -48,9 +48,6 @@ OptixRenderer::OptixRenderer(const RenderInfo* render_info, const WorldInfo* wor
 		CCE(cudaMemcpy(sky_info_->d_hdr_data, sky_info_->h_hdr_data, hdr_size, cudaMemcpyHostToDevice));
 	}
 
-	h_launch_params_.sky_info = *sky_info;
-	h_launch_params_.camera_info = *camera_info;
-
 	CCE(cudaMalloc(reinterpret_cast<void**>(&d_launch_params_), sizeof(LaunchParams)));
 	CCE(cudaMemcpy(d_launch_params_, &h_launch_params_, sizeof(LaunchParams), cudaMemcpyHostToDevice));
 }
@@ -76,18 +73,24 @@ OptixRenderer::~OptixRenderer()
 	cudaDeviceReset();
 }
 
-void OptixRenderer::render_static()
-{
-	//if (render_info_)
-}
-
-void OptixRenderer::render_progressive()
+void OptixRenderer::render()
 {
 	const auto frame_buffer = static_cast<float4*>(fetch_external_memory(render_info_->frame_handle, render_info_->frame_size));
 
+	if (render_info_->progressive)
+	{
+		sbt_.raygenRecord = reinterpret_cast<CUdeviceptr>(d_raygen_records_);
+		h_launch_params_.sampling_denominator = render_info_->frames_since_refresh;
+	}
+	else
+	{
+		sbt_.raygenRecord = reinterpret_cast<CUdeviceptr>(d_raygen_records_ + 1);
+		CCE(cudaMemset(frame_buffer, 0, render_info_->frame_size));
+		h_launch_params_.sampling_denominator = render_info_->samples_per_pixel;
+	}
+
 	h_launch_params_.width = render_info_->width;
 	h_launch_params_.height = render_info_->height;
-	h_launch_params_.frames_since_refresh = render_info_->frames_since_refresh;
 	h_launch_params_.frame_buffer = frame_buffer;
 	h_launch_params_.sky_info = *sky_info_;
 	h_launch_params_.camera_info = *camera_info_;
@@ -233,12 +236,12 @@ void OptixRenderer::create_modules()
 
 void OptixRenderer::create_programs()
 {
-	raygen_programs_.resize(1);
+	raygen_programs_.resize(2);
 	OptixProgramGroupOptions rg_options = {};
 	OptixProgramGroupDesc rg_desc = {};
 	rg_desc.kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
 	rg_desc.raygen.module = module_;
-	rg_desc.raygen.entryFunctionName = "__raygen__render";
+	rg_desc.raygen.entryFunctionName = "__raygen__render_progressive";
 
 	COE(optixProgramGroupCreate(
 		context_,
@@ -247,6 +250,16 @@ void OptixRenderer::create_programs()
 		&rg_options,
 		nullptr, nullptr,
 		raygen_programs_.data()));
+
+	rg_desc.raygen.entryFunctionName = "__raygen__render_static";
+
+	COE(optixProgramGroupCreate(
+		context_,
+		&rg_desc,
+		1,
+		&rg_options,
+		nullptr, nullptr,
+		raygen_programs_.data() + 1));
 
 	miss_programs_.resize(1);
 	OptixProgramGroupOptions m_options = {};
@@ -321,57 +334,6 @@ void OptixRenderer::create_pipeline()
 		&pipeline_));
 
 	COE(optixPipelineSetStackSize(pipeline_, 2 * 1024, 2 * 1024, 2 * 1024, 1));
-}
-
-void OptixRenderer::create_sbt()
-{
-	std::vector<SbtRecord<RayGenData>> raygen_records;
-	for (const auto& raygen_program : raygen_programs_)
-	{
-		SbtRecord<RayGenData> rec{};
-		COE(optixSbtRecordPackHeader(raygen_program, &rec));
-		raygen_records.push_back(rec);
-	}
-
-	CCE(cudaMalloc(reinterpret_cast<void**>(&d_raygen_records_), raygen_records.size() * sizeof(SbtRecord<RayGenData>)));
-	CCE(cudaMemcpy(d_raygen_records_, raygen_records.data(), raygen_records.size() * sizeof(SbtRecord<RayGenData>), cudaMemcpyHostToDevice));
-
-	sbt_.raygenRecord = reinterpret_cast<CUdeviceptr>(d_raygen_records_);
-
-	std::vector<SbtRecord<MissData>> miss_records;
-	for (const auto& miss_program : miss_programs_)
-	{
-		SbtRecord<MissData> rec{};
-		COE(optixSbtRecordPackHeader(miss_program, &rec));
-		miss_records.push_back(rec);
-	}
-
-	CCE(cudaMalloc(reinterpret_cast<void**>(&d_miss_records_), miss_records.size() * sizeof(SbtRecord<MissData>)));
-	CCE(cudaMemcpy(d_miss_records_, miss_records.data(), miss_records.size() * sizeof(SbtRecord<MissData>), cudaMemcpyHostToDevice));
-
-	sbt_.missRecordBase = reinterpret_cast<CUdeviceptr>(d_miss_records_);
-	sbt_.missRecordStrideInBytes = sizeof(SbtRecord<MissData>);
-	sbt_.missRecordCount = static_cast<uint32_t>(miss_records.size());
-
-	constexpr int32_t num_objects = 1;
-	std::vector<SbtRecord<HitGroupData>> hitgroup_records;
-	for (int i = 0; i < num_objects; i++)
-	{
-		constexpr int32_t object_type = 0;
-		SbtRecord<HitGroupData> rec{};
-		COE(optixSbtRecordPackHeader(hit_programs_[object_type], &rec));
-		rec.data.vertex = d_vertex_buffer_;
-		rec.data.index = d_index_buffer_;
-		rec.data.color = make_float3(0.5f);
-		hitgroup_records.push_back(rec);
-	}
-
-	CCE(cudaMalloc(reinterpret_cast<void**>(&d_hit_records_), hitgroup_records.size() * sizeof(SbtRecord<HitGroupData>)));
-	CCE(cudaMemcpy(d_hit_records_, hitgroup_records.data(), hitgroup_records.size() * sizeof(SbtRecord<HitGroupData>), cudaMemcpyHostToDevice));
-
-	sbt_.hitgroupRecordBase = reinterpret_cast<CUdeviceptr>(d_hit_records_);
-	sbt_.hitgroupRecordStrideInBytes = sizeof(SbtRecord<HitGroupData>);
-	sbt_.hitgroupRecordCount = static_cast<uint32_t>(hitgroup_records.size());
 }
 
 OptixTraversableHandle OptixRenderer::build_as()
@@ -493,4 +455,53 @@ OptixTraversableHandle OptixRenderer::build_as()
 	CCE(cudaFree(compacted_size_buffer));
 
 	return as_handle;
+}
+
+void OptixRenderer::create_sbt()
+{
+	std::vector<SbtRecord<RayGenData>> raygen_records;
+	for (const auto& raygen_program : raygen_programs_)
+	{
+		SbtRecord<RayGenData> rec{};
+		COE(optixSbtRecordPackHeader(raygen_program, &rec));
+		raygen_records.push_back(rec);
+	}
+
+	CCE(cudaMalloc(reinterpret_cast<void**>(&d_raygen_records_), raygen_records.size() * sizeof(SbtRecord<RayGenData>)));
+	CCE(cudaMemcpy(d_raygen_records_, raygen_records.data(), raygen_records.size() * sizeof(SbtRecord<RayGenData>), cudaMemcpyHostToDevice));
+
+	std::vector<SbtRecord<MissData>> miss_records;
+	for (const auto& miss_program : miss_programs_)
+	{
+		SbtRecord<MissData> rec{};
+		COE(optixSbtRecordPackHeader(miss_program, &rec));
+		miss_records.push_back(rec);
+	}
+
+	CCE(cudaMalloc(reinterpret_cast<void**>(&d_miss_records_), miss_records.size() * sizeof(SbtRecord<MissData>)));
+	CCE(cudaMemcpy(d_miss_records_, miss_records.data(), miss_records.size() * sizeof(SbtRecord<MissData>), cudaMemcpyHostToDevice));
+
+	sbt_.missRecordBase = reinterpret_cast<CUdeviceptr>(d_miss_records_);
+	sbt_.missRecordStrideInBytes = sizeof(SbtRecord<MissData>);
+	sbt_.missRecordCount = static_cast<uint32_t>(miss_records.size());
+
+	constexpr int32_t num_objects = 1;
+	std::vector<SbtRecord<HitGroupData>> hitgroup_records;
+	for (int i = 0; i < num_objects; i++)
+	{
+		constexpr int32_t object_type = 0;
+		SbtRecord<HitGroupData> rec{};
+		COE(optixSbtRecordPackHeader(hit_programs_[object_type], &rec));
+		rec.data.vertex = d_vertex_buffer_;
+		rec.data.index = d_index_buffer_;
+		rec.data.color = make_float3(0.5f);
+		hitgroup_records.push_back(rec);
+	}
+
+	CCE(cudaMalloc(reinterpret_cast<void**>(&d_hit_records_), hitgroup_records.size() * sizeof(SbtRecord<HitGroupData>)));
+	CCE(cudaMemcpy(d_hit_records_, hitgroup_records.data(), hitgroup_records.size() * sizeof(SbtRecord<HitGroupData>), cudaMemcpyHostToDevice));
+
+	sbt_.hitgroupRecordBase = reinterpret_cast<CUdeviceptr>(d_hit_records_);
+	sbt_.hitgroupRecordStrideInBytes = sizeof(SbtRecord<HitGroupData>);
+	sbt_.hitgroupRecordCount = static_cast<uint32_t>(hitgroup_records.size());
 }

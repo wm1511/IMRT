@@ -6,8 +6,7 @@ class IRenderer
 public:
 	virtual ~IRenderer() = default;
 
-	virtual void render_static() = 0;
-	virtual void render_progressive() = 0;
+	virtual void render() = 0;
 	virtual void refresh_buffer() = 0;
 	virtual void refresh_camera() {}
 	virtual void refresh_object(int32_t index) const = 0;

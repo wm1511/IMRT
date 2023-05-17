@@ -24,8 +24,7 @@ public:
 	OptixRenderer& operator=(const OptixRenderer&) = delete;
 	OptixRenderer& operator=(OptixRenderer&&) = delete;
 
-	void render_static() override;
-	void render_progressive() override;
+	void render() override;
 	void refresh_buffer() override;
 	void refresh_object(int32_t index) const override;
 	void refresh_material(int32_t index) const override;
@@ -41,8 +40,8 @@ private:
 	void create_modules();
 	void create_programs();
 	void create_pipeline();
-	void create_sbt();
 	OptixTraversableHandle build_as();
+	void create_sbt();
 
 	const RenderInfo* render_info_ = nullptr;
 	const WorldInfo* world_info_ = nullptr;

@@ -9,6 +9,23 @@
 
 __constant__ LaunchParams launch_params;
 
+static __forceinline__ __device__ void trace(const float3 origin, const float3 direction, uint32_t& u0, uint32_t& u1)
+{
+    optixTrace(
+        launch_params.traversable,
+		origin,
+		direction,
+		kTMin,
+		FLT_MAX,
+		0.0f,
+		OptixVisibilityMask(255),
+		OPTIX_RAY_FLAG_DISABLE_ANYHIT,
+		0,
+		1,
+		0,
+        u0, u1);
+}
+
 static __forceinline__ __device__ void* unpack_pointer(const uint32_t i0, const uint32_t i1)
 {
 	const uint64_t u_ptr = (uint64_t)i0 << 32 | i1;
@@ -63,7 +80,7 @@ extern "C" __global__ void __miss__radiance()
 		prd = sample_sky(optixGetWorldRayDirection(), launch_params.sky_info);
 }
 
-extern "C" __global__ void __raygen__render()
+extern "C" __global__ void __raygen__render_progressive()
 {
 	const uint3 index = optixGetLaunchIndex();
 	const uint32_t pixel_index = index.x + index.y * launch_params.width;
@@ -79,20 +96,34 @@ extern "C" __global__ void __raygen__render()
 
 	const Ray ray = cast_ray(&random_state, u, v, launch_params.camera_info);
 
-	optixTrace(
-		launch_params.traversable,
-		ray.origin_,
-		ray.direction_,
-		kTMin,
-		FLT_MAX,
-		0.0f,
-		OptixVisibilityMask(255),
-		OPTIX_RAY_FLAG_DISABLE_ANYHIT,
-		0,
-		1,
-		0,
-		u0, u1);
+	trace(ray.origin_, ray.direction_, u0, u1);
 
 	launch_params.accumulation_buffer[pixel_index] += make_float4(sqrt(pixel_color_prd), 1.0f);
-	launch_params.frame_buffer[pixel_index] = launch_params.accumulation_buffer[pixel_index] / (float)launch_params.frames_since_refresh;
+	launch_params.frame_buffer[pixel_index] = launch_params.accumulation_buffer[pixel_index] / (float)launch_params.sampling_denominator;
+}
+
+extern "C" __global__ void __raygen__render_static()
+{
+	const uint3 index = optixGetLaunchIndex();
+	const uint32_t pixel_index = index.x + index.y * launch_params.width;
+
+	float3 pixel_color_prd{};
+
+	uint32_t u0, u1;
+	pack_pointer(&pixel_color_prd, u0, u1);
+
+	for (uint32_t i = 0; i < launch_params.sampling_denominator; i++)
+	{
+		uint32_t random_state = xoshiro(&launch_params.xoshiro_state[pixel_index]);
+		const float u = ((float)index.x + pcg(&random_state)) / (float)launch_params.width;
+		const float v = ((float)index.y + pcg(&random_state)) / (float)launch_params.height;
+
+		const Ray ray = cast_ray(&random_state, u, v, launch_params.camera_info);
+
+		trace(ray.origin_, ray.direction_, u0, u1);
+
+		launch_params.accumulation_buffer[pixel_index] += make_float4(pixel_color_prd, 1.0f);
+	}
+
+	launch_params.frame_buffer[pixel_index] = sqrt(launch_params.accumulation_buffer[pixel_index] / (float)launch_params.sampling_denominator);
 }

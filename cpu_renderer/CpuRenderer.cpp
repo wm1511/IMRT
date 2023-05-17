@@ -33,8 +33,6 @@ void CpuRenderer::render_static()
 	const auto height = static_cast<int32_t>(render_info_->height);
 	float* frame_data = render_info_->frame_data;
 
-	memset(frame_data, 0, render_info_->frame_size);
-
 #ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
 #endif
@@ -88,6 +86,19 @@ void CpuRenderer::render_progressive()
 			frame_data[(pixel_index << 2) + 2] = accumulation_buffer_[pixel_index].z / static_cast<float>(render_info_->frames_since_refresh);
 			frame_data[(pixel_index << 2) + 3] = accumulation_buffer_[pixel_index].w / static_cast<float>(render_info_->frames_since_refresh);
 		}
+	}
+}
+
+void CpuRenderer::render()
+{
+	if (render_info_->progressive)
+	{
+		render_progressive();
+	}
+	else
+	{
+		memset(render_info_->frame_data, 0, render_info_->frame_size);
+		render_static();
 	}
 }
 

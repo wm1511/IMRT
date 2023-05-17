@@ -113,6 +113,10 @@ void RtInterface::draw()
 
 		if (ImGui::Button("Start rendering", {ImGui::GetContentRegionAvail().x, 0}))
 		{
+			renderer_->deallocate_world();
+			renderer_->allocate_world();
+			renderer_->recreate_sky();
+
 			frames_rendered_ = 0;
 			render_info_.frames_since_refresh = 0;
 			is_rendering_ = true;
@@ -122,7 +126,7 @@ void RtInterface::draw()
 			ImGui::EndDisabled();
 
 		if (ImGui::Button("Stop rendering", {ImGui::GetContentRegionAvail().x, 0}) ||
-			(render_mode_ == RenderMode::STATIC && frames_rendered_ != 0))
+			(!render_info_.progressive && frames_rendered_ != 0))
 		{
 			renderer_->refresh_buffer();
 			is_rendering_ = false;
@@ -149,10 +153,7 @@ void RtInterface::draw()
 			frames_rendered_++;
 			render_info_.frames_since_refresh++;
 
-			if (render_mode_ == RenderMode::PROGRESSIVE)
-				renderer_->render_progressive();
-			else if (render_mode_ == RenderMode::STATIC)
-				renderer_->render_static();
+			renderer_->render();
 
 			if (render_device_ == RenderDevice::CPU)
 				frame_->set_data(render_info_.frame_data);
@@ -294,19 +295,19 @@ void RtInterface::edit_settings()
 	if (ImGui::CollapsingHeader("Quality settings", ImGuiTreeNodeFlags_DefaultOpen))
     {
 		bool is_edited = false;
-		if (ImGui::RadioButton("Progressive render", render_mode_ == RenderMode::PROGRESSIVE))
+		if (ImGui::RadioButton("Progressive render", render_info_.progressive))
 		{
-			render_mode_ = RenderMode::PROGRESSIVE;
+			render_info_.progressive = true;
 			is_edited = true;
 		}
 		ImGui::SameLine();
-        if (ImGui::RadioButton("Static render", render_mode_ == RenderMode::STATIC))
+        if (ImGui::RadioButton("Static render", !render_info_.progressive))
         {
-	        render_mode_ = RenderMode::STATIC;
+	        render_info_.progressive = false;
 			is_edited = true;
         }
 
-		if (render_mode_ == RenderMode::PROGRESSIVE)
+		if (render_info_.progressive)
 			ImGui::BeginDisabled();
 		if (ImGui::TreeNode("Samples per pixel"))
 		{
@@ -315,7 +316,7 @@ void RtInterface::edit_settings()
 			draw_help("Count of samples generated for each pixel");
 			ImGui::TreePop();
 		}
-		if (render_mode_ == RenderMode::PROGRESSIVE)
+		if (render_info_.progressive)
 			ImGui::EndDisabled();
 
 		if (ImGui::TreeNode("Recursion depth"))
@@ -338,30 +339,6 @@ void RtInterface::edit_camera()
 	if (ImGui::CollapsingHeader("Camera settings", ImGuiTreeNodeFlags_DefaultOpen))
     {
 		bool is_edited = false;
-	    if (ImGui::TreeNode("Position"))
-		{
-			is_edited |= ImGui::SliderFloat("##CameraX", &camera_info_.position.x, -UINT16_MAX, UINT16_MAX, "%.3f",
-				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-			ImGui::SameLine(); ImGui::Text("x");
-	    	is_edited |= ImGui::SliderFloat("##CameraY", &camera_info_.position.y, -UINT16_MAX, UINT16_MAX, "%.3f",
-				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-			ImGui::SameLine(); ImGui::Text("y");
-	    	is_edited |= ImGui::SliderFloat("##CameraZ", &camera_info_.position.z, -UINT16_MAX, UINT16_MAX, "%.3f",
-				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-			ImGui::SameLine(); ImGui::Text("z");
-			ImGui::TreePop();
-		}
-		if (ImGui::TreeNode("Angle offset"))
-		{
-			is_edited |= ImGui::SliderAngle("degrees x", &camera_info_.angle_x, 0.0f, 360.0f, "%.3f");
-			is_edited |= ImGui::SliderAngle("degrees y", &camera_info_.angle_y, -90.0f, 90.0f, "%.3f");
-
-			camera_info_.direction = normalize(make_float3(
-			cos(camera_info_.angle_x) * -sin(camera_info_.angle_x),
-			-sin(camera_info_.angle_y),
-			-cos(camera_info_.angle_x) * cos(camera_info_.angle_y)));
-			ImGui::TreePop();
-		}
 		if (ImGui::TreeNode("Vertical field of view"))
 		{
 			is_edited |= ImGui::SliderAngle("degrees", &camera_info_.fov, 0.0f, 180.0f, "%.3f");
@@ -951,7 +928,7 @@ void RtInterface::edit_sky()
 	}
 }
 
-void RtInterface::save_image() const
+void RtInterface::save_image()
 {
 	if (ImGui::CollapsingHeader("Save image"))
 	{
@@ -964,8 +941,9 @@ void RtInterface::save_image() const
 
 		if (ImGui::Button("Save", {ImGui::GetContentRegionAvail().x, 0}))
 		{
-			if (is_rendering_ && render_device_ == RenderDevice::CUDA)
-					renderer_->map_frame_memory();
+			if (is_rendering_ && render_device_ != RenderDevice::CPU)
+				render_info_.frame_handle = frame_->get_image_memory_handle();
+				renderer_->map_frame_memory();
 
 			if (render_info_.frame_data)
 			{
@@ -995,7 +973,9 @@ void RtInterface::save_image() const
 					delete[] data;
 				}
 
-				if (!saving_success)
+				if (saving_success)
+					ImGui::OpenPopup("Saving success");
+				else
 					ImGui::OpenPopup("Saving failed");
 			}
 			else
@@ -1005,5 +985,6 @@ void RtInterface::save_image() const
 		}
 
 		draw_modal("Saving failed", "Image was not rendered yet");
+		draw_modal("Saving success", "Image was successfully saved");
 	}
 }

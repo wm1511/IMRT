@@ -7,16 +7,9 @@
 
 #include <cstdint>
 
-//struct TriangleMeshSbtData
-//{
-//    float3  color;
-//    float3 *vertex;
-//    uint3 *index;
-//};
-
 struct LaunchParams
 {
-	uint32_t width{}, height{}, frames_since_refresh{};
+	uint32_t width{}, height{}, sampling_denominator{};
 	float4* frame_buffer = nullptr, * accumulation_buffer = nullptr;
     uint4* xoshiro_state = nullptr;
     CameraInfo camera_info{};
@@ -38,7 +31,6 @@ struct MissData
 
 struct HitGroupData
 {
-    //int32_t object_id;
     float3  color;
 	float3 *vertex;
 	uint3 *index;

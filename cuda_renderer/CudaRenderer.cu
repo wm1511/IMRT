@@ -51,26 +51,21 @@ CudaRenderer::~CudaRenderer()
 	cudaDeviceReset();
 }
 
-void CudaRenderer::render_static()
+void CudaRenderer::render()
 {
 	frame_buffer_ = static_cast<float4*>(fetch_external_memory(render_info_->frame_handle, render_info_->frame_size));
 
-	CCE(cudaMemset(frame_buffer_, 0, render_info_->frame_size));
+	if (render_info_->progressive)
+	{
+		render_pixel_progressive<<<blocks_, threads_>>>(frame_buffer_, accumulation_buffer_, world_, *sky_info_, *render_info_, *camera_info_, xoshiro_state_);
+	}
+	else
+	{
+		CCE(cudaMemset(frame_buffer_, 0, render_info_->frame_size));
 
-	for (int32_t i = 0; i < render_info_->samples_per_pixel; i++)
-		render_pixel_static<<<blocks_, threads_>>>(frame_buffer_, world_, *sky_info_, *render_info_, *camera_info_, xoshiro_state_);
-
-	CCE(cudaGetLastError());
-	CCE(cudaDeviceSynchronize());
-
-	CCE(cudaFree(frame_buffer_));
-}
-
-void CudaRenderer::render_progressive()
-{
-	frame_buffer_ = static_cast<float4*>(fetch_external_memory(render_info_->frame_handle, render_info_->frame_size));
-
-	render_pixel_progressive<<<blocks_, threads_>>>(frame_buffer_, accumulation_buffer_, world_, *sky_info_, *render_info_, *camera_info_, xoshiro_state_);
+		for (int32_t i = 0; i < render_info_->samples_per_pixel; i++)
+			render_pixel_static<<<blocks_, threads_>>>(frame_buffer_, world_, *sky_info_, *render_info_, *camera_info_, xoshiro_state_);
+	}
 
 	CCE(cudaGetLastError());
 	CCE(cudaDeviceSynchronize());

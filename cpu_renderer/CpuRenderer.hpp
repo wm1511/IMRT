@@ -15,8 +15,7 @@ public:
 	CpuRenderer& operator=(const CpuRenderer&) = delete;
 	CpuRenderer& operator=(CpuRenderer&&) = delete;
 
-	void render_static() override;
-	void render_progressive() override;
+	void render() override;
 	void refresh_buffer() override;
 	void refresh_object(int32_t index) const override;
 	void refresh_material(int32_t index) const override;
@@ -29,6 +28,8 @@ public:
 private:
 	void random_init() const;
 	void random_refresh() const;
+	void render_static();
+	void render_progressive();
 
 	const RenderInfo* render_info_ = nullptr;
 	const WorldInfo* world_info_ = nullptr;
