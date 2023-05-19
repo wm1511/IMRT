@@ -2,8 +2,8 @@
 #include "OptixPrograms.cuh"
 #include "LaunchParams.hpp"
 
-#include "../common/Math.cuh"
-#include "../common/Color.cuh"
+#include "../common/Math.hpp"
+#include "../common/Color.hpp"
 
 #include <optix_device.h>
 

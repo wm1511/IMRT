@@ -1,7 +1,8 @@
 #pragma once
 #include <vector_types.h>
 
-class Material;
+struct Material;
+struct Texture;
 
 struct Intersection
 {
@@ -9,5 +10,6 @@ struct Intersection
 	float3 normal;
 	float2 uv;
 	Material* material;
+	Texture* texture;
 	float t;
 };

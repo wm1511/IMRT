@@ -1,5 +1,5 @@
 #pragma once
-#include "Ray.cuh"
+#include "Ray.hpp"
 
 class Boundary
 {

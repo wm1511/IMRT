@@ -1,5 +1,5 @@
 #pragma once
-#include "../common/Color.cuh"
+#include "../common/Color.hpp"
 
 #include "../info/RenderInfo.hpp"
 #include "../info/WorldInfo.hpp"
@@ -37,9 +37,9 @@ private:
 	dim3 threads_;
 
 	uint4* xoshiro_state_ = nullptr, * xoshiro_initial_ = nullptr;
-	float4* frame_buffer_ = nullptr, * accumulation_buffer_ = nullptr;
-	TextureInfo** d_texture_data_ = nullptr, ** h_texture_data_ = nullptr;
-	MaterialInfo** d_material_data_ = nullptr, ** h_material_data_ = nullptr;
-	ObjectInfo** d_object_data_ = nullptr, ** h_object_data_ = nullptr;
-	World** world_ = nullptr;
+	float4* accumulation_buffer_ = nullptr;
+	Texture* d_texture_data_ = nullptr;
+	Material* d_material_data_ = nullptr;
+	Object* d_object_data_ = nullptr;
+	World* world_ = nullptr;
 };

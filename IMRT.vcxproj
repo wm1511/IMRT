@@ -227,10 +227,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClInclude Include="common\Utils.hpp" />
-    <ClInclude Include="info\CameraInfo.hpp" />
-    <ClInclude Include="optix_renderer\LaunchParams.hpp" />
-    <ClInclude Include="optix_renderer\OptixPrograms.cuh" />
     <ClInclude Include="cuda_renderer\CudaKernels.cuh" />
+    <ClInclude Include="cuda_renderer\CudaRenderer.cuh" />
+    <ClInclude Include="info\CameraInfo.hpp" />
     <ClCompile Include="imgui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -276,17 +275,13 @@
   <ItemGroup>
     <ClInclude Include="abstract\IDrawable.hpp" />
     <ClInclude Include="abstract\IRenderer.hpp" />
-    <ClInclude Include="common\Color.cuh" />
-    <ClInclude Include="common\Boundary.cuh" />
-    <ClInclude Include="common\Texture.cuh" />
+    <ClInclude Include="common\Color.hpp" />
+    <ClInclude Include="common\Boundary.hpp" />
     <ClInclude Include="cpu_renderer\CpuRenderer.hpp" />
-    <ClInclude Include="cuda_renderer\CudaRenderer.cuh" />
-    <ClInclude Include="common\Intersection.cuh" />
-    <ClInclude Include="common\Material.cuh" />
-    <ClInclude Include="common\Math.cuh" />
-    <ClInclude Include="common\Object.cuh" />
-    <ClInclude Include="common\Ray.cuh" />
-    <ClInclude Include="common\World.cuh" />
+    <ClInclude Include="common\Intersection.hpp" />
+    <ClInclude Include="common\Math.hpp" />
+    <ClInclude Include="common\Ray.hpp" />
+    <ClInclude Include="common\World.hpp" />
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_glfw.h" />
@@ -295,12 +290,13 @@
     <ClInclude Include="imgui\imstb_rectpack.h" />
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
-    <ClInclude Include="info\MaterialInfo.hpp" />
-    <ClInclude Include="info\ObjectInfo.hpp" />
+    <ClInclude Include="info\Material.hpp" />
+    <ClInclude Include="info\Object.hpp" />
     <ClInclude Include="info\SkyInfo.hpp" />
-    <ClInclude Include="info\TextureInfo.hpp" />
-    <ClInclude Include="info\Unions.hpp" />
+    <ClInclude Include="info\Texture.hpp" />
     <ClInclude Include="info\WorldInfo.hpp" />
+    <ClInclude Include="optix_renderer\LaunchParams.hpp" />
+    <ClInclude Include="optix_renderer\OptixPrograms.cuh" />
     <ClInclude Include="optix_renderer\OptixRenderer.cuh" />
     <ClInclude Include="sky\ArHosekSkyModel.h" />
     <ClInclude Include="sky\ArHosekSkyModelData_CIEXYZ.h" />
@@ -317,34 +313,19 @@
     <Text Include="LICENSE.txt" />
   </ItemGroup>
   <ItemGroup>
+    <CudaCompile Include="cuda_renderer\CudaKernels.cu" />
+    <CudaCompile Include="cuda_renderer\CudaRenderer.cu" />
     <CudaCompile Include="optix_renderer\OptixPrograms.cu">
+      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(CudaIntDirFullPath)\%(Filename)%(Extension).optixir</CompileOut>
       <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">optix-ir</NvccCompilation>
+      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(CudaIntDirFullPath)\%(Filename)%(Extension).optixir</CompileOut>
       <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">optix-ir</NvccCompilation>
+      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(CudaIntDirFullPath)\%(Filename)%(Extension).optixir</CompileOut>
       <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">optix-ir</NvccCompilation>
+      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(CudaIntDirFullPath)\%(Filename)%(Extension).optixir</CompileOut>
       <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">optix-ir</NvccCompilation>
-      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(CudaIntDirFullPath)\%(Filename).optixir</CompileOut>
-      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(CudaIntDirFullPath)\%(Filename).optixir</CompileOut>
-      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(CudaIntDirFullPath)\%(Filename).optixir</CompileOut>
-      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(CudaIntDirFullPath)\%(Filename).optixir</CompileOut>
-      <FileType>Document</FileType>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </CudaCompile>
-    <CudaCompile Include="cuda_renderer\CudaKernels.cu">
-      <FileType>Document</FileType>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </CudaCompile>
-    <CudaCompile Include="cuda_renderer\CudaRenderer.cu">
-      <FileType>Document</FileType>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </CudaCompile>
-    <CudaCompile Include="optix_renderer\OptixRenderer.cu">
-      <FileType>Document</FileType>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </CudaCompile>
+    <CudaCompile Include="optix_renderer\OptixRenderer.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

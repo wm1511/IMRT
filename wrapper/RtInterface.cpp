@@ -10,7 +10,7 @@
 // Intellisense doesn't work without this include
 #include <filesystem>
 
-static const char* object_types[]{"Unknown Object", "Sphere", "Plane", "Cylinder", "Cone", "Model"};
+static const char* object_types[]{"Unknown Object", "Sphere", "Cylinder", "Model"};
 static const char* material_types[]{"Unknown Material", "Diffuse", "Specular", "Refractive", "Isotropic"};
 static const char* texture_types[]{"Unknown Texture", "Solid", "Image", "Checker"};
 
@@ -128,7 +128,8 @@ void RtInterface::draw()
 		if (ImGui::Button("Stop rendering", {ImGui::GetContentRegionAvail().x, 0}) ||
 			(!render_info_.progressive && frames_rendered_ != 0))
 		{
-			renderer_->refresh_buffer();
+			if (is_rendering_)
+				renderer_->refresh_buffer();
 			is_rendering_ = false;
 		}
 
@@ -387,8 +388,8 @@ void RtInterface::add_texture()
 
 		static int32_t new_image_width{0}, new_image_height{0}, new_image_components{0};
 		static std::filesystem::path selected_file;
-		static Float3 new_color_a{0.0f, 0.0f, 0.0f};
-		static Float3 new_color_b{1.0f, 1.0f, 1.0f};
+		static float3 new_color_a{0.0f, 0.0f, 0.0f};
+		static float3 new_color_b{1.0f, 1.0f, 1.0f};
 		static float new_checker_tile_size{0.1f};
 
 		ImGui::Combo("Texture type", &texture_type, texture_types, IM_ARRAYSIZE(texture_types));
@@ -403,7 +404,7 @@ void RtInterface::add_texture()
 
 		if (texture_type == enum_cast(TextureType::SOLID))
 		{
-			ImGui::ColorEdit3("Color", new_color_a.arr, ImGuiColorEditFlags_Float);
+			ImGui::ColorEdit3("Color", reinterpret_cast<float*>(&new_color_a), ImGuiColorEditFlags_Float);
 		}
 		else if (texture_type == enum_cast(TextureType::IMAGE))
 		{
@@ -416,8 +417,8 @@ void RtInterface::add_texture()
 		}
 		else if (texture_type == enum_cast(TextureType::CHECKER))
 		{
-			ImGui::ColorEdit3("Color 1", new_color_a.arr, ImGuiColorEditFlags_Float);
-			ImGui::ColorEdit3("Color 2", new_color_b.arr, ImGuiColorEditFlags_Float);
+			ImGui::ColorEdit3("Color 1", reinterpret_cast<float*>(&new_color_a), ImGuiColorEditFlags_Float);
+			ImGui::ColorEdit3("Color 2", reinterpret_cast<float*>(&new_color_b), ImGuiColorEditFlags_Float);
 			ImGui::SliderFloat("Tile size", &new_checker_tile_size, 0.001f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 		}
 
@@ -428,7 +429,7 @@ void RtInterface::add_texture()
 
 			if (texture_type == enum_cast(TextureType::SOLID))
 			{
-				world_info_.add_texture<SolidInfo>(new_color_a.str, name);
+				world_info_.add_texture<Solid>(name, new_color_a);
 			}
 			else if (texture_type == enum_cast(TextureType::IMAGE))
 			{
@@ -439,12 +440,12 @@ void RtInterface::add_texture()
 				else
 				{
 					float* new_image_data = stbi_loadf(selected_file.u8string().c_str(), &new_image_width, &new_image_height, &new_image_components, 3);
-					world_info_.add_texture<ImageInfo>(new_image_data, new_image_width, new_image_height, name);
+					world_info_.add_texture<Image>(name, new_image_data, new_image_width, new_image_height);
 				}
 			}
 			else if (texture_type == enum_cast(TextureType::CHECKER))
 			{
-				world_info_.add_texture<CheckerInfo>(new_color_a.str, new_color_b.str, new_checker_tile_size, name);
+				world_info_.add_texture<Checker>(name, new_color_a, new_color_b, new_checker_tile_size);
 			}
 
 			is_added = true;
@@ -467,9 +468,10 @@ void RtInterface::edit_texture()
 
 		for (int32_t i = 0; i < world_info_.textures_.size(); i++)
 		{
-			TextureInfo* current_texture = world_info_.textures_[i];
+			Texture* current_texture = &world_info_.textures_[i];
+
 			ImGui::PushID(i);
-			if (ImGui::TreeNode("Texture", "%s (%u)", current_texture->name.c_str(), i))
+			if (ImGui::TreeNode("Texture", "%s (%u)", world_info_.texture_names_[i].c_str(), i))
 			{
 				ImGui::Text("Texture type: %s", texture_types[enum_cast(current_texture->type)]);
 
@@ -479,8 +481,7 @@ void RtInterface::edit_texture()
 				}
 				else if (current_texture->type == TextureType::SOLID)
 				{
-					const auto current_solid = dynamic_cast<SolidInfo*>(current_texture);
-					is_edited |= ImGui::ColorEdit3("Color", current_solid->albedo.arr, ImGuiColorEditFlags_Float);
+					is_edited |= ImGui::ColorEdit3("Color", reinterpret_cast<float*>(&current_texture->solid.albedo), ImGuiColorEditFlags_Float);
 				}
 				else if (current_texture->type == TextureType::IMAGE)
 				{
@@ -488,10 +489,9 @@ void RtInterface::edit_texture()
 				}
 				else if (current_texture->type == TextureType::CHECKER)
 				{
-					const auto current_checker = dynamic_cast<CheckerInfo*>(current_texture);
-					is_edited |= ImGui::ColorEdit3("Color 1", current_checker->albedo_a.arr, ImGuiColorEditFlags_Float);
-					is_edited |= ImGui::ColorEdit3("Color 2", current_checker->albedo_b.arr, ImGuiColorEditFlags_Float);
-					is_edited |= ImGui::SliderFloat("Tile size", &current_checker->tile_size, 0.001f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+					is_edited |= ImGui::ColorEdit3("Color 1", reinterpret_cast<float*>(&current_texture->checker.albedo_a), ImGuiColorEditFlags_Float);
+					is_edited |= ImGui::ColorEdit3("Color 2", reinterpret_cast<float*>(&current_texture->checker.albedo_b), ImGuiColorEditFlags_Float);
+					is_edited |= ImGui::SliderFloat("Tile size", &current_texture->checker.tile_size, 0.001f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				}
 				ImGui::TreePop();
 			}
@@ -513,7 +513,6 @@ void RtInterface::add_material()
 	{
 		bool is_added = false;
 		static int32_t material_type = enum_cast(MaterialType::UNKNOWN_MATERIAL);
-		static int32_t selected_texture = 0;
 		static char name[64] = "";
 
 		static float new_specular_fuzziness{0.0f};
@@ -540,22 +539,19 @@ void RtInterface::add_material()
 			draw_help("Index of refraction between air and current material");
 		}
 
-		if (material_type != enum_cast(MaterialType::REFRACTIVE) && !world_info_.textures_.empty())
-			ImGui::SliderInt("Texture id", &selected_texture, 0, static_cast<int32_t>(world_info_.textures_.size()) - 1);
-
 		if (ImGui::Button("Create material", {ImGui::GetContentRegionAvail().x, 0}))
 		{
 			if (is_rendering_)
 				renderer_->deallocate_world();
 
 			if (material_type == enum_cast(MaterialType::DIFFUSE))
-				world_info_.add_material<DiffuseInfo>(selected_texture, name);
+				world_info_.add_material<Diffuse>(name);
 			else if (material_type == enum_cast(MaterialType::SPECULAR))
-				world_info_.add_material<SpecularInfo>(new_specular_fuzziness, selected_texture, name);
+				world_info_.add_material<Specular>(name, new_specular_fuzziness);
 			else if (material_type == enum_cast(MaterialType::REFRACTIVE))
-				world_info_.add_material<RefractiveInfo>(new_refractive_index_of_refraction, name);
+				world_info_.add_material<Refractive>(name, new_refractive_index_of_refraction);
 			else if (material_type == enum_cast(MaterialType::ISOTROPIC))
-				world_info_.add_material<IsotropicInfo>(selected_texture, name);
+				world_info_.add_material<Isotropic>(name);
 
 			is_added = true;
 		}
@@ -576,37 +572,23 @@ void RtInterface::edit_material()
 		bool is_edited = false;
 		for (int32_t i = 0; i < world_info_.materials_.size(); i++)
 		{
-			MaterialInfo* current_material = world_info_.materials_[i];
+			Material* current_material = &world_info_.materials_[i];
+
 			ImGui::PushID(i);
-			if (ImGui::TreeNode("Material", "%s (%u)", current_material->name.c_str(), i))
+			if (ImGui::TreeNode("Material", "%s (%u)", world_info_.material_names_[i].c_str(), i))
 			{
 				ImGui::Text("Material type: %s", material_types[enum_cast(current_material->type)]);
 
 				if (current_material->type == MaterialType::SPECULAR)
 				{
-					const auto current_specular = dynamic_cast<SpecularInfo*>(current_material);
-					is_edited |= ImGui::SliderFloat("Fuzziness", &current_specular->fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+					is_edited |= ImGui::SliderFloat("Fuzziness", &current_material->specular.fuzziness, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 					draw_help("Fuzziness of material reflection");
 				}
 				else if (current_material->type == MaterialType::REFRACTIVE)
 				{
-					const auto current_refractive = dynamic_cast<RefractiveInfo*>(current_material);
-					is_edited |= ImGui::SliderFloat("Refractive index", &current_refractive->refractive_index, 0.0f, 4.0f, "%.3f", 
+					is_edited |= ImGui::SliderFloat("Refractive index", &current_material->refractive.refractive_index, 0.0f, 4.0f, "%.3f", 
 						ImGuiSliderFlags_AlwaysClamp);
 					draw_help("Index of refraction between air and current material");
-				}
-
-				if (current_material->type != MaterialType::REFRACTIVE)
-				{
-					ImGui::Text("Material's texture: %s (%u)", world_info_.textures_[current_material->texture_id]->name.c_str(), current_material->texture_id);
-					static int32_t selected_texture = 0;
-					ImGui::SliderInt("Texture id", &selected_texture, 0, static_cast<int32_t>(world_info_.textures_.size()) - 1);
-
-					if (ImGui::Button("Set texture", {ImGui::GetContentRegionAvail().x, 0}))
-					{
-						current_material->texture_id = selected_texture;
-						is_edited = true;
-					}
 				}
 
 				ImGui::TreePop();
@@ -629,16 +611,15 @@ void RtInterface::add_object()
 	{
 		bool is_added = false;
 		static int32_t object_type = enum_cast(ObjectType::UNKNOWN_OBJECT);
+		static int32_t selected_texture = 0; 
 		static int32_t selected_material = 0;
 		static char name[64] = "";
 
-		static Float3 new_sphere_center{0.0f, 0.0f, 0.0f};
+		static float3 new_sphere_center{0.0f, 0.0f, 0.0f};
 		static float new_sphere_radius{1.0f};
-		static Float3 new_plane_normal{0.0f, -1.0f, 0.0f};
-		static float new_plane_offset{0.0f};
-		static Float3 new_cc_extreme_a{0.0f, 0.5f, 0.0f};
-		static Float3 new_cc_extreme_b{0.0f, -0.5f, 0.0f};
-		static float new_cc_radius{0.5f};
+		static float3 new_cylinder_extreme_a{0.0f, 0.5f, 0.0f};
+		static float3 new_cylinder_extreme_b{0.0f, -0.5f, 0.0f};
+		static float new_cylinder_radius{0.5f};
 		static std::filesystem::path selected_file;
 		
 		ImGui::Combo("Object type", &object_type, object_types, IM_ARRAYSIZE(object_types));
@@ -653,21 +634,15 @@ void RtInterface::add_object()
 
 		if (object_type == enum_cast(ObjectType::SPHERE))
 		{
-			ImGui::SliderFloat3("Center", new_sphere_center.arr, -UINT16_MAX, UINT16_MAX,"%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat3("Center", reinterpret_cast<float*>(&new_sphere_center), -UINT16_MAX, UINT16_MAX,"%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SliderFloat("Radius", &new_sphere_radius, -UINT8_MAX, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			draw_help("Radius of sphere can be negative for refractive spheres to make sphere hollow");
 		}
-		else if (object_type == enum_cast(ObjectType::PLANE))
+		else if (object_type == enum_cast(ObjectType::CYLINDER))
 		{
-			ImGui::SliderFloat3("Normal", new_plane_normal.arr, -1.0f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-			ImGui::SliderFloat("Offset", &new_plane_offset, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-			draw_help("Displacement from center position along normal");
-		}
-		else if (object_type == enum_cast(ObjectType::CYLINDER) || object_type == enum_cast(ObjectType::CONE))
-		{
-			ImGui::SliderFloat3("Extreme 1", new_cc_extreme_a.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-			ImGui::SliderFloat3("Extreme 2", new_cc_extreme_b.arr, -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-			ImGui::SliderFloat("Radius", &new_cc_radius, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat3("Extreme 1", reinterpret_cast<float*>(&new_cylinder_extreme_a), -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat3("Extreme 2", reinterpret_cast<float*>(&new_cylinder_extreme_b), -UINT16_MAX, UINT16_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Radius", &new_cylinder_radius, 0.0f, UINT8_MAX, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 		}
 		else if (object_type == enum_cast(ObjectType::MODEL))
 		{
@@ -679,6 +654,9 @@ void RtInterface::add_object()
 			draw_modal("3D model loading failed", "This file can't be loaded as 3D obj model");
 		}
 
+		if (!world_info_.textures_.empty())
+			ImGui::SliderInt("Texture id", &selected_texture, 0, static_cast<int32_t>(world_info_.textures_.size()) - 1);
+
 		if (!world_info_.materials_.empty())
 			ImGui::SliderInt("Material id", &selected_material, 0, static_cast<int32_t>(world_info_.materials_.size()) - 1);
 
@@ -689,19 +667,11 @@ void RtInterface::add_object()
 
 			if (object_type == enum_cast(ObjectType::SPHERE))
 			{
-				world_info_.add_object<SphereInfo>(new_sphere_center.str, new_sphere_radius, selected_material, name);
-			}
-			else if (object_type == enum_cast(ObjectType::PLANE))
-			{
-				world_info_.add_object<PlaneInfo>(new_plane_normal.str, new_plane_offset, selected_material, name);
+				world_info_.add_object<Sphere>(name, selected_texture, selected_material, new_sphere_center, new_sphere_radius);
 			}
 			else if (object_type == enum_cast(ObjectType::CYLINDER))
 			{
-				world_info_.add_object<CylinderInfo>(new_cc_extreme_a.str, new_cc_extreme_b.str, new_cc_radius, selected_material, name);
-			}
-			else if (object_type == enum_cast(ObjectType::CONE))
-			{
-				world_info_.add_object<ConeInfo>(new_cc_extreme_a.str, new_cc_extreme_b.str, new_cc_radius, selected_material, name);
+				world_info_.add_object<Cylinder>(name, selected_texture, selected_material, new_cylinder_extreme_a, new_cylinder_extreme_b, new_cylinder_radius);
 			}
 			else if (object_type == enum_cast(ObjectType::MODEL))
 			{
@@ -719,7 +689,7 @@ void RtInterface::add_object()
 					memcpy_s(vertices, vertices_vector.size() * sizeof(Vertex), vertices_vector.data(), vertices_vector.size() * sizeof(Vertex));
 					memcpy_s(indices, indices_vector.size() * sizeof(uint32_t), indices_vector.data(), indices_vector.size() * sizeof(uint32_t));
 
-					world_info_.add_object<ModelInfo>(vertices, indices, vertices_vector.size(), indices_vector.size(), selected_material, name);
+					world_info_.add_object<Model>(name, selected_texture, selected_material, vertices, indices, vertices_vector.size(), indices_vector.size());
 				}
 			}
 
@@ -742,16 +712,16 @@ void RtInterface::edit_object()
 		bool is_edited = false, is_deleted = false;
 		for (int32_t i = 0; i < world_info_.objects_.size(); i++)
 		{
-			ObjectInfo* current_object = world_info_.objects_[i];
+			Object* current_object = &world_info_.objects_[i];
 
 			ImGui::PushID(i);
-			if (ImGui::TreeNode("Material", "%s (%u)", current_object->name.c_str(), i))
+			if (ImGui::TreeNode("Object", "%s (%u)", world_info_.object_names_[i].c_str(), i))
 			{
 				ImGui::Text("Object type: %s", object_types[enum_cast(current_object->type)]);
 
 				if (current_object->type == ObjectType::MODEL)
 				{
-					ImGui::Text("Triangle count: %llu", static_cast<ModelInfo*>(current_object)->vertex_count);
+					ImGui::Text("Triangle count: %llu", current_object->model.index_count / 3);
 				}
 				else if (current_object->type == ObjectType::UNKNOWN_OBJECT)
 				{
@@ -761,49 +731,24 @@ void RtInterface::edit_object()
 
 				if (current_object->type == ObjectType::SPHERE)
 				{
-					const auto current_sphere = dynamic_cast<SphereInfo*>(current_object);
-
-					is_edited |= ImGui::SliderFloat3("Center", current_sphere->center.arr, -UINT8_MAX, UINT8_MAX,"%.3f",
+					is_edited |= ImGui::SliderFloat3("Center", reinterpret_cast<float*>(&current_object->sphere.center), -UINT8_MAX, UINT8_MAX,"%.3f",
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-					is_edited |= ImGui::SliderFloat("Radius", &current_sphere->radius, -UINT16_MAX, UINT16_MAX, "%.3f", 
+					is_edited |= ImGui::SliderFloat("Radius", &current_object->sphere.radius, -UINT16_MAX, UINT16_MAX, "%.3f", 
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 					draw_help("Radius of sphere can be negative for refractive spheres to make sphere hollow");
 				}
-				else if (current_object->type == ObjectType::PLANE)
-				{
-					const auto current_plane = dynamic_cast<PlaneInfo*>(current_object);
-
-					is_edited |= ImGui::SliderFloat3("Normal", current_plane->normal.arr, -1.0f, 1.0f, "%.3f", 
-						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-					is_edited |= ImGui::SliderFloat("Offset", &current_plane->offset, -UINT16_MAX, UINT16_MAX, "%.3f", 
-						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-					draw_help("Displacement from center position along normal");
-				}
 				else if (current_object->type == ObjectType::CYLINDER)
 				{
-					const auto current_cylinder = dynamic_cast<CylinderInfo*>(current_object);
-
-					is_edited |= ImGui::SliderFloat3("Extreme 1", current_cylinder->extreme_a.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
+					is_edited |= ImGui::SliderFloat3("Extreme 1", reinterpret_cast<float*>(&current_object->cylinder.extreme_a), -UINT8_MAX, UINT8_MAX, "%.3f", 
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-					is_edited |= ImGui::SliderFloat3("Extreme 2", current_cylinder->extreme_b.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
+					is_edited |= ImGui::SliderFloat3("Extreme 2", reinterpret_cast<float*>(&current_object->cylinder.extreme_b), -UINT8_MAX, UINT8_MAX, "%.3f", 
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-					is_edited |= ImGui::SliderFloat("Radius", &current_cylinder->radius, 0.0f, UINT8_MAX, "%.3f", 
+					is_edited |= ImGui::SliderFloat("Radius", &current_object->cylinder.radius, 0.0f, UINT8_MAX, "%.3f", 
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				}
-				else if (current_object->type == ObjectType::CONE)
+				/*else if (current_object->type == ObjectType::MODEL)
 				{
-					const auto current_cone = dynamic_cast<ConeInfo*>(current_object);
-
-					is_edited |= ImGui::SliderFloat3("Extreme 1", current_cone->extreme_a.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
-						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-					is_edited |= ImGui::SliderFloat3("Extreme 2", current_cone->extreme_b.arr, -UINT8_MAX, UINT8_MAX, "%.3f", 
-						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-					is_edited |= ImGui::SliderFloat("Radius", &current_cone->radius, 0.0f, UINT8_MAX, "%.3f", 
-						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-				}
-				else if (current_object->type == ObjectType::MODEL)
-				{
-					const auto current_model = dynamic_cast<ModelInfo*>(current_object);
+					const auto current_model = current_object->model;
 
 					is_edited |= ImGui::SliderFloat3("Translation", current_model->translation.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
@@ -815,16 +760,35 @@ void RtInterface::edit_object()
 							ImGuiSliderFlags_AlwaysClamp);
 					is_edited |= ImGui::SliderAngle("Rotation z", &current_model->rotation.arr[2], 0.0f, 360.0f, "%.3f", 
 							ImGuiSliderFlags_AlwaysClamp);
+				}*/
+
+				if (ImGui::TreeNode("Texture"))
+				{
+					ImGui::Text("Object's texture: %s (%u)", world_info_.texture_names_[current_object->texture_id].c_str(), current_object->texture_id);
+					static int32_t selected_texture = current_object->texture_id;
+					ImGui::SliderInt("Texture id", &selected_texture, 0, static_cast<int32_t>(world_info_.textures_.size()) - 1);
+
+					if (ImGui::Button("Set texture", {ImGui::GetContentRegionAvail().x, 0}))
+					{
+						current_object->texture_id = selected_texture;
+						is_edited = true;
+					}
+					ImGui::TreePop();
 				}
 
-				ImGui::Text("Object's material id: %u", current_object->material_id);
-				static int32_t selected_material = 0;
-				ImGui::SliderInt("Material id", &selected_material, 0, static_cast<int32_t>(world_info_.materials_.size()) - 1);
-
-				if (ImGui::Button("Set material", {ImGui::GetContentRegionAvail().x, 0}))
+				if (ImGui::TreeNode("Material"))
 				{
-					current_object->material_id = selected_material;
-					is_edited = true;
+					ImGui::Text("Object's material: %s (%u)", world_info_.material_names_[current_object->material_id].c_str(), current_object->material_id);
+					static int32_t selected_material = current_object->material_id;
+					ImGui::SliderInt("Material id", &selected_material, 0, static_cast<int32_t>(world_info_.materials_.size()) - 1);
+
+				
+					if (ImGui::Button("Set material", {ImGui::GetContentRegionAvail().x, 0}))
+					{
+						current_object->material_id = selected_material;
+						is_edited = true;
+					}
+					ImGui::TreePop();
 				}
 
 				if (ImGui::Button("Delete object", {ImGui::GetContentRegionAvail().x, 0}))

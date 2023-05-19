@@ -1,8 +1,8 @@
 #pragma once
 #include "../info/SkyInfo.hpp"
 #include "../info/CameraInfo.hpp"
-#include "World.cuh"
-#include "Material.cuh"
+#include "../info/Material.hpp"
+#include "World.hpp"
 
 __host__ __device__ __forceinline__ Ray cast_ray(uint32_t* random_state, const float screen_x, const float screen_y, const CameraInfo& camera_info)
 {
@@ -43,7 +43,7 @@ __host__ __device__ __forceinline__ float3 sample_sky(const float3 direction, co
     const float ray_m = cos_gamma * cos_gamma;
 	const float zenith = sqrt(abs_cos_theta);
 
-    Float3 result{};
+    float result[3];
 
     for (int32_t i = 0; i < 3; i++)
     {
@@ -53,13 +53,13 @@ __host__ __device__ __forceinline__ float3 sample_sky(const float3 direction, co
     	const float mie_m = (1.0f + cos_gamma * cos_gamma) / pow(1.0f + config[8] * config[8] - 2.0f * config[8] * cos_gamma, 1.5f);
     	const float sample = (1.0f + config[0] * exp(config[1] / (abs_cos_theta + 0.01f))) * (config[2] + config[3] * exp_m + config[5] * ray_m + config[6] * mie_m + config[7] * zenith);
 
-    	result.arr[i] = sample * sky_info.sun_radiance.arr[i];
+    	result[i] = sample;
     }
 
-    return result.str * 0.05f;
+    return make_float3(result) * sky_info.sun_radiance * 0.05f;
 }
 
-__host__ __device__ __forceinline__ float3 calculate_color(const Ray& ray, World** world, const SkyInfo& sky_info, const int32_t max_depth, uint32_t* random_state)
+__host__ __device__ __forceinline__ float3 calculate_color(const Ray& ray, const World* world, const SkyInfo& sky_info, const int32_t max_depth, uint32_t* random_state)
 {
 	Ray current_ray = ray;
     float3 current_absorption = make_float3(1.0f);
@@ -67,13 +67,12 @@ __host__ __device__ __forceinline__ float3 calculate_color(const Ray& ray, World
     for (int32_t i = 0; i < max_depth; i++)
     {
 	    Intersection intersection{};
-        if ((*world)->intersect(current_ray, intersection))
+        if (world->intersect(current_ray, intersection))
         {
-            float3 absorption;
-            if (intersection.material->scatter(current_ray, intersection, absorption, random_state))
-	            current_absorption *= absorption;
-            else 
-                return make_float3(0.0f);
+        	if (!intersection.material->scatter(current_ray, intersection, random_state))
+        		return make_float3(0.0f);
+
+        	current_absorption *= intersection.texture->color(intersection.uv);
         }
         else
         {

@@ -27,7 +27,7 @@ CpuRenderer::~CpuRenderer()
 	delete[] accumulation_buffer_;
 }
 
-void CpuRenderer::render_static()
+void CpuRenderer::render_static() const
 {
 	const auto width = static_cast<int32_t>(render_info_->width);
 	const auto height = static_cast<int32_t>(render_info_->height);
@@ -48,7 +48,7 @@ void CpuRenderer::render_static()
 				const float u = (static_cast<float>(x) + pcg(&local_random_state)) / static_cast<float>(width);
 				const float v = (static_cast<float>(y) + pcg(&local_random_state)) / static_cast<float>(height);
 				const Ray ray = cast_ray(&local_random_state, u, v, *camera_info_);
-				const float3 color = sqrt(calculate_color(ray, &world_, *sky_info_, render_info_->max_depth, &local_random_state));
+				const float3 color = sqrt(calculate_color(ray, world_, *sky_info_, render_info_->max_depth, &local_random_state));
 
 				frame_data[pixel_index << 2] += color.x / static_cast<float>(render_info_->samples_per_pixel);
 				frame_data[(pixel_index << 2) + 1] += color.y / static_cast<float>(render_info_->samples_per_pixel);
@@ -59,7 +59,7 @@ void CpuRenderer::render_static()
 	}
 }
 
-void CpuRenderer::render_progressive()
+void CpuRenderer::render_progressive() const
 {
 	const auto width = static_cast<int32_t>(render_info_->width);
 	const auto height = static_cast<int32_t>(render_info_->height);
@@ -78,7 +78,7 @@ void CpuRenderer::render_progressive()
 			const float u = (static_cast<float>(x) + pcg(&local_random_state)) / static_cast<float>(width);
 			const float v = (static_cast<float>(y) + pcg(&local_random_state)) / static_cast<float>(height);
 			const Ray ray = cast_ray(&local_random_state, u, v, *camera_info_);
-			const float3 color = sqrt(calculate_color(ray, &world_, *sky_info_, render_info_->max_depth, &local_random_state));
+			const float3 color = sqrt(calculate_color(ray, world_, *sky_info_, render_info_->max_depth, &local_random_state));
 
 			accumulation_buffer_[pixel_index] += make_float4(color, 1.0f);
 			frame_data[pixel_index << 2] = accumulation_buffer_[pixel_index].x / static_cast<float>(render_info_->frames_since_refresh);
@@ -109,21 +109,6 @@ void CpuRenderer::refresh_buffer()
 
 	memset(accumulation_buffer_, 0, sizeof(float4) * width * height);
 	random_refresh();
-}
-
-void CpuRenderer::refresh_object(const int32_t index) const
-{
-	world_->update_object(index, world_info_->objects_[index]);
-}
-
-void CpuRenderer::refresh_material(const int32_t index) const
-{
-	world_->update_material(index, world_info_->materials_[index]);
-}
-
-void CpuRenderer::refresh_texture(const int32_t index) const
-{
-	world_->update_texture(index, world_info_->textures_[index]);
 }
 
 void CpuRenderer::recreate_image()
@@ -173,40 +158,40 @@ void CpuRenderer::random_refresh() const
 
 void CpuRenderer::allocate_world()
 {
-	auto texture_data = world_info_->textures_;
-	auto material_data = world_info_->materials_;
-	auto object_data = world_info_->objects_;
-	const auto texture_count = texture_data.size();
-	const auto material_count = material_data.size();
-	const auto object_count = object_data.size();
+	auto& textures = world_info_->textures_;
+	auto& materials = world_info_->materials_;
+	auto& objects = world_info_->objects_;
+	const auto texture_count = textures.size();
+	const auto material_count = materials.size();
+	const auto object_count = objects.size();
 
-	texture_data_ = texture_data.data();
-	material_data_ = material_data.data();
-	object_data_ = object_data.data();
+	const auto& texture_data = const_cast<Texture*>(textures.data());
+	const auto& material_data = const_cast<Material*>(materials.data());
+	const auto& object_data = const_cast<Object*>(objects.data());
 
-	for (int32_t i = 0; i < static_cast<int32_t>(texture_count); i++)
+	for (uint64_t i = 0; i < texture_count; i++)
 	{
-		if (texture_data_[i]->type == TextureType::IMAGE)
+		if (texture_data[i].type == TextureType::IMAGE)
 		{
-			const auto image_data = dynamic_cast<ImageInfo*>(texture_data_[i]);
+			const auto image_data = &texture_data[i].image;
 			image_data->d_data = image_data->h_data;
 		}
 	}
 
-	for (int32_t i = 0; i < static_cast<int32_t>(object_count); i++)
+	for (uint64_t i = 0; i < object_count; i++)
 	{
-		if (object_data_[i]->type == ObjectType::MODEL)
+		if (object_data[i].type == ObjectType::MODEL)
 		{
-			const auto model_data = dynamic_cast<ModelInfo*>(object_data_[i]);
+			const auto model_data = &object_data[i].model;
 			model_data->d_vertices = model_data->h_vertices;
 			model_data->d_indices = model_data->h_indices;
 		}
 	}
 
 	world_ = new World(
-		object_data_,
-		material_data_,
-		texture_data_,
+		object_data,
+		material_data,
+		texture_data,
 		static_cast<int32_t>(object_count),
 		static_cast<int32_t>(material_count),
 		static_cast<int32_t>(texture_count));

@@ -1,5 +1,5 @@
 #pragma once
-#include "Math.cuh"
+#include "Math.hpp"
 
 #include <cfloat>
 

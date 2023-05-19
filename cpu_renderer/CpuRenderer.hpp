@@ -2,7 +2,7 @@
 #include "../abstract/IRenderer.hpp"
 #include "../info/RenderInfo.hpp"
 #include "../info/WorldInfo.hpp"
-#include "../common/Color.cuh"
+#include "../common/Color.hpp"
 
 class CpuRenderer final : public IRenderer
 {
@@ -17,9 +17,6 @@ public:
 
 	void render() override;
 	void refresh_buffer() override;
-	void refresh_object(int32_t index) const override;
-	void refresh_material(int32_t index) const override;
-	void refresh_texture(int32_t index) const override;
 	void recreate_image() override;
 	void recreate_sky() override;
 	void allocate_world() override;
@@ -28,8 +25,8 @@ public:
 private:
 	void random_init() const;
 	void random_refresh() const;
-	void render_static();
-	void render_progressive();
+	void render_static() const;
+	void render_progressive() const;
 
 	const RenderInfo* render_info_ = nullptr;
 	const WorldInfo* world_info_ = nullptr;
@@ -38,8 +35,5 @@ private:
 
 	uint4* xoshiro_state_ = nullptr, * xoshiro_initial_ = nullptr;
     float4* accumulation_buffer_ = nullptr;
-    TextureInfo** texture_data_ = nullptr;
-    MaterialInfo** material_data_ = nullptr;
-    ObjectInfo** object_data_ = nullptr;
     World* world_ = nullptr;
 };

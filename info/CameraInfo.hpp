@@ -1,5 +1,5 @@
 #pragma once
-#include "../common/Math.cuh"
+#include "../common/Math.hpp"
 
 #include <vector_functions.h>
 #include <vector_types.h>

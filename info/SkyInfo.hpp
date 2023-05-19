@@ -1,6 +1,4 @@
 #pragma once
-#include "Unions.hpp"
-
 extern "C"
 {
 #include "../sky/ArHosekSkyModel.h"
@@ -42,9 +40,9 @@ struct SkyInfo
 			sky_config[2][i] = static_cast<float>(local_state_z->configs[2][i]);
 		}
 
-		sun_radiance.arr[0] = static_cast<float>(local_state_x->radiances[0]);
-		sun_radiance.arr[1] = static_cast<float>(local_state_y->radiances[1]);
-		sun_radiance.arr[2] = static_cast<float>(local_state_z->radiances[2]);
+		reinterpret_cast<float*>(&sun_radiance)[0] = static_cast<float>(local_state_x->radiances[0]);
+		reinterpret_cast<float*>(&sun_radiance)[1] = static_cast<float>(local_state_y->radiances[1]);
+		reinterpret_cast<float*>(&sun_radiance)[2] = static_cast<float>(local_state_z->radiances[2]);
 
 		arhosekskymodelstate_free(local_state_x);
 		arhosekskymodelstate_free(local_state_y);
@@ -54,7 +52,7 @@ struct SkyInfo
 	}
 
 	float sky_config[3][9]{};
-	Float3 sun_radiance{};
+	float3 sun_radiance{};
 	float sun_elevation{};
 
 	float* h_hdr_data = nullptr;

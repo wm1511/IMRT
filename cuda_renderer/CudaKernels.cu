@@ -3,7 +3,7 @@
 
 #include <device_launch_parameters.h>
 
-__global__ void render_pixel_progressive(float4* frame_buffer, float4* accumulation_buffer, World** world, SkyInfo sky_info, RenderInfo render_info, CameraInfo camera_info, uint4* xoshiro_state)
+__global__ void render_pixel_progressive(float4* frame_buffer, float4* accumulation_buffer, const World* world, SkyInfo sky_info, RenderInfo render_info, CameraInfo camera_info, uint4* xoshiro_state)
 {
 	const uint32_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	const uint32_t j = threadIdx.y + blockIdx.y * blockDim.y;
@@ -22,7 +22,7 @@ __global__ void render_pixel_progressive(float4* frame_buffer, float4* accumulat
 	frame_buffer[pixel_index] = accumulation_buffer[pixel_index] / (float)render_info.frames_since_refresh;
 }
 
-__global__ void render_pixel_static(float4* frame_buffer, World** world, SkyInfo sky_info, RenderInfo render_info, CameraInfo camera_info, uint4* xoshiro_state)
+__global__ void render_pixel_static(float4* frame_buffer, const World* world, SkyInfo sky_info, RenderInfo render_info, CameraInfo camera_info, uint4* xoshiro_state)
 {
 	const uint32_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	const uint32_t j = threadIdx.y + blockIdx.y * blockDim.y;
@@ -51,34 +51,4 @@ __global__ void random_init(const uint32_t max_x, const uint32_t max_y, uint4* x
         pixel_index + 15112001,
         pixel_index + 10021151,
         pixel_index + 30027051);
-}
-
-__global__ void update_texture(World** world, const int32_t index, TextureInfo** texture_data)
-{
-    if (threadIdx.x == 0 && blockIdx.x == 0)
-		(*world)->update_texture(index, texture_data[index]);
-}
-
-__global__ void update_material(World** world, const int32_t index, MaterialInfo** material_data)
-{
-    if (threadIdx.x == 0 && blockIdx.x == 0)
-		(*world)->update_material(index, material_data[index]);
-}
-
-__global__ void update_object(World** world, const int32_t index, ObjectInfo** object_data)
-{
-    if (threadIdx.x == 0 && blockIdx.x == 0) 
-		(*world)->update_object(index, object_data[index]);
-}
-
-__global__ void create_world(ObjectInfo** object_data, MaterialInfo** material_data, TextureInfo** texture_data, const int32_t object_count, const int32_t material_count, const int32_t texture_count, World** world)
-{
-    if (threadIdx.x == 0 && blockIdx.x == 0) 
-       *world = new World(object_data, material_data, texture_data, object_count, material_count, texture_count);
-}
-
-__global__ void delete_world(World** world)
-{
-    if (threadIdx.x == 0 && blockIdx.x == 0)
-    	delete *world;
 }
