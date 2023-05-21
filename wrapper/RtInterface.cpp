@@ -675,21 +675,27 @@ void RtInterface::add_object()
 			}
 			else if (object_type == enum_cast(ObjectType::MODEL))
 			{
-				std::vector<Vertex> vertices_vector;
-				std::vector<uint32_t> indices_vector;
-				world_info_.load_model(selected_file.u8string(), vertices_vector, indices_vector);
+				std::vector<float3> vertices_vector;
+				std::vector<uint3> indices_vector;
+				std::vector<float3> normals_vector;
+				std::vector<float2> uv_vector;
+				world_info_.load_model(selected_file.u8string(), vertices_vector, indices_vector, normals_vector, uv_vector);
 
 				if (vertices_vector.empty())
 					ImGui::OpenPopup("3D model loading failed");
 				else
 				{
-					const auto vertices = new Vertex[vertices_vector.size()];
-					const auto indices = new uint32_t[indices_vector.size()];
+					const auto vertices = new float3[vertices_vector.size()];
+					const auto indices = new uint3[indices_vector.size()];
+					const auto normals = new float3[vertices_vector.size()];
+					const auto uv = new float2[vertices_vector.size()];
 
-					memcpy_s(vertices, vertices_vector.size() * sizeof(Vertex), vertices_vector.data(), vertices_vector.size() * sizeof(Vertex));
-					memcpy_s(indices, indices_vector.size() * sizeof(uint32_t), indices_vector.data(), indices_vector.size() * sizeof(uint32_t));
+					memcpy_s(vertices, vertices_vector.size() * sizeof(float3), vertices_vector.data(), vertices_vector.size() * sizeof(float3));
+					memcpy_s(indices, indices_vector.size() * sizeof(uint3), indices_vector.data(), indices_vector.size() * sizeof(uint3));
+					memcpy_s(normals, normals_vector.size() * sizeof(float3), normals_vector.data(), normals_vector.size() * sizeof(float3));
+					memcpy_s(uv, uv_vector.size() * sizeof(float2), uv_vector.data(), uv_vector.size() * sizeof(float2));
 
-					world_info_.add_object<Model>(name, selected_texture, selected_material, vertices, indices, vertices_vector.size(), indices_vector.size());
+					world_info_.add_object<Model>(name, selected_texture, selected_material, vertices, indices, normals, uv, vertices_vector.size(), indices_vector.size());
 				}
 			}
 

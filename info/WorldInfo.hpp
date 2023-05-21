@@ -23,7 +23,8 @@ public:
 	WorldInfo& operator=(const WorldInfo&) = delete;
 	WorldInfo& operator=(WorldInfo&&) = delete;
 
-	void load_model(const std::string& model_path, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) const;
+	void load_model(const std::string& model_path, std::vector<float3>& vertices, std::vector<uint3>& indices,
+		std::vector<float3>& normals, std::vector<float2>& uv) const;
 
 	template <typename T, typename... Args> void add_object(const std::string& name, const int32_t texture, const int32_t material, Args&&... args)
 	{
@@ -45,8 +46,8 @@ public:
 
 	void remove_object(int32_t object_index);
 
-	std::vector<Texture> textures_{3};
-	std::vector<std::string> texture_names_{3};
+	std::vector<Texture> textures_{4};
+	std::vector<std::string> texture_names_{4};
 	std::vector<Material> materials_{3};
 	std::vector<std::string> material_names_{3};
 	std::vector<Object> objects_{4};

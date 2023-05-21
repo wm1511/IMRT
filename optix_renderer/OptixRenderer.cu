@@ -27,7 +27,10 @@ OptixRenderer::OptixRenderer(const RenderInfo* render_info, const WorldInfo* wor
 	init_optix();
 	create_modules();
 	create_programs();
-	h_launch_params_.traversable = build_as();
+
+	allocate_world();
+	h_launch_params_.traversable = build_triangle_gas();
+
 	create_pipeline();
 	create_sbt();
 
@@ -57,6 +60,9 @@ OptixRenderer::~OptixRenderer()
 	if (sky_info_->h_hdr_data)
 		CCE(cudaFree(sky_info_->d_hdr_data));
 
+	CCE(cudaFree(d_as_buffer_));
+	deallocate_world();
+
 	CCE(cudaFree(h_launch_params_.xoshiro_state));
 	CCE(cudaFree(xoshiro_initial_));
 	CCE(cudaFree(h_launch_params_.accumulation_buffer));
@@ -66,9 +72,6 @@ OptixRenderer::~OptixRenderer()
 	CCE(cudaFree(d_raygen_records_));
 	CCE(cudaFree(d_miss_records_));
 	CCE(cudaFree(d_hit_records_));
-	CCE(cudaFree(d_index_buffer_));
-	CCE(cudaFree(d_vertex_buffer_));
-	CCE(cudaFree(d_as_buffer_));
 
 	cudaDeviceReset();
 }
@@ -178,10 +181,12 @@ void OptixRenderer::map_frame_memory()
 
 void OptixRenderer::allocate_world()
 {
+	//h_launch_params_.traversable = build_triangle_gas();
 }
 
 void OptixRenderer::deallocate_world() const
 {
+	//CCE(cudaFree(d_as_buffer_));
 }
 
 void OptixRenderer::init_optix()
@@ -336,9 +341,22 @@ void OptixRenderer::create_pipeline()
 	COE(optixPipelineSetStackSize(pipeline_, 2 * 1024, 2 * 1024, 2 * 1024, 1));
 }
 
-OptixTraversableHandle OptixRenderer::build_as()
+OptixTraversableHandle OptixRenderer::build_sphere_gas()
 {
-	std::vector<float> vertices
+	return 0;
+}
+
+OptixTraversableHandle OptixRenderer::build_cylinder_gas()
+{
+	return 0;
+}
+
+OptixTraversableHandle OptixRenderer::build_triangle_gas()
+{
+	float3* d_vertex_buffer = nullptr;
+	uint3* d_index_buffer = nullptr;
+
+	/*std::vector<float> vertices
 	{
 		-1, -1,  1,
 		 1, -1,  1,
@@ -364,27 +382,34 @@ OptixTraversableHandle OptixRenderer::build_as()
 		0, 1, 3,
 		4, 6, 7,
 		4, 5, 7
-	};
+	};*/
 
-	CCE(cudaMalloc(reinterpret_cast<void**>(&d_vertex_buffer_), vertices.size() * sizeof(float)));
-	CCE(cudaMemcpy(d_vertex_buffer_, vertices.data(), vertices.size() * sizeof(float), cudaMemcpyHostToDevice));
-	CCE(cudaMalloc(reinterpret_cast<void**>(&d_index_buffer_), indices.size() * sizeof(uint32_t)));
-	CCE(cudaMemcpy(d_index_buffer_, indices.data(), indices.size() * sizeof(uint32_t), cudaMemcpyHostToDevice));
+	/*CCE(cudaMalloc(reinterpret_cast<void**>(&d_vertex_buffer), vertices.size() * sizeof(float)));
+	CCE(cudaMemcpy(d_vertex_buffer, vertices.data(), vertices.size() * sizeof(float), cudaMemcpyHostToDevice));
+	CCE(cudaMalloc(reinterpret_cast<void**>(&d_index_buffer), indices.size() * sizeof(uint32_t)));
+	CCE(cudaMemcpy(d_index_buffer, indices.data(), indices.size() * sizeof(uint32_t), cudaMemcpyHostToDevice));*/
+
+	auto& model = const_cast<WorldInfo*>(world_info_)->objects_[0].model;
+
+	CCE(cudaMalloc(reinterpret_cast<void**>(&d_vertex_buffer), model.vertex_count * sizeof(float3)));
+	CCE(cudaMemcpy(d_vertex_buffer, model.h_vertices, model.vertex_count * sizeof(float3), cudaMemcpyHostToDevice));
+	CCE(cudaMalloc(reinterpret_cast<void**>(&d_index_buffer), model.index_count * sizeof(uint3)));
+	CCE(cudaMemcpy(d_index_buffer, model.h_indices, model.index_count * sizeof(uint3), cudaMemcpyHostToDevice));
 
 	OptixTraversableHandle as_handle{ 0 };
 
-	OptixBuildInput triangle_input = {};
+	OptixBuildInput triangle_input{};
 	triangle_input.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
 
 	triangle_input.triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
 	triangle_input.triangleArray.vertexStrideInBytes = sizeof(float3);
-	triangle_input.triangleArray.numVertices = static_cast<uint32_t>(vertices.size());
-	triangle_input.triangleArray.vertexBuffers = reinterpret_cast<CUdeviceptr*>(&d_vertex_buffer_);
+	triangle_input.triangleArray.numVertices = static_cast<uint32_t>(model.vertex_count);
+	triangle_input.triangleArray.vertexBuffers = reinterpret_cast<CUdeviceptr*>(&d_vertex_buffer);
 
 	triangle_input.triangleArray.indexFormat = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
 	triangle_input.triangleArray.indexStrideInBytes = sizeof(int3);
-	triangle_input.triangleArray.numIndexTriplets = static_cast<uint32_t>(indices.size());
-	triangle_input.triangleArray.indexBuffer = reinterpret_cast<CUdeviceptr>(d_index_buffer_);
+	triangle_input.triangleArray.numIndexTriplets = static_cast<uint32_t>(model.index_count);
+	triangle_input.triangleArray.indexBuffer = reinterpret_cast<CUdeviceptr>(d_index_buffer);
 
 	uint32_t triangle_input_flags[1] = { 0 };
 
@@ -454,6 +479,9 @@ OptixTraversableHandle OptixRenderer::build_as()
 	CCE(cudaFree(temp_buffer));
 	CCE(cudaFree(compacted_size_buffer));
 
+	CCE(cudaFree(d_index_buffer));
+	CCE(cudaFree(d_vertex_buffer));
+
 	return as_handle;
 }
 
@@ -485,16 +513,14 @@ void OptixRenderer::create_sbt()
 	sbt_.missRecordStrideInBytes = sizeof(SbtRecord<MissData>);
 	sbt_.missRecordCount = static_cast<uint32_t>(miss_records.size());
 
-	constexpr int32_t num_objects = 1;
 	std::vector<SbtRecord<HitGroupData>> hitgroup_records;
-	for (int i = 0; i < num_objects; i++)
+	for (const auto& object : world_info_->objects_)
 	{
-		constexpr int32_t object_type = 0;
 		SbtRecord<HitGroupData> rec{};
-		COE(optixSbtRecordPackHeader(hit_programs_[object_type], &rec));
-		rec.data.vertex = d_vertex_buffer_;
-		rec.data.index = d_index_buffer_;
-		rec.data.color = make_float3(0.5f);
+		COE(optixSbtRecordPackHeader(hit_programs_[0], &rec));
+		rec.data.texture = world_info_->textures_[object.texture_id];
+		rec.data.material = world_info_->materials_[object.material_id];
+		rec.data.object = object;
 		hitgroup_records.push_back(rec);
 	}
 

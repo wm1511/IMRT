@@ -1,14 +1,8 @@
 #pragma once
 #include "../common/Boundary.hpp"
+#include "../common/Intersection.hpp"
 
 #include <cstdint>
-
-struct Vertex
-{
-	float3 position;
-	float3 normal;
-	float2 uv;
-};
 
 enum class ObjectType
 {
@@ -18,23 +12,25 @@ enum class ObjectType
 	MODEL
 };
 
-static __inline__ __host__ __device__ Boundary bound_triangle(const Vertex* vertices, const uint32_t* first_index)
+static __inline__ __host__ __device__ Boundary bound_triangle(const float3* vertices, const uint3* first_index)
 {
-	const float3 v0 = vertices[first_index[0]].position;
-	const float3 v1 = vertices[first_index[1]].position;
-	const float3 v2 = vertices[first_index[2]].position;
+	const uint3 index = *first_index;
+	const float3 v0 = vertices[index.x];
+	const float3 v1 = vertices[index.y];
+	const float3 v2 = vertices[index.z];
 
 	return { fminf(v0, v1, v2), fmaxf(v0, v1, v2) };
 }
 
-static __inline__ __host__ __device__ bool intersect_triangle(const Ray& ray, Intersection& intersection, const Vertex* vertices, const uint32_t* first_index)
+static __inline__ __host__ __device__ bool intersect_triangle(const Ray& ray, Intersection& intersection, const float3* vertices, const uint3* first_index, const float3* normals, const float2* uv)
 {
-	const Vertex v0 = vertices[first_index[0]];
-	const Vertex v1 = vertices[first_index[1]];
-	const Vertex v2 = vertices[first_index[2]];
+	const uint3 index = *first_index;
+	const float3 v0 = vertices[index.x];
+	const float3 v1 = vertices[index.y];
+	const float3 v2 = vertices[index.z];
 
-	const float3 v0_v1 = v1.position - v0.position;
-	const float3 v0_v2 = v2.position - v0.position;
+	const float3 v0_v1 = v1 - v0;
+	const float3 v0_v2 = v2 - v0;
 
 	const float3 p_vec = cross(ray.direction_, v0_v2);
 	const float determinant = dot(p_vec, v0_v1);
@@ -44,7 +40,7 @@ static __inline__ __host__ __device__ bool intersect_triangle(const Ray& ray, In
 
 	const float inverse_determinant = 1.0f / determinant;
 
-	const float3 t_vec = ray.origin_ - v0.position;
+	const float3 t_vec = ray.origin_ - v0;
 	const float3 q_vec = cross(t_vec, v0_v1);
 
 	const float u = dot(p_vec, t_vec) * inverse_determinant;
@@ -61,10 +57,10 @@ static __inline__ __host__ __device__ bool intersect_triangle(const Ray& ray, In
 	ray.t_max_ = t;
 	intersection.t = t;
 	intersection.point = ray.position(intersection.t);
-	intersection.normal = (v0.normal + v1.normal + v2.normal) / 3.0f;
+	intersection.normal = (normals[index.x] + normals[index.y] + normals[index.z]) / 3.0f;
 
-	const float2 min_uv = fminf(v0.uv, v1.uv, v2.uv);
-	const float2 max_uv = fmaxf(v0.uv, v1.uv, v2.uv);
+	const float2 min_uv = fminf(uv[index.x], uv[index.y], uv[index.z]);
+	const float2 max_uv = fmaxf(uv[index.x], uv[index.y], uv[index.z]);
 
 	intersection.uv = make_float2(lerp(min_uv.x, max_uv.x, u), lerp(min_uv.y, max_uv.y, v));
 	return true;
@@ -220,17 +216,17 @@ struct Cylinder
 
 struct Model
 {
-	__host__ Model(Vertex* h_vertices, uint32_t* h_indices, const uint64_t vertex_count, const uint64_t index_count)
-		: h_vertices(h_vertices), h_indices(h_indices), vertex_count(vertex_count), index_count(index_count) {}
+	__host__ Model(float3* h_vertices, uint3* h_indices, float3* h_normals, float2* h_uv, const uint64_t vertex_count, const uint64_t index_count)
+		: h_vertices(h_vertices), h_indices(h_indices), h_normals(h_normals), h_uv(h_uv), vertex_count(vertex_count), index_count(index_count) {}
 
 	__inline__ __host__ __device__ bool intersect(const Ray& ray, Intersection& intersection) const
 	{
 		Intersection temp_intersection{};
 		bool intersected = false;
 
-		for (uint64_t i = 0; i < index_count / 3; i++)
+		for (uint64_t i = 0; i < index_count; i++)
 		{
-			if (intersect_triangle(ray, temp_intersection, d_vertices, d_indices + 3 * i))
+			if (intersect_triangle(ray, temp_intersection, d_vertices, d_indices + i, d_normals, d_uv))
 			{
 				intersected = true;
 				intersection = temp_intersection;
@@ -244,14 +240,16 @@ struct Model
 	{
 		Boundary boundary{};
 
-		for (uint64_t i = 0; i < index_count / 3; i++)
-			boundary = unite(boundary, bound_triangle(d_vertices, d_indices + 3 * i));
+		for (uint64_t i = 0; i < index_count; i++)
+			boundary = unite(boundary, bound_triangle(d_vertices, d_indices + i));
 
 		return boundary;
 	}
 
-	Vertex* h_vertices = nullptr, * d_vertices = nullptr;
-	uint32_t* h_indices = nullptr, * d_indices = nullptr;
+	float3* h_vertices = nullptr, * d_vertices = nullptr;
+	uint3* h_indices = nullptr, * d_indices = nullptr;
+	float3* h_normals = nullptr, * d_normals = nullptr;
+	float2* h_uv = nullptr, * d_uv = nullptr;
 	uint64_t vertex_count{}, index_count{};
 };
 

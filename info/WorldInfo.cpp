@@ -9,6 +9,8 @@ WorldInfo::WorldInfo()
 	texture_names_[1] = "DemoGray";
 	textures_[2] = Texture(Solid(make_float3(0.2f, 0.2f, 0.8f)));
 	texture_names_[2] = "DemoBlue";
+	textures_[3] = Texture(Solid(make_float3(1.0f, 1.0f, 1.0f)));
+	texture_names_[3] = "DemoWhite";
 	materials_[0] = Material(Diffuse());
 	material_names_[0] = "DemoDiffuse";
 	materials_[1] = Material(Refractive(1.5f));
@@ -17,7 +19,7 @@ WorldInfo::WorldInfo()
 	material_names_[2] = "DemoFuzzySpecular";
 	objects_[0] = Object(Sphere(make_float3(1.0f, 0.0f, -1.0f), 0.5f), 0, 0);
 	object_names_[0] = "DemoSphereLeft";
-	objects_[1] = Object(Sphere(make_float3(0.0f, 0.0f, -1.0f), 0.5f), 2, 1);
+	objects_[1] = Object(Sphere(make_float3(0.0f, 0.0f, -1.0f), 0.5f), 3, 1);
 	object_names_[1] = "DemoSphereCentral";
 	objects_[2] = Object(Sphere(make_float3(-1.0f, 0.0f, -1.0f), 0.5f), 1, 2);
 	object_names_[2] = "DemoSphereRight";
@@ -33,6 +35,8 @@ WorldInfo::~WorldInfo()
 		{
 			delete[] object.model.h_vertices;
 			delete[] object.model.h_indices;
+			delete[] object.model.h_normals;
+			delete[] object.model.h_uv;
 		}
 	}
 
@@ -43,7 +47,8 @@ WorldInfo::~WorldInfo()
 	}
 }
 
-void WorldInfo::load_model(const std::string& model_path, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) const
+void WorldInfo::load_model(const std::string& model_path, std::vector<float3>& vertices, std::vector<uint3>& indices,
+	std::vector<float3>& normals, std::vector<float2>& uv) const
 {
 	tinyobj::ObjReaderConfig reader_config;
 	reader_config.vertex_color = false;
@@ -64,39 +69,29 @@ void WorldInfo::load_model(const std::string& model_path, std::vector<Vertex>& v
 		{
 			for (size_t v = 0; v < 3; v++)
 			{
-				Vertex vertex{};
 				const auto index = shape.mesh.indices[index_offset + v];
 
-				vertex.position =
-				{
-					attrib.vertices[3 * index.vertex_index + 0],
-					attrib.vertices[3 * index.vertex_index + 1],
-					attrib.vertices[3 * index.vertex_index + 2],
-				};
+				vertices.push_back(
+					{ attrib.vertices[3 * index.vertex_index],
+						attrib.vertices[3 * index.vertex_index + 1],
+						attrib.vertices[3 * index.vertex_index + 2] });
 
 				if (index.normal_index >= 0)
 				{
-					vertex.normal =
-					{
-						attrib.normals[3 * index.normal_index + 0],
+					normals.push_back(
+						{ attrib.normals[3 * index.normal_index],
 						attrib.normals[3 * index.normal_index + 1],
-						attrib.normals[3 * index.normal_index + 2],
-					};
+						attrib.normals[3 * index.normal_index + 2] });
 				}
 
 				if (index.texcoord_index >= 0)
 				{
-					vertex.uv =
-					{
-						attrib.texcoords[2 * index.texcoord_index + 0],
-						attrib.texcoords[2 * index.texcoord_index + 1],
-					};
+					uv.push_back(
+						{ attrib.texcoords[2 * index.texcoord_index],
+						attrib.texcoords[2 * index.texcoord_index + 1] });
 				}
-
-
-				vertices.push_back(vertex);
-				indices.push_back(static_cast<uint32_t>(indices.size()));
 			}
+			indices.push_back(make_uint3(3 * f, 3 * f + 1, 3 * f + 2));
 			index_offset += 3;
 		}
 	}

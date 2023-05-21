@@ -185,6 +185,8 @@ void CpuRenderer::allocate_world()
 			const auto model_data = &object_data[i].model;
 			model_data->d_vertices = model_data->h_vertices;
 			model_data->d_indices = model_data->h_indices;
+			model_data->d_normals = model_data->h_normals;
+			model_data->d_uv = model_data->h_uv;
 		}
 	}
 

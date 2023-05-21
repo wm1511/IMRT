@@ -52,17 +52,10 @@ extern "C" __global__ void __closesthit__radiance()
 {
 	const HitGroupData* sbt_data = (HitGroupData*)optixGetSbtDataPointer();
 
-	const uint32_t prim_id = optixGetPrimitiveIndex();
-	const uint3 index = sbt_data->index[prim_id];
-	const float3& a = sbt_data->vertex[index.x];
-	const float3& b = sbt_data->vertex[index.y];
-	const float3& c = sbt_data->vertex[index.z];
-	const float3 normal = normalize(cross(b - a, c - a));
+	const float2 triangle_uv = optixGetTriangleBarycentrics();
 
-	const float3 ray_dir = optixGetWorldRayDirection();
-	const float cos_dn = 0.2f + 0.8f * fabsf(dot(ray_dir, normal));
 	float3& prd = *get_prd<float3>();
-	prd = cos_dn * sbt_data->color;
+	prd = sbt_data->texture.color(triangle_uv);
 }
 
 extern "C" __global__ void __anyhit__radiance()

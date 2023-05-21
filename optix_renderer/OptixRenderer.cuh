@@ -40,7 +40,9 @@ private:
 	void create_modules();
 	void create_programs();
 	void create_pipeline();
-	OptixTraversableHandle build_as();
+	OptixTraversableHandle build_sphere_gas();
+	OptixTraversableHandle build_cylinder_gas();
+	OptixTraversableHandle build_triangle_gas();
 	void create_sbt();
 
 	const RenderInfo* render_info_ = nullptr;
@@ -58,11 +60,11 @@ private:
 	std::vector<OptixProgramGroup> raygen_programs_{};
 	std::vector<OptixProgramGroup> miss_programs_{};
 	std::vector<OptixProgramGroup> hit_programs_{};
+
 	SbtRecord<RayGenData>* d_raygen_records_ = nullptr;
 	SbtRecord<MissData>* d_miss_records_ = nullptr;
 	SbtRecord<HitGroupData>* d_hit_records_ = nullptr;
-	float3* d_vertex_buffer_ = nullptr;
-	uint3* d_index_buffer_ = nullptr;
+
 	void* d_as_buffer_ = nullptr;
 
 	LaunchParams h_launch_params_{};

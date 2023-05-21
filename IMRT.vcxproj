@@ -316,16 +316,23 @@
     <CudaCompile Include="cuda_renderer\CudaKernels.cu" />
     <CudaCompile Include="cuda_renderer\CudaRenderer.cu" />
     <CudaCompile Include="optix_renderer\OptixPrograms.cu">
-      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(CudaIntDirFullPath)\%(Filename)%(Extension).optixir</CompileOut>
+      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(CudaIntDirFullPath)\%(Filename).optixir</CompileOut>
       <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">optix-ir</NvccCompilation>
-      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(CudaIntDirFullPath)\%(Filename)%(Extension).optixir</CompileOut>
+      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(CudaIntDirFullPath)\%(Filename).optixir</CompileOut>
       <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">optix-ir</NvccCompilation>
-      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(CudaIntDirFullPath)\%(Filename)%(Extension).optixir</CompileOut>
+      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(CudaIntDirFullPath)\%(Filename).optixir</CompileOut>
       <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">optix-ir</NvccCompilation>
-      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(CudaIntDirFullPath)\%(Filename)%(Extension).optixir</CompileOut>
+      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(CudaIntDirFullPath)\%(Filename).optixir</CompileOut>
       <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">optix-ir</NvccCompilation>
+      <FileType>Document</FileType>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </CudaCompile>
-    <CudaCompile Include="optix_renderer\OptixRenderer.cu" />
+    <CudaCompile Include="optix_renderer\OptixRenderer.cu">
+      <FileType>Document</FileType>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </CudaCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,4 +1,7 @@
 #pragma once
+#include "../info/Object.hpp"
+#include "../info/Material.hpp"
+#include "../info/Texture.hpp"
 #include "../info/CameraInfo.hpp"
 #include "../info/SkyInfo.hpp"
 
@@ -31,7 +34,7 @@ struct MissData
 
 struct HitGroupData
 {
-    float3  color;
-	float3 *vertex;
-	uint3 *index;
+    Object object;
+    Material material;
+    Texture texture;
 };
