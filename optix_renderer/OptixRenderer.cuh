@@ -16,7 +16,7 @@ struct SbtRecord
 class OptixRenderer final : public IRenderer
 {
 public:
-	OptixRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info);
+	OptixRenderer(const RenderInfo* render_info, WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info);
 	~OptixRenderer() override;
 
 	OptixRenderer(const OptixRenderer&) = delete;
@@ -40,22 +40,23 @@ private:
 	void create_modules();
 	void create_programs();
 	void create_pipeline();
-	OptixTraversableHandle build_sphere_gas();
-	OptixTraversableHandle build_cylinder_gas();
-	OptixTraversableHandle build_triangle_gas();
+	void build_gas();
+	OptixTraversableHandle build_ias();
 	void create_sbt();
 
 	const RenderInfo* render_info_ = nullptr;
-	const WorldInfo* world_info_ = nullptr;
+	WorldInfo* world_info_ = nullptr;
 	const SkyInfo* sky_info_ = nullptr;
 	const CameraInfo* camera_info_ = nullptr;
 
+	cudaStream_t stream_{};
 	OptixDeviceContext context_ = nullptr;
 	OptixModule module_ = nullptr;
 	OptixPipeline pipeline_ = nullptr;
 	OptixShaderBindingTable sbt_{};
 
-	uint4* xoshiro_initial_ = nullptr;
+	OptixPipelineCompileOptions pipeline_compile_options_{};
+	OptixModuleCompileOptions module_compile_options_{};
 
 	std::vector<OptixProgramGroup> raygen_programs_{};
 	std::vector<OptixProgramGroup> miss_programs_{};
@@ -65,10 +66,12 @@ private:
 	SbtRecord<MissData>* d_miss_records_ = nullptr;
 	SbtRecord<HitGroupData>* d_hit_records_ = nullptr;
 
+	OptixTraversableHandle sphere_gas_{};
+	OptixTraversableHandle triangle_gas_{};
+	OptixTraversableHandle cylinder_gas_{};
 	void* d_as_buffer_ = nullptr;
 
+	uint4* xoshiro_initial_ = nullptr;
 	LaunchParams h_launch_params_{};
 	LaunchParams* d_launch_params_ = nullptr;
-
-	cudaStream_t stream_{};
 };

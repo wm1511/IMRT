@@ -4,7 +4,7 @@
 
 #include "../common/Utils.hpp"
 
-CudaRenderer::CudaRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info)
+CudaRenderer::CudaRenderer(const RenderInfo* render_info, WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info)
 	: render_info_(render_info), world_info_(world_info), sky_info_(sky_info), camera_info_(camera_info)
 {
 	const uint32_t width = render_info_->width;
@@ -141,21 +141,14 @@ void CudaRenderer::map_frame_memory()
 void CudaRenderer::allocate_world()
 {
 	auto& textures = world_info_->textures_;
-	auto& materials = world_info_->materials_;
+	const auto& materials = world_info_->materials_;
 	auto& objects = world_info_->objects_;
-	const auto texture_count = textures.size();
-	const auto material_count = materials.size();
-	const auto object_count = objects.size();
 
-	const auto& texture_data = const_cast<Texture*>(textures.data());
-	const auto& material_data = const_cast<Material*>(materials.data());
-	const auto& object_data = const_cast<Object*>(objects.data());
-
-	for (uint64_t i = 0; i < texture_count; i++)
+	for (auto& texture : textures)
 	{
-		if (textures[i].type == TextureType::IMAGE)
+		if (texture.type == TextureType::IMAGE)
 		{
-			const auto image_data = &texture_data[i].image;
+			const auto image_data = &texture.image;
 			const uint64_t image_size = sizeof(float) * image_data->width * image_data->height * 3;
 
 			CCE(cudaMalloc(reinterpret_cast<void**>(&image_data->d_data), image_size));
@@ -163,11 +156,11 @@ void CudaRenderer::allocate_world()
 		}
 	}
 
-	for (uint64_t i = 0; i < object_count; i++)
+	for (auto& object : objects)
 	{
-		if (objects[i].type == ObjectType::MODEL)
+		if (object.type == ObjectType::MODEL)
 		{
-			const auto model_data = &object_data[i].model;
+			const auto model_data = &object.model;
 
 			CCE(cudaMalloc(reinterpret_cast<void**>(&model_data->d_vertices), model_data->vertex_count * sizeof(float3)));
 			CCE(cudaMemcpy(model_data->d_vertices, model_data->h_vertices, model_data->vertex_count * sizeof(float3), cudaMemcpyHostToDevice));
@@ -183,20 +176,20 @@ void CudaRenderer::allocate_world()
 		}
 	}
 
-	CCE(cudaMalloc(reinterpret_cast<void**>(&d_texture_data_), texture_count * sizeof(Texture)));
-	CCE(cudaMalloc(reinterpret_cast<void**>(&d_material_data_), material_count * sizeof(Material)));
-	CCE(cudaMalloc(reinterpret_cast<void**>(&d_object_data_), object_count * sizeof(Object)));
-	CCE(cudaMemcpy(d_texture_data_, texture_data, texture_count * sizeof(Texture), cudaMemcpyHostToDevice));
-	CCE(cudaMemcpy(d_material_data_, material_data, material_count * sizeof(Material), cudaMemcpyHostToDevice));
-	CCE(cudaMemcpy(d_object_data_, object_data, object_count * sizeof(Object), cudaMemcpyHostToDevice));
+	CCE(cudaMalloc(reinterpret_cast<void**>(&d_texture_data_), textures.size() * sizeof(Texture)));
+	CCE(cudaMalloc(reinterpret_cast<void**>(&d_material_data_), materials.size() * sizeof(Material)));
+	CCE(cudaMalloc(reinterpret_cast<void**>(&d_object_data_), objects.size() * sizeof(Object)));
+	CCE(cudaMemcpy(d_texture_data_, textures.data(), textures.size() * sizeof(Texture), cudaMemcpyHostToDevice));
+	CCE(cudaMemcpy(d_material_data_, materials.data(), materials.size() * sizeof(Material), cudaMemcpyHostToDevice));
+	CCE(cudaMemcpy(d_object_data_, objects.data(), objects.size() * sizeof(Object), cudaMemcpyHostToDevice));
 
 	const auto world = World(
 		d_object_data_, 
 		d_material_data_, 
 		d_texture_data_, 
-		static_cast<int32_t>(object_count),
-		static_cast<int32_t>(material_count),
-		static_cast<int32_t>(texture_count));
+		static_cast<int32_t>(objects.size()),
+		static_cast<int32_t>(materials.size()),
+		static_cast<int32_t>(textures.size()));
 
 	CCE(cudaMalloc(reinterpret_cast<void**>(&world_), sizeof(World)));
 	CCE(cudaMemcpy(world_, &world, sizeof(World), cudaMemcpyHostToDevice));

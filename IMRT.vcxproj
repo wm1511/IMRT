@@ -310,7 +310,6 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="imgui\LICENSE.txt" />
-    <Text Include="LICENSE.txt" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="cuda_renderer\CudaKernels.cu" />

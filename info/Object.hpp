@@ -57,12 +57,8 @@ static __inline__ __host__ __device__ bool intersect_triangle(const Ray& ray, In
 	ray.t_max_ = t;
 	intersection.t = t;
 	intersection.point = ray.position(intersection.t);
-	intersection.normal = (normals[index.x] + normals[index.y] + normals[index.z]) / 3.0f;
-
-	const float2 min_uv = fminf(uv[index.x], uv[index.y], uv[index.z]);
-	const float2 max_uv = fmaxf(uv[index.x], uv[index.y], uv[index.z]);
-
-	intersection.uv = make_float2(lerp(min_uv.x, max_uv.x, u), lerp(min_uv.y, max_uv.y, v));
+	intersection.uv = (1.0f - u - v) * uv[index.x] + u * uv[index.y] + v * uv[index.z];
+	intersection.normal = normalize((1.0f - u - v) * normals[index.x] + u * normals[index.y] + v * normals[index.z]);
 	return true;
 }
 

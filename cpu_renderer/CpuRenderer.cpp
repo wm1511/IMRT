@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "CpuRenderer.hpp"
 
-CpuRenderer::CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info)
+CpuRenderer::CpuRenderer(const RenderInfo* render_info, WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info)
 	: render_info_(render_info), world_info_(world_info), sky_info_(sky_info), camera_info_(camera_info)
 {
 	const uint64_t image_size = static_cast<uint64_t>(render_info_->width) * render_info_->height;
@@ -161,28 +161,21 @@ void CpuRenderer::allocate_world()
 	auto& textures = world_info_->textures_;
 	auto& materials = world_info_->materials_;
 	auto& objects = world_info_->objects_;
-	const auto texture_count = textures.size();
-	const auto material_count = materials.size();
-	const auto object_count = objects.size();
 
-	const auto& texture_data = const_cast<Texture*>(textures.data());
-	const auto& material_data = const_cast<Material*>(materials.data());
-	const auto& object_data = const_cast<Object*>(objects.data());
-
-	for (uint64_t i = 0; i < texture_count; i++)
+	for (auto& texture : textures)
 	{
-		if (texture_data[i].type == TextureType::IMAGE)
+		if (texture.type == TextureType::IMAGE)
 		{
-			const auto image_data = &texture_data[i].image;
+			const auto image_data = &texture.image;
 			image_data->d_data = image_data->h_data;
 		}
 	}
 
-	for (uint64_t i = 0; i < object_count; i++)
+	for (auto& object : objects)
 	{
-		if (object_data[i].type == ObjectType::MODEL)
+		if (object.type == ObjectType::MODEL)
 		{
-			const auto model_data = &object_data[i].model;
+			const auto model_data = &object.model;
 			model_data->d_vertices = model_data->h_vertices;
 			model_data->d_indices = model_data->h_indices;
 			model_data->d_normals = model_data->h_normals;
@@ -191,12 +184,12 @@ void CpuRenderer::allocate_world()
 	}
 
 	world_ = new World(
-		object_data,
-		material_data,
-		texture_data,
-		static_cast<int32_t>(object_count),
-		static_cast<int32_t>(material_count),
-		static_cast<int32_t>(texture_count));
+		objects.data(),
+		materials.data(),
+		textures.data(),
+		static_cast<int32_t>(objects.size()),
+		static_cast<int32_t>(materials.size()),
+		static_cast<int32_t>(textures.size()));
 }
 
 void CpuRenderer::deallocate_world() const

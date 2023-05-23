@@ -7,7 +7,7 @@
 class CpuRenderer final : public IRenderer
 {
 public:
-	CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info);
+	CpuRenderer(const RenderInfo* render_info, WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info);
 	~CpuRenderer() override;
 
 	CpuRenderer(const CpuRenderer&) = delete;
@@ -29,7 +29,7 @@ private:
 	void render_progressive() const;
 
 	const RenderInfo* render_info_ = nullptr;
-	const WorldInfo* world_info_ = nullptr;
+	WorldInfo* world_info_ = nullptr;
 	const SkyInfo* sky_info_ = nullptr;
 	const CameraInfo* camera_info_ = nullptr;
 

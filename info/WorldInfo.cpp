@@ -91,7 +91,7 @@ void WorldInfo::load_model(const std::string& model_path, std::vector<float3>& v
 						attrib.texcoords[2 * index.texcoord_index + 1] });
 				}
 			}
-			indices.push_back(make_uint3(3 * f, 3 * f + 1, 3 * f + 2));
+			indices.push_back(make_uint3(static_cast<uint32_t>(3 * f), static_cast<uint32_t>(3 * f + 1), static_cast<uint32_t>(3 * f + 2)));
 			index_offset += 3;
 		}
 	}

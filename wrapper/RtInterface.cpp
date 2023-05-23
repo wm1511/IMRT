@@ -322,7 +322,7 @@ void RtInterface::edit_settings()
 
 		if (ImGui::TreeNode("Recursion depth"))
 		{
-			is_edited |= ImGui::SliderInt("##RecursionDepth", &render_info_.max_depth, 1, INT8_MAX, "%d", ImGuiSliderFlags_AlwaysClamp);
+			is_edited |= ImGui::SliderInt("##RecursionDepth", &render_info_.max_depth, 1, 31, "%d", ImGuiSliderFlags_AlwaysClamp);
 			draw_help("Maximum depth, that recursion can achieve before being stopped");
 			ImGui::TreePop();
 		}
@@ -439,7 +439,9 @@ void RtInterface::add_texture()
 				}
 				else
 				{
+					stbi_set_flip_vertically_on_load(true);
 					float* new_image_data = stbi_loadf(selected_file.u8string().c_str(), &new_image_width, &new_image_height, &new_image_components, 3);
+					stbi_set_flip_vertically_on_load(false);
 					world_info_.add_texture<Image>(name, new_image_data, new_image_width, new_image_height);
 				}
 			}

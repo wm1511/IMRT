@@ -48,19 +48,55 @@ static __forceinline__ __device__ T* get_prd()
 	return (T*)unpack_pointer(u0, u1);
 }
 
-extern "C" __global__ void __closesthit__radiance()
+extern "C" __global__ void __intersection__cylinder()
+{
+
+}
+
+extern "C" __global__ void __closesthit__sphere()
 {
 	const HitGroupData* sbt_data = (HitGroupData*)optixGetSbtDataPointer();
 
-	const float2 triangle_uv = optixGetTriangleBarycentrics();
-
 	float3& prd = *get_prd<float3>();
-	prd = sbt_data->texture.color(triangle_uv);
+	prd = sbt_data->texture.color(make_float2(0.5f, 0.5f));
 }
 
-extern "C" __global__ void __anyhit__radiance()
+extern "C" __global__ void __closesthit__cylinder()
 {
+	const HitGroupData* sbt_data = (HitGroupData*)optixGetSbtDataPointer();
 
+	float3& prd = *get_prd<float3>();
+	prd = sbt_data->texture.color(make_float2(0.5f, 0.5f));
+}
+
+extern "C" __global__ void __closesthit__triangle()
+{
+	const HitGroupData* sbt_data = (HitGroupData*)optixGetSbtDataPointer();
+	//const uint32_t prim_id = optixGetPrimitiveIndex();
+	//const Model& model = sbt_data->object.model;
+
+    //const uint3& index = model.d_indices[prim_id];
+
+	float2 uv = optixGetTriangleBarycentrics();
+	//float3 normal;
+
+	/*if (model.d_uv)
+		uv = (1.0f - uv.x - uv.y) * model.d_uv[index.x] + uv.x * model.d_uv[index.y] + uv.y * model.d_uv[index.z];*/
+
+    /*if (model.d_normals)
+    {
+	    normal = (1.0f - uv.x - uv.y) * model.d_normals[index.x] + uv.x * model.d_normals[index.y] + uv.y * model.d_normals[index.z];
+    }
+	else 
+	{
+		const float3& v0 = model.d_vertices[index.x];
+		const float3& v1 = model.d_vertices[index.y];
+		const float3& v2 = model.d_vertices[index.z];
+		normal = normalize(cross(v1 - v0, v2 - v0));
+    }*/
+
+	float3& prd = *get_prd<float3>();
+	prd = /*0.2f + 0.8f * fabsf(dot(optixGetWorldRayDirection(), normal)) **/ sbt_data->texture.color(uv);
 }
 
 extern "C" __global__ void __miss__radiance()

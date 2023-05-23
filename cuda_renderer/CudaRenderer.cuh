@@ -8,7 +8,7 @@
 class CudaRenderer final : public IRenderer
 {
 public:
-	CudaRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info);
+	CudaRenderer(const RenderInfo* render_info, WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info);
 	~CudaRenderer() override;
 
 	CudaRenderer(const CudaRenderer&) = delete;
@@ -29,7 +29,7 @@ public:
 
 private:
 	const RenderInfo* render_info_ = nullptr;
-	const WorldInfo* world_info_ = nullptr;
+	WorldInfo* world_info_ = nullptr;
 	const SkyInfo* sky_info_ = nullptr;
 	const CameraInfo* camera_info_ = nullptr;
 
