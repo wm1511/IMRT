@@ -55,8 +55,7 @@ static __inline__ __host__ __device__ bool intersect_triangle(const Ray& ray, In
 		return false;
 
 	ray.t_max_ = t;
-	intersection.t = t;
-	intersection.point = ray.position(intersection.t);
+	intersection.point = ray.origin_ + t * ray.direction_;
 	intersection.uv = (1.0f - u - v) * uv[index.x] + u * uv[index.y] + v * uv[index.z];
 	intersection.normal = normalize((1.0f - u - v) * normals[index.x] + u * normals[index.y] + v * normals[index.z]);
 	return true;
@@ -84,8 +83,7 @@ struct Sphere
 		if (t < ray.t_max_ && t > kTMin)
 		{
 			ray.t_max_ = t;
-			intersection.t = t;
-			intersection.point = ray.position(intersection.t);
+			intersection.point = ray.origin_ + t * ray.direction_;
 			intersection.normal = (intersection.point - center) / radius;
 
 			const float u = (atan2(intersection.normal.z, intersection.normal.x) + kPi) * kInv2Pi;
@@ -98,8 +96,7 @@ struct Sphere
 		if (t < ray.t_max_ && t > kTMin)
 		{
 			ray.t_max_ = t;
-			intersection.t = t;
-			intersection.point = ray.position(intersection.t);
+			intersection.point = ray.origin_ + t * ray.direction_;
 			intersection.normal = (intersection.point - center) / radius;
 
 			const float u = (atan2(intersection.normal.z, intersection.normal.x) + kPi) * kInv2Pi;
@@ -157,8 +154,7 @@ struct Cylinder
 				return false;
 
 			ray.t_max_ = t;
-			intersection.t = t;
-			intersection.point = ray.position(t);
+			intersection.point = ray.origin_ + t * ray.direction_;
 			intersection.normal = normalize(intersection.point - extreme_b - axis * m);
 			intersection.uv.x = acosf(intersection.normal.x) / kPi;
 			intersection.uv.y = intersection.point.y / (extreme_b.y - extreme_a.y);
@@ -167,14 +163,13 @@ struct Cylinder
 
 		const float aa = dot(ray.origin_ - extreme_a, axis);
 		const float t_top = -aa / da;
-		const float3 top_point = ray.position(t_top);
+		const float3 top_point = ray.origin_ + t_top * ray.direction_;
 		if (length(extreme_a - top_point) < radius && -da > 0.0f)
 		{
 			if (t_top < kTMin || t_top > ray.t_max_)
 				return false;
 
 			ray.t_max_ = t_top;
-			intersection.t = t_top;
 			intersection.point = top_point;
 			intersection.normal = axis;
 			intersection.uv = fracf(make_float2(intersection.point.x, intersection.point.z));
@@ -182,14 +177,13 @@ struct Cylinder
 		}
 
 		const float t_bottom = -ba / da;
-		const float3 bottom_point = ray.position(t_bottom);
+		const float3 bottom_point = ray.origin_ + t_bottom * ray.direction_;
 		if (length(extreme_b - bottom_point) < radius && da > 0.0f)
 		{
 			if (t_bottom < kTMin || t_bottom > ray.t_max_)
 				return false;
 
 			ray.t_max_ = t_bottom;
-			intersection.t = t_bottom;
 			intersection.point = bottom_point;
 			intersection.normal = -axis;
 			intersection.uv = fracf(make_float2(intersection.point.x, intersection.point.z));

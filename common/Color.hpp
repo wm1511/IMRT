@@ -1,7 +1,6 @@
 #pragma once
 #include "../info/SkyInfo.hpp"
 #include "../info/CameraInfo.hpp"
-#include "../info/Material.hpp"
 #include "World.hpp"
 
 __host__ __device__ __forceinline__ Ray cast_ray(uint32_t* random_state, const float screen_x, const float screen_y, const CameraInfo& camera_info)
@@ -69,8 +68,15 @@ __host__ __device__ __forceinline__ float3 calculate_color(const Ray& ray, const
 	    Intersection intersection{};
         if (world->intersect(current_ray, intersection))
         {
-        	if (!intersection.material->scatter(current_ray, intersection, random_state))
-        		return make_float3(0.0f);
+        	if (intersection.material->scatter(current_ray.direction_, intersection.normal, random_state))
+        	{
+        		current_ray.origin_ = intersection.point;
+                current_ray.t_max_ = FLT_MAX;
+        	}
+            else
+            {
+	            return make_float3(0.0f);
+            }
 
         	current_absorption *= intersection.texture->color(intersection.uv);
         }

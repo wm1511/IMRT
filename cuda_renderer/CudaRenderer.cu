@@ -187,9 +187,7 @@ void CudaRenderer::allocate_world()
 		d_object_data_, 
 		d_material_data_, 
 		d_texture_data_, 
-		static_cast<int32_t>(objects.size()),
-		static_cast<int32_t>(materials.size()),
-		static_cast<int32_t>(textures.size()));
+		static_cast<int32_t>(objects.size()));
 
 	CCE(cudaMalloc(reinterpret_cast<void**>(&world_), sizeof(World)));
 	CCE(cudaMemcpy(world_, &world, sizeof(World), cudaMemcpyHostToDevice));

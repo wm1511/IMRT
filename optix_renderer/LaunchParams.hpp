@@ -1,7 +1,7 @@
 #pragma once
-#include "../info/Object.hpp"
-#include "../info/Material.hpp"
-#include "../info/Texture.hpp"
+#include "../common/Object.hpp"
+#include "../common/Material.hpp"
+#include "../common/Texture.hpp"
 #include "../info/CameraInfo.hpp"
 #include "../info/SkyInfo.hpp"
 

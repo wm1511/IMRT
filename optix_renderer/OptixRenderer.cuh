@@ -40,7 +40,10 @@ private:
 	void create_modules();
 	void create_programs();
 	void create_pipeline();
-	void build_gas();
+	void build_gases(std::vector<OptixBuildInput>& sphere_inputs, std::vector<OptixBuildInput>& cylinder_inputs, 
+		std::vector<OptixBuildInput>& triangle_inputs, std::vector<float3*>& centers, 
+		std::vector<float*>& radii, std::vector<float*>& aabbs, uint32_t* flags);
+	OptixTraversableHandle build_gas(const std::vector<OptixBuildInput>& build_inputs, void*& gas_buffer) const;
 	OptixTraversableHandle build_ias();
 	void create_sbt();
 
@@ -65,11 +68,7 @@ private:
 	SbtRecord<RayGenData>* d_raygen_records_ = nullptr;
 	SbtRecord<MissData>* d_miss_records_ = nullptr;
 	SbtRecord<HitGroupData>* d_hit_records_ = nullptr;
-
-	OptixTraversableHandle sphere_gas_{};
-	OptixTraversableHandle triangle_gas_{};
-	OptixTraversableHandle cylinder_gas_{};
-	void* d_as_buffer_ = nullptr;
+	void* sphere_gas_buffer_ = nullptr, * cylinder_gas_buffer_ = nullptr, * triangle_gas_buffer_ = nullptr, * ias_buffer_ = nullptr;
 
 	uint4* xoshiro_initial_ = nullptr;
 	LaunchParams h_launch_params_{};

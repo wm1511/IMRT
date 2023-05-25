@@ -11,5 +11,4 @@ struct Intersection
 	float2 uv;
 	Material* material;
 	Texture* texture;
-	float t;
 };

@@ -187,9 +187,7 @@ void CpuRenderer::allocate_world()
 		objects.data(),
 		materials.data(),
 		textures.data(),
-		static_cast<int32_t>(objects.size()),
-		static_cast<int32_t>(materials.size()),
-		static_cast<int32_t>(textures.size()));
+		static_cast<int32_t>(objects.size()));
 }
 
 void CpuRenderer::deallocate_world() const

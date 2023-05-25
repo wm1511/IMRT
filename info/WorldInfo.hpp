@@ -1,7 +1,7 @@
 #pragma once
-#include "Texture.hpp"
-#include "Material.hpp"
-#include "Object.hpp"
+#include "../common/Texture.hpp"
+#include "../common/Material.hpp"
+#include "../common/Object.hpp"
 
 #include <vector>
 #include <string>

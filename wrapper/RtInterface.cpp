@@ -729,7 +729,7 @@ void RtInterface::edit_object()
 
 				if (current_object->type == ObjectType::MODEL)
 				{
-					ImGui::Text("Triangle count: %llu", current_object->model.index_count / 3);
+					ImGui::Text("Triangle count: %llu", current_object->model.index_count);
 				}
 				else if (current_object->type == ObjectType::UNKNOWN_OBJECT)
 				{
