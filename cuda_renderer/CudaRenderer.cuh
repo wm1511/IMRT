@@ -25,7 +25,7 @@ public:
 	void recreate_sky() override;
 	void map_frame_memory() override;
 	void allocate_world() override;
-	void deallocate_world() const override;
+	void deallocate_world() override;
 
 private:
 	const RenderInfo* render_info_ = nullptr;

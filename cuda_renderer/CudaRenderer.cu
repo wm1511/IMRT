@@ -193,7 +193,7 @@ void CudaRenderer::allocate_world()
 	CCE(cudaMemcpy(world_, &world, sizeof(World), cudaMemcpyHostToDevice));
 }
 
-void CudaRenderer::deallocate_world() const
+void CudaRenderer::deallocate_world()
 {
 	CCE(cudaFree(world_));
 

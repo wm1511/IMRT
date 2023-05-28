@@ -190,7 +190,7 @@ void CpuRenderer::allocate_world()
 		static_cast<int32_t>(objects.size()));
 }
 
-void CpuRenderer::deallocate_world() const
+void CpuRenderer::deallocate_world() 
 {
 	delete world_;
 }

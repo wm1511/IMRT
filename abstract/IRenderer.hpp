@@ -16,5 +16,5 @@ public:
 	virtual void recreate_sky() = 0;
 	virtual void map_frame_memory() {}
 	virtual void allocate_world() = 0;
-	virtual void deallocate_world() const = 0;
+	virtual void deallocate_world() = 0;
 };

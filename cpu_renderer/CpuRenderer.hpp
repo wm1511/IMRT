@@ -20,7 +20,7 @@ public:
 	void recreate_image() override;
 	void recreate_sky() override;
 	void allocate_world() override;
-	void deallocate_world() const override;
+	void deallocate_world() override;
 
 private:
 	void random_init() const;

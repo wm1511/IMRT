@@ -33,18 +33,16 @@ public:
 	void recreate_sky() override;
 	void map_frame_memory() override;
 	void allocate_world() override;
-	void deallocate_world() const override;
+	void deallocate_world() override;
 
 private:
 	void init_optix();
 	void create_modules();
 	void create_programs();
 	void create_pipeline();
-	void build_gases(std::vector<OptixBuildInput>& sphere_inputs, std::vector<OptixBuildInput>& cylinder_inputs, 
-		std::vector<OptixBuildInput>& triangle_inputs, std::vector<float3*>& centers, 
-		std::vector<float*>& radii, std::vector<float*>& aabbs, uint32_t* flags);
-	OptixTraversableHandle build_gas(const std::vector<OptixBuildInput>& build_inputs, void*& gas_buffer) const;
-	OptixTraversableHandle build_ias();
+	void build_gases(std::vector<OptixTraversableHandle>& gases, std::vector<void*>& buffers) const;
+	void build_gas(const OptixBuildInput& build_input, void*& buffer, OptixTraversableHandle& handle) const;
+	OptixTraversableHandle build_ias(std::vector<OptixTraversableHandle>& gases);
 	void create_sbt();
 
 	const RenderInfo* render_info_ = nullptr;
@@ -68,7 +66,8 @@ private:
 	SbtRecord<RayGenData>* d_raygen_records_ = nullptr;
 	SbtRecord<MissData>* d_miss_records_ = nullptr;
 	SbtRecord<HitGroupData>* d_hit_records_ = nullptr;
-	void* sphere_gas_buffer_ = nullptr, * cylinder_gas_buffer_ = nullptr, * triangle_gas_buffer_ = nullptr, * ias_buffer_ = nullptr;
+	std::vector<void*> gas_buffers_{};
+	void* ias_buffer_ = nullptr;
 
 	uint4* xoshiro_initial_ = nullptr;
 	LaunchParams h_launch_params_{};
