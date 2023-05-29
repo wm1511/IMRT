@@ -90,7 +90,7 @@ void CudaRenderer::refresh_material(const int32_t index) const
 	CCE(cudaMemcpy(d_material_data_ + index, &world_info_->materials_[index], sizeof(Material), cudaMemcpyHostToDevice));
 }
 
-void CudaRenderer::refresh_object(const int32_t index) const
+void CudaRenderer::refresh_object(const int32_t index)
 {
 	CCE(cudaMemcpy(d_object_data_ + index, &world_info_->objects_[index], sizeof(Object), cudaMemcpyHostToDevice));
 }

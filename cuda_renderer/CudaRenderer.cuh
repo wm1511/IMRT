@@ -20,7 +20,7 @@ public:
 	void refresh_buffer() override;
 	void refresh_texture(int32_t index) const override;
 	void refresh_material(int32_t index) const override;
-	void refresh_object(int32_t index) const override;
+	void refresh_object(int32_t index) override;
 	void recreate_image() override;
 	void recreate_sky() override;
 	void map_frame_memory() override;

@@ -210,7 +210,7 @@ extern "C" __global__ void __raygen__render()
 	const uint3 index = optixGetLaunchIndex();
 	const uint32_t pixel_index = index.x + index.y * launch_params.width;
 
-	float3 pixel_color_prd{};
+	float3 pixel_color_prd = make_float3(1.0f);
 
 	uint32_t u0, u1;
 	pack_pointer(&pixel_color_prd, u0, u1);

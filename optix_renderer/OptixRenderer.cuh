@@ -26,7 +26,7 @@ public:
 
 	void render() override;
 	void refresh_buffer() override;
-	void refresh_object(int32_t index) const override;
+	void refresh_object(int32_t index) override;
 	void refresh_material(int32_t index) const override;
 	void refresh_texture(int32_t index) const override;
 	void recreate_image() override;
@@ -40,9 +40,9 @@ private:
 	void create_modules();
 	void create_programs();
 	void create_pipeline();
-	void build_gases(std::vector<OptixTraversableHandle>& gases, std::vector<void*>& buffers) const;
-	void build_gas(const OptixBuildInput& build_input, void*& buffer, OptixTraversableHandle& handle) const;
-	OptixTraversableHandle build_ias(std::vector<OptixTraversableHandle>& gases);
+	void prepare_as(const OptixBuildInput& build_input, void*& buffer, OptixTraversableHandle& handle, OptixBuildOperation operation) const;
+	void prepare_gas(Object& object, OptixTraversableHandle& handle, void*& buffer, OptixBuildOperation operation) const;
+	void prepare_ias(std::vector<OptixTraversableHandle>& gases, OptixBuildOperation operation);
 	void create_sbt();
 
 	const RenderInfo* render_info_ = nullptr;
@@ -67,7 +67,9 @@ private:
 	SbtRecord<MissData>* d_miss_records_ = nullptr;
 	SbtRecord<HitGroupData>* d_hit_records_ = nullptr;
 	std::vector<void*> gas_buffers_{};
+	std::vector<OptixTraversableHandle> gas_handles_{};
 	void* ias_buffer_ = nullptr;
+	OptixTraversableHandle ias_handle_{};
 
 	uint4* xoshiro_initial_ = nullptr;
 	LaunchParams h_launch_params_{};
