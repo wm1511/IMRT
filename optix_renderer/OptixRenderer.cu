@@ -75,27 +75,19 @@ void OptixRenderer::render()
 {
 	const auto frame_buffer = static_cast<float4*>(fetch_external_memory(render_info_->frame_handle, render_info_->frame_size));
 
-	if (render_info_->progressive)
-	{
-		sbt_.raygenRecord = reinterpret_cast<CUdeviceptr>(d_raygen_records_);
-		h_launch_params_.sampling_denominator = render_info_->frames_since_refresh;
-	}
-	else
-	{
-		sbt_.raygenRecord = reinterpret_cast<CUdeviceptr>(d_raygen_records_ + 1);
-		CCE(cudaMemset(frame_buffer, 0, render_info_->frame_size));
-		h_launch_params_.sampling_denominator = render_info_->samples_per_pixel;
-	}
-
 	h_launch_params_.width = render_info_->width;
 	h_launch_params_.height = render_info_->height;
 	h_launch_params_.frame_buffer = frame_buffer;
 	h_launch_params_.sky_info = *sky_info_;
 	h_launch_params_.camera_info = *camera_info_;
 
-	CCE(cudaMemcpy(d_launch_params_, &h_launch_params_, sizeof(LaunchParams), cudaMemcpyHostToDevice));
+	if (render_info_->progressive)
+	{
+		h_launch_params_.sampling_denominator = render_info_->frames_since_refresh;
 
-	COE(optixLaunch(
+		CCE(cudaMemcpy(d_launch_params_, &h_launch_params_, sizeof(LaunchParams), cudaMemcpyHostToDevice));
+
+		COE(optixLaunch(
 		pipeline_, stream_,
 		reinterpret_cast<CUdeviceptr>(d_launch_params_),
 		sizeof(LaunchParams),
@@ -104,8 +96,31 @@ void OptixRenderer::render()
 		h_launch_params_.height,
 		1));
 
-	CCE(cudaDeviceSynchronize());
-	CCE(cudaGetLastError());
+		CCE(cudaDeviceSynchronize());
+		CCE(cudaGetLastError());
+	}
+	else
+	{
+		CCE(cudaMemset(frame_buffer, 0, render_info_->frame_size));
+		h_launch_params_.sampling_denominator = render_info_->samples_per_pixel;
+
+		CCE(cudaMemcpy(d_launch_params_, &h_launch_params_, sizeof(LaunchParams), cudaMemcpyHostToDevice));
+
+		for (uint32_t i = 0; i < h_launch_params_.sampling_denominator; i++)
+		{
+			COE(optixLaunch(
+		   pipeline_, stream_,
+		   reinterpret_cast<CUdeviceptr>(d_launch_params_),
+		   sizeof(LaunchParams),
+		   &sbt_,
+		   h_launch_params_.width,
+		   h_launch_params_.height,
+		   1));
+
+			CCE(cudaDeviceSynchronize());
+			CCE(cudaGetLastError());
+		}
+	}
 
 	CCE(cudaFree(frame_buffer));
 }
@@ -123,12 +138,30 @@ void OptixRenderer::refresh_object(int32_t index) const
 {
 }
 
-void OptixRenderer::refresh_material(int32_t index) const
+void OptixRenderer::refresh_material(const int32_t index) const
 {
+	const Object& object = world_info_->objects_[index];
+
+	SbtRecord<HitGroupData> rec{};
+	COE(optixSbtRecordPackHeader(hit_programs_[enum_cast(object.type) - 1], &rec));
+	rec.data.texture = world_info_->textures_[object.texture_id];
+	rec.data.material = world_info_->materials_[object.material_id];
+	rec.data.object = object;
+
+	CCE(cudaMemcpy(d_hit_records_ + index, &rec, sizeof(SbtRecord<HitGroupData>), cudaMemcpyHostToDevice));
 }
 
-void OptixRenderer::refresh_texture(int32_t index) const
+void OptixRenderer::refresh_texture(const int32_t index) const
 {
+	const Object& object = world_info_->objects_[index];
+
+	SbtRecord<HitGroupData> rec{};
+	COE(optixSbtRecordPackHeader(hit_programs_[enum_cast(object.type) - 1], &rec));
+	rec.data.texture = world_info_->textures_[object.texture_id];
+	rec.data.material = world_info_->materials_[object.material_id];
+	rec.data.object = object;
+
+	CCE(cudaMemcpy(d_hit_records_ + index, &rec, sizeof(SbtRecord<HitGroupData>), cudaMemcpyHostToDevice));
 }
 
 void OptixRenderer::recreate_image()
@@ -303,33 +336,20 @@ void OptixRenderer::create_modules()
 
 void OptixRenderer::create_programs()
 {
-	raygen_programs_.resize(2);
+	raygen_programs_.resize(1);
 	OptixProgramGroupOptions rg_options = {};
-	OptixProgramGroupDesc p_rg_desc = {};
-	p_rg_desc.kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-	p_rg_desc.raygen.module = module_;
-	p_rg_desc.raygen.entryFunctionName = "__raygen__render_progressive";
+	OptixProgramGroupDesc rg_desc = {};
+	rg_desc.kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
+	rg_desc.raygen.module = module_;
+	rg_desc.raygen.entryFunctionName = "__raygen__render";
 
 	COE(optixProgramGroupCreate(
 		context_,
-		&p_rg_desc,
+		&rg_desc,
 		1,
 		&rg_options,
 		nullptr, nullptr,
 		raygen_programs_.data()));
-
-	OptixProgramGroupDesc s_rg_desc = {};
-	s_rg_desc.kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-	s_rg_desc.raygen.module = module_;
-	s_rg_desc.raygen.entryFunctionName = "__raygen__render_static";
-
-	COE(optixProgramGroupCreate(
-		context_,
-		&s_rg_desc,
-		1,
-		&rg_options,
-		nullptr, nullptr,
-		raygen_programs_.data() + 1));
 
 	miss_programs_.resize(1);
 	OptixProgramGroupOptions m_options = {};
@@ -435,14 +455,17 @@ void OptixRenderer::create_pipeline()
 
 void OptixRenderer::build_gases(std::vector<OptixTraversableHandle>& gases, std::vector<void*>& buffers) const
 {
-	uint32_t flags[1] = { OPTIX_BUILD_FLAG_NONE };
-
 	for (auto& object : world_info_->objects_)
 	{
+		gases.resize(gases.size() + 1);
+		buffers.resize(buffers.size() + 1);
+
+		OptixBuildInput input{};
+		uint32_t flags[1] = { OPTIX_BUILD_FLAG_NONE };
+
 		if (object.type == ObjectType::SPHERE)
 		{
-			OptixBuildInput sphere_input{};
-			sphere_input.type = OPTIX_BUILD_INPUT_TYPE_SPHERES;
+			input.type = OPTIX_BUILD_INPUT_TYPE_SPHERES;
 
 			float3* d_center;
 			float* d_radius;
@@ -452,31 +475,27 @@ void OptixRenderer::build_gases(std::vector<OptixTraversableHandle>& gases, std:
 			CCE(cudaMalloc(reinterpret_cast<void**>(&d_radius), sizeof(float)));
 			CCE(cudaMemcpy(d_radius, &object.sphere.radius, sizeof(float), cudaMemcpyHostToDevice));
 
-			sphere_input.sphereArray.vertexStrideInBytes = sizeof(float3);
-			sphere_input.sphereArray.numVertices = 1;
-			sphere_input.sphereArray.vertexBuffers = reinterpret_cast<CUdeviceptr*>(&d_center);
+			input.sphereArray.vertexStrideInBytes = sizeof(float3);
+			input.sphereArray.numVertices = 1;
+			input.sphereArray.vertexBuffers = reinterpret_cast<CUdeviceptr*>(&d_center);
 
-			sphere_input.sphereArray.radiusStrideInBytes = sizeof(float);
-			sphere_input.sphereArray.radiusBuffers = reinterpret_cast<CUdeviceptr*>(&d_radius);
+			input.sphereArray.radiusStrideInBytes = sizeof(float);
+			input.sphereArray.radiusBuffers = reinterpret_cast<CUdeviceptr*>(&d_radius);
 
-			sphere_input.sphereArray.flags = flags;
-			sphere_input.sphereArray.numSbtRecords = 1;
-			sphere_input.sphereArray.sbtIndexOffsetBuffer = 0;
-			sphere_input.sphereArray.sbtIndexOffsetSizeInBytes = 0;
-			sphere_input.sphereArray.sbtIndexOffsetStrideInBytes = 0;
+			input.sphereArray.flags = flags;
+			input.sphereArray.numSbtRecords = 1;
+			input.sphereArray.sbtIndexOffsetBuffer = 0;
+			input.sphereArray.sbtIndexOffsetSizeInBytes = 0;
+			input.sphereArray.sbtIndexOffsetStrideInBytes = 0;
 
-			gases.resize(gases.size() + 1);
-			buffers.resize(buffers.size() + 1);
-
-			build_gas(sphere_input, buffers[buffers.size() - 1], gases[gases.size() - 1]);
+			build_gas(input, buffers[buffers.size() - 1], gases[gases.size() - 1]);
 
 			CCE(cudaFree(d_center));
 			CCE(cudaFree(d_radius));
 		}
 		else if (object.type == ObjectType::CYLINDER)
 		{
-			OptixBuildInput cylinder_input{};
-			cylinder_input.type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
+			input.type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
 
 			OptixAabb* d_aabb;
 
@@ -487,48 +506,41 @@ void OptixRenderer::build_gases(std::vector<OptixTraversableHandle>& gases, std:
 			CCE(cudaMalloc(reinterpret_cast<void**>(&d_aabb), sizeof(OptixAabb)));
 			CCE(cudaMemcpy(d_aabb, &aabb, sizeof(OptixAabb), cudaMemcpyHostToDevice));
 
-			cylinder_input.customPrimitiveArray.aabbBuffers = reinterpret_cast<CUdeviceptr*>(&d_aabb);
-			cylinder_input.customPrimitiveArray.numPrimitives = 1;
+			input.customPrimitiveArray.aabbBuffers = reinterpret_cast<CUdeviceptr*>(&d_aabb);
+			input.customPrimitiveArray.numPrimitives = 1;
 
-			cylinder_input.customPrimitiveArray.flags = flags;
-			cylinder_input.customPrimitiveArray.numSbtRecords = 1;
-			cylinder_input.customPrimitiveArray.sbtIndexOffsetBuffer = 0;
-			cylinder_input.customPrimitiveArray.sbtIndexOffsetSizeInBytes = 0;
-			cylinder_input.customPrimitiveArray.sbtIndexOffsetStrideInBytes = 0; 
-			cylinder_input.customPrimitiveArray.primitiveIndexOffset = 0;
+			input.customPrimitiveArray.flags = flags;
+			input.customPrimitiveArray.numSbtRecords = 1;
+			input.customPrimitiveArray.sbtIndexOffsetBuffer = 0;
+			input.customPrimitiveArray.sbtIndexOffsetSizeInBytes = 0;
+			input.customPrimitiveArray.sbtIndexOffsetStrideInBytes = 0; 
+			input.customPrimitiveArray.primitiveIndexOffset = 0;
 
-			gases.resize(gases.size() + 1);
-			buffers.resize(buffers.size() + 1);
-
-			build_gas(cylinder_input, buffers[buffers.size() - 1], gases[gases.size() - 1]);
+			build_gas(input, buffers[buffers.size() - 1], gases[gases.size() - 1]);
 
 			CCE(cudaFree(d_aabb));
 		}
 		else if (object.type == ObjectType::MODEL)
 		{
-			OptixBuildInput triangle_input{};
-			triangle_input.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
+			input.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
 
-			triangle_input.triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
-			triangle_input.triangleArray.vertexStrideInBytes = sizeof(float3);
-			triangle_input.triangleArray.numVertices = static_cast<uint32_t>(object.model.vertex_count);
-			triangle_input.triangleArray.vertexBuffers = reinterpret_cast<CUdeviceptr*>(&object.model.d_vertices);
+			input.triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
+			input.triangleArray.vertexStrideInBytes = sizeof(float3);
+			input.triangleArray.numVertices = static_cast<uint32_t>(object.model.vertex_count);
+			input.triangleArray.vertexBuffers = reinterpret_cast<CUdeviceptr*>(&object.model.d_vertices);
 
-			triangle_input.triangleArray.indexFormat = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
-			triangle_input.triangleArray.indexStrideInBytes = sizeof(int3);
-			triangle_input.triangleArray.numIndexTriplets = static_cast<uint32_t>(object.model.index_count);
-			triangle_input.triangleArray.indexBuffer = reinterpret_cast<CUdeviceptr>(object.model.d_indices);
+			input.triangleArray.indexFormat = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
+			input.triangleArray.indexStrideInBytes = sizeof(int3);
+			input.triangleArray.numIndexTriplets = static_cast<uint32_t>(object.model.index_count);
+			input.triangleArray.indexBuffer = reinterpret_cast<CUdeviceptr>(object.model.d_indices);
 
-			triangle_input.triangleArray.flags = flags;
-			triangle_input.triangleArray.numSbtRecords = 1;
-			triangle_input.triangleArray.sbtIndexOffsetBuffer = 0;
-			triangle_input.triangleArray.sbtIndexOffsetSizeInBytes = 0;
-			triangle_input.triangleArray.sbtIndexOffsetStrideInBytes = 0;
+			input.triangleArray.flags = flags;
+			input.triangleArray.numSbtRecords = 1;
+			input.triangleArray.sbtIndexOffsetBuffer = 0;
+			input.triangleArray.sbtIndexOffsetSizeInBytes = 0;
+			input.triangleArray.sbtIndexOffsetStrideInBytes = 0;
 
-			gases.resize(gases.size() + 1);
-			buffers.resize(buffers.size() + 1);
-
-			build_gas(triangle_input, buffers[buffers.size() - 1], gases[gases.size() - 1]);
+			build_gas(input, buffers[buffers.size() - 1], gases[gases.size() - 1]);
 		}
 	}
 }
@@ -536,7 +548,7 @@ void OptixRenderer::build_gases(std::vector<OptixTraversableHandle>& gases, std:
 void OptixRenderer::build_gas(const OptixBuildInput& build_input, void*& buffer, OptixTraversableHandle& handle) const
 {
 	OptixAccelBuildOptions accel_options = {};
-	accel_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
+	accel_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_ALLOW_UPDATE;
 	accel_options.motionOptions.numKeys = 1;
 	accel_options.operation = OPTIX_BUILD_OPERATION_BUILD;
 
@@ -606,16 +618,16 @@ OptixTraversableHandle OptixRenderer::build_ias(std::vector<OptixTraversableHand
 							0,1,0,0,
 							0,0,1,0 };
 
-	for (const auto& gas : gases)
+	for (uint32_t i = 0; i < gases.size(); i++)
     {
         OptixInstance instance = {};
         
         instance.instanceId = 0;
         instance.visibilityMask = 255;
-        instance.sbtOffset = 0;
+        instance.sbtOffset = i;
         instance.flags = OPTIX_INSTANCE_FLAG_DISABLE_ANYHIT;
         memcpy_s(instance.transform, sizeof(float) * 12, transform, sizeof transform);
-        instance.traversableHandle = gas;
+        instance.traversableHandle = gases[i];
         instances.push_back(instance);
     }
 
@@ -706,6 +718,8 @@ void OptixRenderer::create_sbt()
 
 	CCE(cudaMalloc(reinterpret_cast<void**>(&d_raygen_records_), raygen_records.size() * sizeof(SbtRecord<RayGenData>)));
 	CCE(cudaMemcpy(d_raygen_records_, raygen_records.data(), raygen_records.size() * sizeof(SbtRecord<RayGenData>), cudaMemcpyHostToDevice));
+
+	sbt_.raygenRecord = reinterpret_cast<CUdeviceptr>(d_raygen_records_);
 
 	std::vector<SbtRecord<MissData>> miss_records;
 	for (const auto& miss_program : miss_programs_)

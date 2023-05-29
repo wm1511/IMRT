@@ -347,7 +347,7 @@ void RtInterface::edit_camera()
 		}
 		if (ImGui::TreeNode("Lens radius"))
 		{
-			is_edited |= ImGui::SliderFloat("##LensRadius", &camera_info_.lens_radius, 0.0f, UINT8_MAX, "%.3f",
+			is_edited |= ImGui::SliderFloat("##LensRadius", &camera_info_.lens_radius, 0.0f, UINT8_MAX, "%.4f",
 				ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 			ImGui::TreePop();
 		}
@@ -359,12 +359,12 @@ void RtInterface::edit_camera()
 		}
 		if (ImGui::TreeNode("Movement speed"))
 		{
-			ImGui::SliderFloat("##MoveSpeed", &camera_movement_speed_, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("##MoveSpeed", &camera_movement_speed_, 0.0f, 0.1f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Rotation speed"))
 		{
-			ImGui::SliderFloat("##RotateSpeed", &camera_rotation_speed_, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("##RotateSpeed", &camera_rotation_speed_, 0.0f, 0.1f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
 			ImGui::TreePop();
 		}
 

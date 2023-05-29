@@ -51,7 +51,6 @@ inline __host__ std::string read_shader(const std::string& program_name)
 	const std::filesystem::path path = std::filesystem::current_path() / "x64" / "Release" / program_name;
 #endif
 
-
 	std::ifstream file(path, std::ios::in | std::ios::binary);
     const uint64_t size = file_size(path);
     std::string source(size, '\0');

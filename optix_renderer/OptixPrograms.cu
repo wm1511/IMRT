@@ -205,12 +205,12 @@ extern "C" __global__ void __miss__radiance()
 		prd = sample_sky(optixGetWorldRayDirection(), launch_params.sky_info);
 }
 
-extern "C" __global__ void __raygen__render_progressive()
+extern "C" __global__ void __raygen__render()
 {
 	const uint3 index = optixGetLaunchIndex();
 	const uint32_t pixel_index = index.x + index.y * launch_params.width;
 
-	float3 pixel_color_prd = make_float3(1.0f);
+	float3 pixel_color_prd{};
 
 	uint32_t u0, u1;
 	pack_pointer(&pixel_color_prd, u0, u1);
@@ -223,32 +223,6 @@ extern "C" __global__ void __raygen__render_progressive()
 
 	trace(ray.origin_, ray.direction_, u0, u1);
 
-	launch_params.accumulation_buffer[pixel_index] += make_float4(sqrt(pixel_color_prd), 1.0f);
-	launch_params.frame_buffer[pixel_index] = launch_params.accumulation_buffer[pixel_index] / (float)launch_params.sampling_denominator;
-}
-
-extern "C" __global__ void __raygen__render_static()
-{
-	const uint3 index = optixGetLaunchIndex();
-	const uint32_t pixel_index = index.x + index.y * launch_params.width;
-
-	float3 pixel_color_prd{};
-
-	uint32_t u0, u1;
-	pack_pointer(&pixel_color_prd, u0, u1);
-
-	for (uint32_t i = 0; i < launch_params.sampling_denominator; i++)
-	{
-		uint32_t random_state = xoshiro(&launch_params.xoshiro_state[pixel_index]);
-		const float u = ((float)index.x + pcg(&random_state)) / (float)launch_params.width;
-		const float v = ((float)index.y + pcg(&random_state)) / (float)launch_params.height;
-
-		const Ray ray = cast_ray(&random_state, u, v, launch_params.camera_info);
-
-		trace(ray.origin_, ray.direction_, u0, u1);
-
-		launch_params.accumulation_buffer[pixel_index] += make_float4(pixel_color_prd, 1.0f);
-	}
-
+	launch_params.accumulation_buffer[pixel_index] += make_float4(pixel_color_prd, 1.0f);
 	launch_params.frame_buffer[pixel_index] = sqrt(launch_params.accumulation_buffer[pixel_index] / (float)launch_params.sampling_denominator);
 }
