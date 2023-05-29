@@ -22,13 +22,13 @@ struct LaunchParams
 
 struct RayGenData
 {
-    void *data;
+    void* data;
 };
 
 
 struct MissData
 {
-    void *data;
+    void* data;
 };
 
 

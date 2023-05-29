@@ -620,7 +620,7 @@ __inline__ __host__ __device__ void rotate_point_z(float3& v, const float rz)
 	v = { ca * v.x - sa * v.y, sa * v.x + ca * v.y, v.z };
 }
 
-__inline__ __host__ __device__ void transform_point(float3& v, const float3 t, const float3 s, const float3 r)
+__inline__ __host__ __device__ float3 transform_point(float3 v, const float3 t, const float3 s, const float3 r)
 {
 	scale_point(v, s);
 
@@ -634,6 +634,31 @@ __inline__ __host__ __device__ void transform_point(float3& v, const float3 t, c
 		rotate_point_z(v, r.z);
 
 	translate_point(v, t);
+
+	return v;
+}
+
+__inline__ __host__ __device__ void fill_matrix(float matrix[12], const float3 t, const float3 s, const float3 r)
+{
+	const float sa = sin(r.z);
+	const float ca = cos(r.z);
+	const float sb = sin(r.y);
+	const float cb = cos(r.y);
+	const float sc = sin(r.x);
+	const float cc = cos(r.x);
+
+	matrix[0] = cb * cc * s.x;
+	matrix[1] = -cb * sc * s.y;
+	matrix[2] = sb * s.z;
+	matrix[3] = t.x;
+	matrix[4] = (sa * sb * cc + ca * sc) * s.x;
+	matrix[5] = (-sa * sb * sc + ca * cc) * s.y;
+	matrix[6] = -sa * cb * s.z;
+	matrix[7] = t.y;
+	matrix[8] = (-ca * sb * cc + sa * sc) * s.x;
+	matrix[9] = (ca * sb * sc + sa * cc) * s.y;
+	matrix[10] = ca * cb * s.z;
+	matrix[11] = t.z;
 }
 
 // Random

@@ -92,15 +92,17 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>%VULKAN_SDK%\include;D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%VULKAN_SDK%\include;C:\ProgramData\NVIDIA Corporation\OptiX SDK 7.7.0\include;$(SolutionDir)lib;$(SolutionDir)lib\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <OpenMPSupport>true</OpenMPSupport>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;D:\Biblioteki\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
+      <AdditionalLibraryDirectories>$(SolutionDir)lib\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories);$(CudaToolkitLibDir);%VULKAN_SDK%/Lib</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile />
     <CudaCompile>
@@ -119,7 +121,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;D:\Biblioteki\glm;D:\Biblioteki\;%VULKAN_SDK%\include;C:\Program Files\Microsoft Visual Studio\Libraries;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\include;C:\Program Files\Microsoft Visual Studio\Libraries\glm;C:\ProgramData\NVIDIA Corporation\OptiX SDK 7.7.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%VULKAN_SDK%\include;C:\ProgramData\NVIDIA Corporation\OptiX SDK 7.7.0\include;$(SolutionDir)lib;$(SolutionDir)lib\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <OpenMPSupport>true</OpenMPSupport>
@@ -127,10 +129,10 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;D:\Biblioteki\glfw-3.3.7.bin.WIN64\lib-vc2022;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;nvrtc.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
+      <AdditionalLibraryDirectories>$(SolutionDir)lib\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories);$(CudaToolkitLibDir);%VULKAN_SDK%/Lib</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile />
     <CudaCompile>
@@ -153,19 +155,21 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>VULKAN_SDK%\include;D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%VULKAN_SDK%\include;C:\ProgramData\NVIDIA Corporation\OptiX SDK 7.7.0\include;$(SolutionDir)lib;$(SolutionDir)lib\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <OpenMPSupport>true</OpenMPSupport>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;D:\Biblioteki\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
+      <AdditionalLibraryDirectories>$(SolutionDir)lib\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories);$(CudaToolkitLibDir);%VULKAN_SDK%/Lib</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile />
     <CudaCompile>
@@ -188,7 +192,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>D:\Biblioteki\glfw-3.3.7.bin.WIN64\include;D:\Biblioteki\glm;D:\Biblioteki\;%VULKAN_SDK%\include;C:\Program Files\Microsoft Visual Studio\Libraries;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\include;C:\Program Files\Microsoft Visual Studio\Libraries\glm;C:\ProgramData\NVIDIA Corporation\OptiX SDK 7.7.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%VULKAN_SDK%\include;C:\ProgramData\NVIDIA Corporation\OptiX SDK 7.7.0\include;$(SolutionDir)lib;$(SolutionDir)lib\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -199,11 +203,11 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>%VULKAN_SDK%\lib;D:\Biblioteki\glfw-3.3.7.bin.WIN64\lib-vc2022;C:\Program Files\Microsoft Visual Studio\Libraries\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
+      <AdditionalLibraryDirectories>$(SolutionDir)lib\glfw-3.3.7.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories);$(CudaToolkitLibDir);%VULKAN_SDK%/Lib</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile />
     <CudaCompile>
@@ -222,99 +226,100 @@
     </CudaLink>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="cpu_renderer\CpuRenderer.cpp">
+    <ClCompile Include="src\cpu_renderer\CpuRenderer.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClInclude Include="common\Utils.hpp" />
-    <ClInclude Include="cuda_renderer\CudaKernels.cuh" />
-    <ClInclude Include="cuda_renderer\CudaRenderer.cuh" />
-    <ClInclude Include="info\CameraInfo.hpp" />
-    <ClCompile Include="imgui\imgui.cpp">
+    <ClInclude Include="src\common\Utils.hpp" />
+    <ClInclude Include="src\cuda_renderer\CudaKernels.cuh" />
+    <ClInclude Include="src\cuda_renderer\CudaRenderer.cuh" />
+    <ClInclude Include="src\info\CameraInfo.hpp" />
+    <ClCompile Include="lib\imgui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_demo.cpp">
+    <ClCompile Include="lib\imgui\imgui_demo.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_draw.cpp">
+    <ClCompile Include="lib\imgui\imgui_draw.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_impl_glfw.cpp">
+    <ClCompile Include="lib\imgui\imgui_impl_glfw.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_impl_vulkan.cpp">
+    <ClCompile Include="lib\imgui\imgui_impl_vulkan.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_tables.cpp">
+    <ClCompile Include="lib\imgui\imgui_tables.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_widgets.cpp">
+    <ClCompile Include="lib\imgui\imgui_widgets.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="info\WorldInfo.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="sky\ArHosekSkyModel.c">
+    <ClCompile Include="src\info\WorldInfo.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="lib\sky\ArHosekSkyModel.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="stdafx.cpp">
+    <ClCompile Include="src\stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="wrapper\App.cpp" />
-    <ClCompile Include="wrapper\Frame.cpp" />
-    <ClCompile Include="wrapper\RtInterface.cpp" />
+    <ClCompile Include="src\wrapper\App.cpp" />
+    <ClCompile Include="src\wrapper\Frame.cpp" />
+    <ClCompile Include="src\wrapper\RtInterface.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="abstract\IDrawable.hpp" />
-    <ClInclude Include="abstract\IRenderer.hpp" />
-    <ClInclude Include="common\Color.hpp" />
-    <ClInclude Include="common\Boundary.hpp" />
-    <ClInclude Include="cpu_renderer\CpuRenderer.hpp" />
-    <ClInclude Include="common\Intersection.hpp" />
-    <ClInclude Include="common\Math.hpp" />
-    <ClInclude Include="common\Ray.hpp" />
-    <ClInclude Include="common\World.hpp" />
-    <ClInclude Include="imgui\imconfig.h" />
-    <ClInclude Include="imgui\imgui.h" />
-    <ClInclude Include="imgui\imgui_impl_glfw.h" />
-    <ClInclude Include="imgui\imgui_impl_vulkan.h" />
-    <ClInclude Include="imgui\imgui_internal.h" />
-    <ClInclude Include="imgui\imstb_rectpack.h" />
-    <ClInclude Include="imgui\imstb_textedit.h" />
-    <ClInclude Include="imgui\imstb_truetype.h" />
-    <ClInclude Include="common\Material.hpp" />
-    <ClInclude Include="common\Object.hpp" />
-    <ClInclude Include="info\SkyInfo.hpp" />
-    <ClInclude Include="common\Texture.hpp" />
-    <ClInclude Include="info\WorldInfo.hpp" />
-    <ClInclude Include="optix_renderer\LaunchParams.hpp" />
-    <ClInclude Include="optix_renderer\OptixPrograms.cuh" />
-    <ClInclude Include="optix_renderer\OptixRenderer.cuh" />
-    <ClInclude Include="sky\ArHosekSkyModel.h" />
-    <ClInclude Include="sky\ArHosekSkyModelData_CIEXYZ.h" />
-    <ClInclude Include="sky\ArHosekSkyModelData_RGB.h" />
-    <ClInclude Include="sky\ArHosekSkyModelData_Spectral.h" />
-    <ClInclude Include="stdafx.h" />
-    <ClInclude Include="wrapper\App.hpp" />
-    <ClInclude Include="wrapper\Frame.hpp" />
-    <ClInclude Include="info\RenderInfo.hpp" />
-    <ClInclude Include="wrapper\RtInterface.hpp" />
+    <ClInclude Include="src\abstract\IDrawable.hpp" />
+    <ClInclude Include="src\abstract\IRenderer.hpp" />
+    <ClInclude Include="src\common\Color.hpp" />
+    <ClInclude Include="src\common\Boundary.hpp" />
+    <ClInclude Include="src\cpu_renderer\CpuRenderer.hpp" />
+    <ClInclude Include="src\common\Intersection.hpp" />
+    <ClInclude Include="src\common\Math.hpp" />
+    <ClInclude Include="src\common\Ray.hpp" />
+    <ClInclude Include="src\common\World.hpp" />
+    <ClInclude Include="lib\imgui\imconfig.h" />
+    <ClInclude Include="lib\imgui\imgui.h" />
+    <ClInclude Include="lib\imgui\imgui_impl_glfw.h" />
+    <ClInclude Include="lib\imgui\imgui_impl_vulkan.h" />
+    <ClInclude Include="lib\imgui\imgui_internal.h" />
+    <ClInclude Include="lib\imgui\imstb_rectpack.h" />
+    <ClInclude Include="lib\imgui\imstb_textedit.h" />
+    <ClInclude Include="lib\imgui\imstb_truetype.h" />
+    <ClInclude Include="src\common\Material.hpp" />
+    <ClInclude Include="src\common\Object.hpp" />
+    <ClInclude Include="src\info\SkyInfo.hpp" />
+    <ClInclude Include="src\common\Texture.hpp" />
+    <ClInclude Include="src\info\WorldInfo.hpp" />
+    <ClInclude Include="src\optix_renderer\LaunchParams.hpp" />
+    <ClInclude Include="src\optix_renderer\OptixPrograms.cuh" />
+    <ClInclude Include="src\optix_renderer\OptixRenderer.cuh" />
+    <ClInclude Include="lib\sky\ArHosekSkyModel.h" />
+    <ClInclude Include="lib\sky\ArHosekSkyModelData_CIEXYZ.h" />
+    <ClInclude Include="lib\sky\ArHosekSkyModelData_RGB.h" />
+    <ClInclude Include="lib\sky\ArHosekSkyModelData_Spectral.h" />
+    <ClInclude Include="src\stdafx.h" />
+    <ClInclude Include="src\wrapper\App.hpp" />
+    <ClInclude Include="src\wrapper\Frame.hpp" />
+    <ClInclude Include="src\info\RenderInfo.hpp" />
+    <ClInclude Include="src\wrapper\RtInterface.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="imgui\LICENSE.txt" />
+    <Text Include="lib\imgui\LICENSE.txt" />
+    <Text Include="lib\sky\README.txt" />
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="cuda_renderer\CudaKernels.cu" />
-    <CudaCompile Include="cuda_renderer\CudaRenderer.cu" />
-    <CudaCompile Include="optix_renderer\OptixPrograms.cu">
+    <CudaCompile Include="src\cuda_renderer\CudaKernels.cu" />
+    <CudaCompile Include="src\cuda_renderer\CudaRenderer.cu" />
+    <CudaCompile Include="src\optix_renderer\OptixPrograms.cu">
       <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(CudaIntDirFullPath)\%(Filename).optixir</CompileOut>
       <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">optix-ir</NvccCompilation>
       <CompileOut Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(CudaIntDirFullPath)\%(Filename).optixir</CompileOut>
@@ -327,7 +332,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </CudaCompile>
-    <CudaCompile Include="optix_renderer\OptixRenderer.cu">
+    <CudaCompile Include="src\optix_renderer\OptixRenderer.cu">
       <FileType>Document</FileType>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>

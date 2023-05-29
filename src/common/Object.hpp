@@ -12,55 +12,6 @@ enum class ObjectType
 	MODEL
 };
 
-static __inline__ __host__ __device__ Boundary bound_triangle(const float3* vertices, const uint3* first_index)
-{
-	const uint3 index = *first_index;
-	const float3 v0 = vertices[index.x];
-	const float3 v1 = vertices[index.y];
-	const float3 v2 = vertices[index.z];
-
-	return { fminf(v0, v1, v2), fmaxf(v0, v1, v2) };
-}
-
-static __inline__ __host__ __device__ bool intersect_triangle(const Ray& ray, Intersection& intersection, const float3* vertices, const uint3* first_index, const float3* normals, const float2* uv)
-{
-	const uint3 index = *first_index;
-	const float3 v0 = vertices[index.x];
-	const float3 v1 = vertices[index.y];
-	const float3 v2 = vertices[index.z];
-
-	const float3 v0_v1 = v1 - v0;
-	const float3 v0_v2 = v2 - v0;
-
-	const float3 p_vec = cross(ray.direction_, v0_v2);
-	const float determinant = dot(p_vec, v0_v1);
-
-	if (determinant < FLT_EPSILON)
-		return false;
-
-	const float inverse_determinant = 1.0f / determinant;
-
-	const float3 t_vec = ray.origin_ - v0;
-	const float3 q_vec = cross(t_vec, v0_v1);
-
-	const float u = dot(p_vec, t_vec) * inverse_determinant;
-	const float v = dot(q_vec, ray.direction_) * inverse_determinant;
-
-	if (v < 0.0f || u < 0.0f || u + v > 1.0f)
-		return false;
-
-	const float t = dot(q_vec, v0_v2) * inverse_determinant;
-
-	if (t < kTMin || t > ray.t_max_)
-		return false;
-
-	ray.t_max_ = t;
-	intersection.point = ray.origin_ + t * ray.direction_;
-	intersection.uv = (1.0f - u - v) * uv[index.x] + u * uv[index.y] + v * uv[index.z];
-	intersection.normal = normalize((1.0f - u - v) * normals[index.x] + u * normals[index.y] + v * normals[index.z]);
-	return true;
-}
-
 struct Sphere
 {
 	__host__ Sphere(const float3 center, const float radius)
@@ -216,7 +167,7 @@ struct Model
 
 		for (uint64_t i = 0; i < index_count; i++)
 		{
-			if (intersect_triangle(ray, temp_intersection, d_vertices, d_indices + i, d_normals, d_uv))
+			if (intersect_triangle(ray, temp_intersection, d_indices + i))
 			{
 				intersected = true;
 				intersection = temp_intersection;
@@ -231,7 +182,7 @@ struct Model
 		Boundary boundary{};
 
 		for (uint64_t i = 0; i < index_count; i++)
-			boundary = unite(boundary, bound_triangle(d_vertices, d_indices + i));
+			boundary = unite(boundary, bound_triangle(d_indices + i));
 
 		return boundary;
 	}
@@ -241,6 +192,65 @@ struct Model
 	float3* h_normals = nullptr, * d_normals = nullptr;
 	float2* h_uv = nullptr, * d_uv = nullptr;
 	uint64_t vertex_count{}, index_count{};
+	float3 scale{1.0f, 1.0f, 1.0f};
+	float3 rotation{0.0f, 0.0f, 0.0f};
+	float3 translation{0.0f, 0.0f, 0.0f};
+
+private:
+	__inline__ __host__ __device__ Boundary bound_triangle(const uint3* first_index) const
+	{
+		const uint3 index = *first_index;
+		const float3 v0 = transform_point(d_vertices[index.x], translation, scale, rotation);
+		const float3 v1 = transform_point(d_vertices[index.y], translation, scale, rotation);
+		const float3 v2 = transform_point(d_vertices[index.z], translation, scale, rotation);
+
+		return { fminf(v0, v1, v2), fmaxf(v0, v1, v2) };
+	}
+
+	__inline__ __host__ __device__ bool intersect_triangle(const Ray& ray, Intersection& intersection, const uint3* first_index) const
+	{
+		const uint3 index = *first_index;
+		const float3 v0 = transform_point(d_vertices[index.x], translation, scale, rotation);
+		const float3 v1 = transform_point(d_vertices[index.y], translation, scale, rotation);
+		const float3 v2 = transform_point(d_vertices[index.z], translation, scale, rotation);
+
+		const float3 v0_v1 = v1 - v0;
+		const float3 v0_v2 = v2 - v0;
+
+		const float3 p_vec = cross(ray.direction_, v0_v2);
+		const float determinant = dot(p_vec, v0_v1);
+
+		if (determinant < FLT_EPSILON)
+			return false;
+
+		const float inverse_determinant = 1.0f / determinant;
+
+		const float3 t_vec = ray.origin_ - v0;
+		const float3 q_vec = cross(t_vec, v0_v1);
+
+		const float u = dot(p_vec, t_vec) * inverse_determinant;
+		const float v = dot(q_vec, ray.direction_) * inverse_determinant;
+
+		if (v < 0.0f || u < 0.0f || u + v > 1.0f)
+			return false;
+
+		const float t = dot(q_vec, v0_v2) * inverse_determinant;
+
+		if (t < kTMin || t > ray.t_max_)
+			return false;
+
+		ray.t_max_ = t;
+		intersection.point = ray.origin_ + t * ray.direction_;
+		intersection.uv = (1.0f - u - v) * d_uv[index.x] + u * d_uv[index.y] + v * d_uv[index.z];
+
+		float3 normal = normalize((1.0f - u - v) * d_normals[index.x] + u * d_normals[index.y] + v * d_normals[index.z]);
+		rotate_point_x(normal, rotation.x);
+		rotate_point_y(normal, rotation.y);
+		rotate_point_z(normal, rotation.z);
+
+		intersection.normal = normal;
+		return true;
+	}
 };
 
 struct Object

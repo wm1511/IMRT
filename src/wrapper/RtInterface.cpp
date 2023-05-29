@@ -754,21 +754,19 @@ void RtInterface::edit_object()
 					is_edited |= ImGui::SliderFloat("Radius", &current_object->cylinder.radius, 0.0f, UINT8_MAX, "%.3f", 
 						ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
 				}
-				/*else if (current_object->type == ObjectType::MODEL)
+				else if (current_object->type == ObjectType::MODEL)
 				{
-					const auto current_model = current_object->model;
-
-					is_edited |= ImGui::SliderFloat3("Translation", current_model->translation.arr, -UINT16_MAX, UINT16_MAX, "%.3f", 
+					is_edited |= ImGui::SliderFloat3("Translation", reinterpret_cast<float*>(&current_object->model.translation), -UINT16_MAX, UINT16_MAX, "%.3f", 
 							ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
-					is_edited |= ImGui::SliderFloat3("Scale", current_model->scale.arr, 0.001f, UINT8_MAX, "%.3f", 
+					is_edited |= ImGui::SliderFloat3("Scale", reinterpret_cast<float*>(&current_object->model.scale), 0.001f, UINT8_MAX, "%.3f", 
 							ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
-					is_edited |= ImGui::SliderAngle("Rotation x", &current_model->rotation.arr[0], 0.0f, 360.0f, "%.3f", 
+					is_edited |= ImGui::SliderAngle("Rotation x", &current_object->model.rotation.x, 0.0f, 360.0f, "%.3f", 
 							ImGuiSliderFlags_AlwaysClamp);
-					is_edited |= ImGui::SliderAngle("Rotation y", &current_model->rotation.arr[1], 0.0f, 360.0f, "%.3f", 
+					is_edited |= ImGui::SliderAngle("Rotation y", &current_object->model.rotation.y, 0.0f, 360.0f, "%.3f", 
 							ImGuiSliderFlags_AlwaysClamp);
-					is_edited |= ImGui::SliderAngle("Rotation z", &current_model->rotation.arr[2], 0.0f, 360.0f, "%.3f", 
+					is_edited |= ImGui::SliderAngle("Rotation z", &current_object->model.rotation.z, 0.0f, 360.0f, "%.3f", 
 							ImGuiSliderFlags_AlwaysClamp);
-				}*/
+				}
 
 				if (ImGui::TreeNode("Texture"))
 				{

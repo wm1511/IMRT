@@ -463,7 +463,7 @@ void App::initialize()
     ImGui_ImplVulkan_Init(&init_info, wd->RenderPass);
 
     // Load font
-    const ImFont* font = io.Fonts->AddFontFromFileTTF("wrapper/OpenSans-Regular.ttf", info_.font_size);
+    const ImFont* font = io.Fonts->AddFontFromFileTTF("assets/OpenSans-Regular.ttf", info_.font_size);
     IM_ASSERT(font != NULL);
 
     // Upload Fonts

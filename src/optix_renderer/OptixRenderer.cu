@@ -649,9 +649,9 @@ void OptixRenderer::prepare_ias(std::vector<OptixTraversableHandle>& gases, cons
 {
     std::vector<OptixInstance> instances;
 
-	float transform[12] = {	1,0,0,0,
-							0,1,0,0,
-							0,0,1,0 };
+	float transform[12] = {	1.0f, 0.0f, 0.0f, 0.0f, 
+							0.0f, 1.0f, 0.0f, 0.0f, 
+							0.0f, 0.0f, 1.0f, 0.0f };
 
 	for (uint32_t i = 0; i < gases.size(); i++)
     {
@@ -661,7 +661,17 @@ void OptixRenderer::prepare_ias(std::vector<OptixTraversableHandle>& gases, cons
         instance.visibilityMask = 255;
         instance.sbtOffset = i;
         instance.flags = OPTIX_INSTANCE_FLAG_DISABLE_ANYHIT;
-        memcpy_s(instance.transform, sizeof(float) * 12, transform, sizeof transform);
+
+		if (world_info_->objects_[i].type == ObjectType::MODEL)
+		{
+			const auto& model = world_info_->objects_[i].model;
+			fill_matrix(instance.transform, model.translation, model.scale, model.rotation);
+		}
+		else
+		{
+			memcpy_s(instance.transform, sizeof(float) * 12, transform, sizeof transform);
+		}
+
         instance.traversableHandle = gases[i];
         instances.push_back(instance);
     }

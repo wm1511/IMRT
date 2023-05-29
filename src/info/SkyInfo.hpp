@@ -1,7 +1,7 @@
 #pragma once
 extern "C"
 {
-#include "../sky/ArHosekSkyModel.h"
+#include "sky/ArHosekSkyModel.h"
 }
 
 #include "stb_image.h"
