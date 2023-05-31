@@ -77,6 +77,7 @@ void OptixRenderer::render()
 
 	h_launch_params_.width = render_info_->width;
 	h_launch_params_.height = render_info_->height;
+	h_launch_params_.depth = render_info_->max_depth;
 	h_launch_params_.frame_buffer = frame_buffer;
 	h_launch_params_.sky_info = *sky_info_;
 	h_launch_params_.camera_info = *camera_info_;
@@ -330,8 +331,8 @@ void OptixRenderer::create_modules()
 	pipeline_compile_options_.usesPrimitiveTypeFlags = OPTIX_PRIMITIVE_TYPE_FLAGS_CUSTOM |
 		OPTIX_PRIMITIVE_TYPE_FLAGS_SPHERE;
 	pipeline_compile_options_.usesMotionBlur = false;
-	pipeline_compile_options_.numPayloadValues = 2;
-	pipeline_compile_options_.numAttributeValues = 2;
+	pipeline_compile_options_.numPayloadValues = 10;
+	pipeline_compile_options_.numAttributeValues = 5;
 #ifdef _DEBUG
 	pipeline_compile_options_.exceptionFlags = OPTIX_EXCEPTION_FLAG_DEBUG;
 #else
@@ -368,20 +369,33 @@ void OptixRenderer::create_programs()
 		nullptr, nullptr,
 		raygen_programs_.data()));
 
-	miss_programs_.resize(1);
+	miss_programs_.resize(2);
 	OptixProgramGroupOptions m_options = {};
-	OptixProgramGroupDesc m_desc = {};
-	m_desc.kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
-	m_desc.miss.module = module_;
-	m_desc.miss.entryFunctionName = "__miss__radiance";
+	OptixProgramGroupDesc mh_desc = {};
+	mh_desc.kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
+	mh_desc.miss.module = module_;
+	mh_desc.miss.entryFunctionName = "__miss__hdr";
 
 	COE(optixProgramGroupCreate(
 		context_,
-		&m_desc,
+		&mh_desc,
 		1,
 		&m_options,
 		nullptr, nullptr,
 		miss_programs_.data()));
+
+	OptixProgramGroupDesc ms_desc = {};
+	ms_desc.kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
+	ms_desc.miss.module = module_;
+	ms_desc.miss.entryFunctionName = "__miss__sky";
+
+	COE(optixProgramGroupCreate(
+		context_,
+		&ms_desc,
+		1,
+		&m_options,
+		nullptr, nullptr,
+		miss_programs_.data() + 1));
 
 	hit_programs_.resize(3);
 	OptixProgramGroupOptions hg_options = {};

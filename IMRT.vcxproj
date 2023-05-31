@@ -300,7 +300,6 @@
     <ClInclude Include="src\common\Texture.hpp" />
     <ClInclude Include="src\info\WorldInfo.hpp" />
     <ClInclude Include="src\optix_renderer\LaunchParams.hpp" />
-    <ClInclude Include="src\optix_renderer\OptixPrograms.cuh" />
     <ClInclude Include="src\optix_renderer\OptixRenderer.cuh" />
     <ClInclude Include="lib\sky\ArHosekSkyModel.h" />
     <ClInclude Include="lib\sky\ArHosekSkyModelData_CIEXYZ.h" />

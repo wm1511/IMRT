@@ -11,6 +11,14 @@ __host__ __device__ __forceinline__ Ray cast_ray(uint32_t* random_state, const f
 		camera_info.starting_point + screen_x * camera_info.horizontal_map + screen_y * camera_info.vertical_map - camera_info.position - ray_offset};
 }
 
+__host__ __device__ __forceinline__ void cast_ray(float3& origin, float3& direction, uint32_t* random_state, const float screen_x, const float screen_y, const CameraInfo& camera_info)
+{
+	const float2 random_on_lens = camera_info.lens_radius * disk_random(random_state);
+	const float3 ray_offset = camera_info.u * random_on_lens.x + camera_info.v * random_on_lens.y;
+	origin = camera_info.position + ray_offset;
+	direction = camera_info.starting_point + screen_x * camera_info.horizontal_map + screen_y * camera_info.vertical_map - camera_info.position - ray_offset;
+}
+
 __host__ __device__ __forceinline__ float3 sample_hdr(const float3 direction, const SkyInfo& sky_info)
 {
 	const float3 ray_direction = normalize(direction);

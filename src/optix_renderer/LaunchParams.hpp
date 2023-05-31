@@ -12,7 +12,7 @@
 
 struct LaunchParams
 {
-	uint32_t width{}, height{}, sampling_denominator{};
+	uint32_t width{}, height{}, sampling_denominator{}, depth{};
 	float4* frame_buffer = nullptr, * accumulation_buffer = nullptr;
     uint4* xoshiro_state = nullptr;
     CameraInfo camera_info{};

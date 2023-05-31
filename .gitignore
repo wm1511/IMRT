@@ -6,6 +6,7 @@
 assets/hdr
 assets/obj
 assets/tex
+output
 
 # User-specific files
 *.rsuser

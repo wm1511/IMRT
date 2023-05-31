@@ -1,5 +1,4 @@
 // ReSharper disable once CppPrecompiledHeaderIsNotIncluded
-#include "OptixPrograms.cuh"
 #include "LaunchParams.hpp"
 
 #include "../common/Math.hpp"
@@ -9,8 +8,22 @@
 
 __constant__ LaunchParams launch_params;
 
-static __forceinline__ __device__ void trace(const float3 origin, const float3 direction, uint32_t& u0, uint32_t& u1)
+extern uint32_t __float_as_uint(float x);
+extern float __uint_as_float(uint32_t x);
+
+static __forceinline__ __device__ void trace(float3& origin, float3& direction, float3& color, uint32_t& depth, const uint32_t miss_sbt_index)
 {
+	uint32_t u0 = __float_as_uint(origin.x);
+	uint32_t u1 = __float_as_uint(origin.y);
+	uint32_t u2 = __float_as_uint(origin.z);
+	uint32_t u3 = __float_as_uint(direction.x);
+	uint32_t u4 = __float_as_uint(direction.y);
+	uint32_t u5 = __float_as_uint(direction.z);
+	uint32_t u6 = __float_as_uint(color.x);
+	uint32_t u7 = __float_as_uint(color.y);
+	uint32_t u8 = __float_as_uint(color.z);
+	uint32_t u9 = depth;
+
     optixTrace(
         launch_params.traversable,
 		origin,
@@ -22,39 +35,15 @@ static __forceinline__ __device__ void trace(const float3 origin, const float3 d
 		OPTIX_RAY_FLAG_DISABLE_ANYHIT,
 		0,
 		1,
-		0,
-        u0, u1);
+		miss_sbt_index,
+        u0, u1, u2, u3, u4, u5, u6, u7, u8, u9);
+
+	origin = make_float3(__uint_as_float(u0), __uint_as_float(u1), __uint_as_float(u2));
+	direction = make_float3(__uint_as_float(u3), __uint_as_float(u4), __uint_as_float(u5));
+	color = make_float3(__uint_as_float(u6), __uint_as_float(u7), __uint_as_float(u8));
+	depth = u9;
 }
 
-static __forceinline__ __device__ void* unpack_pointer(const uint32_t i0, const uint32_t i1)
-{
-	const uint64_t u_ptr = (uint64_t)i0 << 32 | i1;
-	const auto ptr = (void*)u_ptr;
-	return ptr;
-}
-
-static __forceinline__ __device__ void pack_pointer(void* ptr, uint32_t& i0, uint32_t& i1)
-{
-	const auto u_ptr = (uint64_t)ptr;
-	i0 = u_ptr >> 32;
-	i1 = u_ptr & 0x00000000ffffffff;
-}
-
-template<typename T>
-static __forceinline__ __device__ T* get_prd()
-{
-	const uint32_t u0 = optixGetPayload_0();
-	const uint32_t u1 = optixGetPayload_1();
-	return (T*)unpack_pointer(u0, u1);
-}
-
-template<typename T>
-static __forceinline__ __device__ T* get_ard()
-{ 
-	const uint32_t u0 = optixGetAttribute_0();
-	const uint32_t u1 = optixGetAttribute_1();
-	return (T*)unpack_pointer(u0, u1);
-}
 
 extern "C" __global__ void __intersection__cylinder()
 {
@@ -88,12 +77,16 @@ extern "C" __global__ void __intersection__cylinder()
 
 		if (m > 0.0f && m < length(cylinder.extreme_a - cylinder.extreme_b))
 		{
-			float3 normal = normalize(origin + t * direction - cylinder.extreme_b - axis * m);
+			const float3 position = origin + t * direction;
+			const float3 normal = normalize(position- cylinder.extreme_b - axis * m);
 
-			uint32_t a0, a1;
-			pack_pointer(&normal, a0, a1);
+			const uint32_t a0 = __float_as_uint(normal.x);
+			const uint32_t a1 = __float_as_uint(normal.y);
+			const uint32_t a2 = __float_as_uint(normal.z);
+			const uint32_t a3 = __float_as_uint(acosf(normalize(normal).x) / kPi);
+			const uint32_t a4 = __float_as_uint(position.y / (cylinder.extreme_b.y - cylinder.extreme_a.y));
 
-			optixReportIntersection(t, 0, a0, a1);
+			optixReportIntersection(t, 0, a0, a1, a2, a3, a4);
 		}
 
 		const float aa = dot(origin - cylinder.extreme_a, axis);
@@ -101,10 +94,13 @@ extern "C" __global__ void __intersection__cylinder()
 		const float3 top_point = origin + t_top * direction;
 		if (length(cylinder.extreme_a - top_point) < cylinder.radius && -da > 0.0f)
 		{
-			uint32_t a0, a1;
-			pack_pointer(&axis, a0, a1);
+			const uint32_t a0 = __float_as_uint(axis.x);
+			const uint32_t a1 = __float_as_uint(axis.y);
+			const uint32_t a2 = __float_as_uint(axis.z);
+			const uint32_t a3 = __float_as_uint(fracf(top_point.x));
+			const uint32_t a4 = __float_as_uint(fracf(top_point.z));
 
-			optixReportIntersection(t, 0, a0, a1);
+			optixReportIntersection(t, 0, a0, a1, a2, a3, a4);
 		}
 
 		const float t_bottom = -ba / da;
@@ -113,10 +109,13 @@ extern "C" __global__ void __intersection__cylinder()
 		{
 			axis = -axis;
 
-			uint32_t a0, a1;
-			pack_pointer(&axis, a0, a1);
+			const uint32_t a0 = __float_as_uint(axis.x);
+			const uint32_t a1 = __float_as_uint(axis.y);
+			const uint32_t a2 = __float_as_uint(axis.z);
+			const uint32_t a3 = __float_as_uint(fracf(bottom_point.x));
+			const uint32_t a4 = __float_as_uint(fracf(bottom_point.z));
 
-			optixReportIntersection(t, 0, a0, a1);
+			optixReportIntersection(t, 0, a0, a1, a2, a3, a4);
 		}
 	}
 }
@@ -129,22 +128,69 @@ extern "C" __global__ void __closesthit__sphere()
 	const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * optixGetWorldRayDirection();
 	const float3 normal = normalize((position - sphere.center) / sphere.radius);
 	const float2 uv = make_float2((atan2(normal.z, normal.x) + kPi) * kInv2Pi, acos(normal.y) * kInvPi);
+	float3 direction = optixGetWorldRayDirection();
+	float3 color = make_float3(__uint_as_float(optixGetPayload_6()), __uint_as_float(optixGetPayload_7()), __uint_as_float(optixGetPayload_8()));
+	const uint3 index = optixGetLaunchIndex();
+	uint32_t random_state = xoshiro(&launch_params.xoshiro_state[index.x + index.y * launch_params.width]);
 
-	float3& prd = *get_prd<float3>();
-	prd = sbt_data->texture.color(uv);
+	if (sbt_data->material.scatter(direction, normal, &random_state))
+    {
+		color *= sbt_data->texture.color(uv);
+
+		optixSetPayload_0(__float_as_uint(position.x));
+		optixSetPayload_1(__float_as_uint(position.y));
+		optixSetPayload_2(__float_as_uint(position.z));
+		optixSetPayload_3(__float_as_uint(direction.x));
+		optixSetPayload_4(__float_as_uint(direction.y));
+		optixSetPayload_5(__float_as_uint(direction.z));
+		optixSetPayload_6(__float_as_uint(color.x));
+		optixSetPayload_7(__float_as_uint(color.y));
+		optixSetPayload_8(__float_as_uint(color.z));
+		optixSetPayload_9(optixGetPayload_9() - 1);
+    }
+    else
+    {
+		optixSetPayload_6(__float_as_uint(0.0f));
+		optixSetPayload_7(__float_as_uint(0.0f));
+		optixSetPayload_8(__float_as_uint(0.0f));
+        optixSetPayload_9(0);
+    }
 }
 
 extern "C" __global__ void __closesthit__cylinder()
 {
 	const HitGroupData* sbt_data = (HitGroupData*)optixGetSbtDataPointer();
-	const Cylinder& cylinder = sbt_data->object.cylinder;
 
 	const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * optixGetWorldRayDirection();
-	const float3& ard = *get_ard<float3>();
-	const float2 uv = make_float2(acosf(normalize(ard).x) / kPi, position.y / (cylinder.extreme_b.y - cylinder.extreme_a.y));
+	const float3 normal = make_float3(__uint_as_float(optixGetAttribute_0()), __uint_as_float(optixGetAttribute_1()), __uint_as_float(optixGetAttribute_2()));
+	const float2 uv = make_float2(__uint_as_float(optixGetAttribute_3()), __uint_as_float(optixGetAttribute_4()));
+	float3 direction = optixGetWorldRayDirection();
+	float3 color = make_float3(__uint_as_float(optixGetPayload_6()), __uint_as_float(optixGetPayload_7()), __uint_as_float(optixGetPayload_8()));
+	const uint3 index = optixGetLaunchIndex();
+	uint32_t random_state = xoshiro(&launch_params.xoshiro_state[index.x + index.y * launch_params.width]);
 
-	float3& prd = *get_prd<float3>();
-	prd = sbt_data->texture.color(uv);
+	if (sbt_data->material.scatter(direction, normal, &random_state))
+    {
+		color *= sbt_data->texture.color(uv);
+
+		optixSetPayload_0(__float_as_uint(position.x));
+		optixSetPayload_1(__float_as_uint(position.y));
+		optixSetPayload_2(__float_as_uint(position.z));
+		optixSetPayload_3(__float_as_uint(direction.x));
+		optixSetPayload_4(__float_as_uint(direction.y));
+		optixSetPayload_5(__float_as_uint(direction.z));
+		optixSetPayload_6(__float_as_uint(color.x));
+		optixSetPayload_7(__float_as_uint(color.y));
+		optixSetPayload_8(__float_as_uint(color.z));
+		optixSetPayload_9(optixGetPayload_9() - 1);
+    }
+    else
+    {
+		optixSetPayload_6(__float_as_uint(0.0f));
+		optixSetPayload_7(__float_as_uint(0.0f));
+		optixSetPayload_8(__float_as_uint(0.0f));
+        optixSetPayload_9(0);
+    }
 }
 
 extern "C" __global__ void __closesthit__triangle()
@@ -154,14 +200,9 @@ extern "C" __global__ void __closesthit__triangle()
 	const Model& model = sbt_data->object.model;
 
 	float2 uv = optixGetTriangleBarycentrics();
-	//float3 normal;
+	float3 normal;
 
-	if (model.d_uv)
-		uv = (1.0f - uv.x - uv.y) * model.d_uv[3ull * prim_idx] +
-			uv.x * model.d_uv[3ull * prim_idx + 1] +
-			uv.y * model.d_uv[3ull * prim_idx + 2];
-
-    /* if (model.d_normals)
+	if (model.d_normals)
     {
 	    normal = (1.0f - uv.x - uv.y) * model.d_normals[3ull * prim_idx] + 
 			uv.x * model.d_normals[3ull * prim_idx + 1] + 
@@ -173,36 +214,63 @@ extern "C" __global__ void __closesthit__triangle()
 			model.d_vertices[3ull * prim_idx + 2] - model.d_vertices[3ull * prim_idx]));
     }
 
+	if (model.d_uv)
+		uv = (1.0f - uv.x - uv.y) * model.d_uv[3ull * prim_idx] +
+			uv.x * model.d_uv[3ull * prim_idx + 1] +
+			uv.y * model.d_uv[3ull * prim_idx + 2];
+
 	float3 direction = optixGetWorldRayDirection();
 	const float3 origin = optixGetWorldRayOrigin() + optixGetRayTmax() * direction;
+	float3 color = make_float3(__uint_as_float(optixGetPayload_6()), __uint_as_float(optixGetPayload_7()), __uint_as_float(optixGetPayload_8()));
 	const uint3 index = optixGetLaunchIndex();
-	uint32_t random_state = xoshiro(&launch_params.xoshiro_state[index.x + index.y * launch_params.width]);*/
+	uint32_t random_state = xoshiro(&launch_params.xoshiro_state[index.x + index.y * launch_params.width]);
 
-	float3& prd = *get_prd<float3>();
-
-	/*if (sbt_data->material.scatter(direction, normal, &random_state))
+	if (sbt_data->material.scatter(direction, normal, &random_state))
     {
-		uint32_t u0, u1;
-		pack_pointer(&prd, u0, u1);
+		color *= sbt_data->texture.color(uv);
 
-        trace(origin, direction, u0, u1);
+		optixSetPayload_0(__float_as_uint(origin.x));
+		optixSetPayload_1(__float_as_uint(origin.y));
+		optixSetPayload_2(__float_as_uint(origin.z));
+		optixSetPayload_3(__float_as_uint(direction.x));
+		optixSetPayload_4(__float_as_uint(direction.y));
+		optixSetPayload_5(__float_as_uint(direction.z));
+		optixSetPayload_6(__float_as_uint(color.x));
+		optixSetPayload_7(__float_as_uint(color.y));
+		optixSetPayload_8(__float_as_uint(color.z));
+		optixSetPayload_9(optixGetPayload_9() - 1);
     }
     else
     {
-        prd = make_float3(0.0f);
-    }*/
-
-	prd *= sbt_data->texture.color(uv);
+		optixSetPayload_6(__float_as_uint(0.0f));
+		optixSetPayload_7(__float_as_uint(0.0f));
+		optixSetPayload_8(__float_as_uint(0.0f));
+        optixSetPayload_9(0);
+    }
 }
 
-extern "C" __global__ void __miss__radiance()
+extern "C" __global__ void __miss__hdr()
 {
-	float3& prd = *get_prd<float3>();
+	float3 color = make_float3(__uint_as_float(optixGetPayload_6()), __uint_as_float(optixGetPayload_7()), __uint_as_float(optixGetPayload_8()));
 
-	if (launch_params.sky_info.d_hdr_data)
-		prd = launch_params.sky_info.hdr_exposure * sample_hdr(optixGetWorldRayDirection(), launch_params.sky_info);
-	else
-		prd = sample_sky(optixGetWorldRayDirection(), launch_params.sky_info);
+	color *= launch_params.sky_info.hdr_exposure * sample_hdr(optixGetWorldRayDirection(), launch_params.sky_info);
+
+	optixSetPayload_6(__float_as_uint(color.x));
+	optixSetPayload_7(__float_as_uint(color.y));
+	optixSetPayload_8(__float_as_uint(color.z));
+	optixSetPayload_9(0);
+}
+
+extern "C" __global__ void __miss__sky()
+{
+	float3 color = make_float3(__uint_as_float(optixGetPayload_6()), __uint_as_float(optixGetPayload_7()), __uint_as_float(optixGetPayload_8()));
+
+	color *= sample_sky(optixGetWorldRayDirection(), launch_params.sky_info);
+
+	optixSetPayload_6(__float_as_uint(color.x));
+	optixSetPayload_7(__float_as_uint(color.y));
+	optixSetPayload_8(__float_as_uint(color.z));
+	optixSetPayload_9(0);
 }
 
 extern "C" __global__ void __raygen__render()
@@ -210,19 +278,24 @@ extern "C" __global__ void __raygen__render()
 	const uint3 index = optixGetLaunchIndex();
 	const uint32_t pixel_index = index.x + index.y * launch_params.width;
 
-	float3 pixel_color_prd = make_float3(1.0f);
-
-	uint32_t u0, u1;
-	pack_pointer(&pixel_color_prd, u0, u1);
+	float3 pixel_color = make_float3(1.0f);
+	float3 origin;
+	float3 direction;
+	uint32_t depth_remaining = launch_params.depth;
 
 	uint32_t random_state = xoshiro(&launch_params.xoshiro_state[pixel_index]);
 	const float u = ((float)index.x + pcg(&random_state)) / (float)launch_params.width;
 	const float v = ((float)index.y + pcg(&random_state)) / (float)launch_params.height;
 
-	const Ray ray = cast_ray(&random_state, u, v, launch_params.camera_info);
+	cast_ray(origin, direction, &random_state, u, v, launch_params.camera_info);
+	const uint32_t miss_sbt_index = launch_params.sky_info.d_hdr_data ? 0 : 1;
 
-	trace(ray.origin_, ray.direction_, u0, u1);
+	do
+	{
+		trace(origin, direction, pixel_color, depth_remaining, miss_sbt_index);
+		
+	} while (depth_remaining > 0);
 
-	launch_params.accumulation_buffer[pixel_index] += make_float4(pixel_color_prd, 1.0f);
+	launch_params.accumulation_buffer[pixel_index] += make_float4(pixel_color, 1.0f);
 	launch_params.frame_buffer[pixel_index] = sqrt(launch_params.accumulation_buffer[pixel_index] / (float)launch_params.sampling_denominator);
 }
