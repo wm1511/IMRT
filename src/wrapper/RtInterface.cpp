@@ -7,50 +7,50 @@
 #include "stb_image.h"
 #include "stb_image_write.h"
 
-// Intellisense doesn't work without this include
-#include <filesystem>
-
-static const char* object_types[]{"Unknown Object", "Sphere", "Cylinder", "Model"};
-static const char* material_types[]{"Unknown Material", "Diffuse", "Specular", "Refractive", "Isotropic"};
-static const char* texture_types[]{"Unknown Texture", "Solid", "Image", "Checker"};
-
-static void draw_help(const char* text)
+namespace
 {
-	ImGui::SameLine();
-    ImGui::TextDisabled("(?)");
-    if (ImGui::IsItemHovered())
-    {
-        ImGui::BeginTooltip();
-        ImGui::TextUnformatted(text);
-        ImGui::EndTooltip();
-    }
-}
+	const char* object_types[]{"Unknown Object", "Sphere", "Cylinder", "Model"};
+	const char* material_types[]{"Unknown Material", "Diffuse", "Specular", "Refractive", "Isotropic"};
+	const char* texture_types[]{"Unknown Texture", "Solid", "Image", "Checker"};
 
-static void draw_files(std::filesystem::path& selected_file, const char* id, const char* directory)
-{
-	ImGui::BeginChild(id, {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
-			ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
-	const auto iterator = std::filesystem::recursive_directory_iterator(directory);
-
-	for (const auto& entry : iterator)
-		if (ImGui::Selectable(entry.path().filename().u8string().c_str(), entry.path() == selected_file))
-			selected_file = entry.path();
-
-	ImGui::EndChild();
-
-	ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "Loading large files will take a while");
-}
-
-static void draw_modal(const char* id, const char* message)
-{
-	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
-	if (ImGui::BeginPopupModal(id, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	void draw_help(const char* text)
 	{
-		ImGui::Text(message);
-		if (ImGui::Button("OK", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-			ImGui::CloseCurrentPopup();
+		ImGui::SameLine();
+	    ImGui::TextDisabled("(?)");
+	    if (ImGui::IsItemHovered())
+	    {
+	        ImGui::BeginTooltip();
+	        ImGui::TextUnformatted(text);
+	        ImGui::EndTooltip();
+	    }
+	}
 
-		ImGui::EndPopup();
+	void draw_files(std::filesystem::path& selected_file, const char* id, const char* directory)
+	{
+		ImGui::BeginChild(id, {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
+				ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
+		const auto iterator = std::filesystem::recursive_directory_iterator(directory);
+
+		for (const auto& entry : iterator)
+			if (ImGui::Selectable(entry.path().filename().u8string().c_str(), entry.path() == selected_file))
+				selected_file = entry.path();
+
+		ImGui::EndChild();
+
+		ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "Loading large files will take a while");
+	}
+
+	void draw_modal(const char* id, const char* message)
+	{
+		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
+		if (ImGui::BeginPopupModal(id, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			ImGui::Text(message);
+			if (ImGui::Button("OK", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+				ImGui::CloseCurrentPopup();
+
+			ImGui::EndPopup();
+		}
 	}
 }
 

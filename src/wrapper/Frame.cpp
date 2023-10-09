@@ -1,17 +1,20 @@
 #include "stdafx.h"
 #include "Frame.hpp"
 
-static uint32_t GetDeviceMemoryType(const VkMemoryPropertyFlags properties, const uint32_t type_bits)
+namespace
 {
-	VkPhysicalDeviceMemoryProperties device_memory_properties;
-	vkGetPhysicalDeviceMemoryProperties(App::get_physical_device(), &device_memory_properties);
-	for (uint32_t i = 0; i < device_memory_properties.memoryTypeCount; i++)
+	uint32_t get_device_memory_type(const VkMemoryPropertyFlags properties, const uint32_t type_bits)
 	{
-		if ((device_memory_properties.memoryTypes[i].propertyFlags & properties) == properties && type_bits & 1 << i)
-			return i;
+		VkPhysicalDeviceMemoryProperties device_memory_properties;
+		vkGetPhysicalDeviceMemoryProperties(App::get_physical_device(), &device_memory_properties);
+		for (uint32_t i = 0; i < device_memory_properties.memoryTypeCount; i++)
+		{
+			if ((device_memory_properties.memoryTypes[i].propertyFlags & properties) == properties && type_bits & 1 << i)
+				return i;
+		}
+		
+		return ~0U;
 	}
-	
-	return ~0U;
 }
 
 Frame::Frame(const uint32_t width, const uint32_t height): width_(width), height_(height)
@@ -64,7 +67,7 @@ void Frame::allocate_memory()
 	VkMemoryAllocateInfo allocate_info = {};
 	allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocate_info.allocationSize = requirements.size;
-	allocate_info.memoryTypeIndex = GetDeviceMemoryType(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, requirements.memoryTypeBits);
+	allocate_info.memoryTypeIndex = get_device_memory_type(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, requirements.memoryTypeBits);
 
     VkExportMemoryAllocateInfoKHR export_memory_info = {};
     export_memory_info.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR;
@@ -154,7 +157,7 @@ void Frame::set_data(const void* data)
 		VkMemoryAllocateInfo allocate_info = {};
 		allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocate_info.allocationSize = requirements.size;
-		allocate_info.memoryTypeIndex = GetDeviceMemoryType(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, requirements.memoryTypeBits);
+		allocate_info.memoryTypeIndex = get_device_memory_type(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, requirements.memoryTypeBits);
 
 		if (vkAllocateMemory(device, &allocate_info, nullptr, &staging_buffer_memory_) != VK_SUCCESS)
 			throw std::runtime_error("Failed to allocate staging buffer memory");

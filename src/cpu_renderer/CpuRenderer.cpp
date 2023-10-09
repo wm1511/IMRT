@@ -166,8 +166,8 @@ void CpuRenderer::allocate_world()
 	{
 		if (texture.type == TextureType::IMAGE)
 		{
-			const auto image_data = &texture.image;
-			image_data->d_data = image_data->h_data;
+			auto& image_data = texture.image;
+			image_data.d_data = image_data.h_data;
 		}
 	}
 
@@ -175,11 +175,11 @@ void CpuRenderer::allocate_world()
 	{
 		if (object.type == ObjectType::MODEL)
 		{
-			const auto model_data = &object.model;
-			model_data->d_vertices = model_data->h_vertices;
-			model_data->d_indices = model_data->h_indices;
-			model_data->d_normals = model_data->h_normals;
-			model_data->d_uv = model_data->h_uv;
+			auto& model_data = object.model;
+			model_data.d_vertices = model_data.h_vertices;
+			model_data.d_indices = model_data.h_indices;
+			model_data.d_normals = model_data.h_normals;
+			model_data.d_uv = model_data.h_uv;
 		}
 	}
 
