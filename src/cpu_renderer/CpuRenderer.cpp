@@ -1,9 +1,14 @@
 #include "stdafx.h"
 #include "CpuRenderer.hpp"
+#include "../common/Color.hpp"
 
-CpuRenderer::CpuRenderer(const RenderInfo* render_info, WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info)
-	: render_info_(render_info), world_info_(world_info), sky_info_(sky_info), camera_info_(camera_info)
+CpuRenderer::CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info)
 {
+	render_info_ = render_info;
+	world_info_ = world_info;
+	sky_info_ = sky_info;
+	camera_info_ = camera_info;
+
 	const uint64_t image_size = static_cast<uint64_t>(render_info_->width) * render_info_->height;
 
 	accumulation_buffer_ = new float4[image_size];

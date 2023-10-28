@@ -4,9 +4,13 @@
 
 #include "../common/Utils.hpp"
 
-CudaRenderer::CudaRenderer(const RenderInfo* render_info, WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info)
-	: render_info_(render_info), world_info_(world_info), sky_info_(sky_info), camera_info_(camera_info)
+CudaRenderer::CudaRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info)
 {
+	render_info_ = render_info;
+	world_info_ = world_info;
+	sky_info_ = sky_info;
+	camera_info_ = camera_info;
+
 	const uint32_t width = render_info_->width;
 	const uint32_t height = render_info_->height;
 	constexpr int32_t thread_x = 16;

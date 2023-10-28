@@ -46,10 +46,10 @@ public:
 
 	void remove_object(int32_t object_index);
 
-	std::vector<Texture> textures_{4};
+	mutable std::vector<Texture> textures_{4};
 	std::vector<std::string> texture_names_{4};
-	std::vector<Material> materials_{3};
+	mutable std::vector<Material> materials_{3};
 	std::vector<std::string> material_names_{3};
-	std::vector<Object> objects_{4};
+	mutable std::vector<Object> objects_{4};
 	std::vector<std::string> object_names_{4};
 };

@@ -1,13 +1,11 @@
 #pragma once
 #include "../abstract/IRenderer.hpp"
-#include "../info/RenderInfo.hpp"
-#include "../info/WorldInfo.hpp"
-#include "../common/Color.hpp"
+#include "../common/World.hpp"
 
 class CpuRenderer final : public IRenderer
 {
 public:
-	CpuRenderer(const RenderInfo* render_info, WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info);
+	CpuRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info);
 	~CpuRenderer() override;
 
 	CpuRenderer(const CpuRenderer&) = delete;
@@ -27,11 +25,6 @@ private:
 	void random_refresh() const;
 	void render_static() const;
 	void render_progressive() const;
-
-	const RenderInfo* render_info_ = nullptr;
-	WorldInfo* world_info_ = nullptr;
-	const SkyInfo* sky_info_ = nullptr;
-	const CameraInfo* camera_info_ = nullptr;
 
 	uint4* xoshiro_state_ = nullptr, * xoshiro_initial_ = nullptr;
     float4* accumulation_buffer_ = nullptr;

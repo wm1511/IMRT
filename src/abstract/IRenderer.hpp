@@ -1,4 +1,9 @@
 #pragma once
+#include "../info/RenderInfo.hpp"
+#include "../info/WorldInfo.hpp"
+#include "../info/SkyInfo.hpp"
+#include "../info/CameraInfo.hpp"
+
 #include <cstdint>
 
 class IRenderer
@@ -17,4 +22,10 @@ public:
 	virtual void map_frame_memory() {}
 	virtual void allocate_world() = 0;
 	virtual void deallocate_world() = 0;
+
+protected:
+	const RenderInfo* render_info_ = nullptr;
+	const WorldInfo* world_info_ = nullptr;
+	const SkyInfo* sky_info_ = nullptr;
+	const CameraInfo* camera_info_ = nullptr;
 };

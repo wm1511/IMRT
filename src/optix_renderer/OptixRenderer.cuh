@@ -1,9 +1,5 @@
 #pragma once
 #include "LaunchParams.hpp"
-
-#include "../info/RenderInfo.hpp"
-#include "../info/WorldInfo.hpp"
-#include "../info/CameraInfo.hpp"
 #include "../abstract/IRenderer.hpp"
 
 template <typename T>
@@ -16,7 +12,7 @@ struct SbtRecord
 class OptixRenderer final : public IRenderer
 {
 public:
-	OptixRenderer(const RenderInfo* render_info, WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info);
+	OptixRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info);
 	~OptixRenderer() override;
 
 	OptixRenderer(const OptixRenderer&) = delete;
@@ -44,11 +40,6 @@ private:
 	void prepare_gas(Object& object, OptixTraversableHandle& handle, void*& buffer, OptixBuildOperation operation) const;
 	void prepare_ias(std::vector<OptixTraversableHandle>& gases, OptixBuildOperation operation);
 	void create_sbt();
-
-	const RenderInfo* render_info_ = nullptr;
-	WorldInfo* world_info_ = nullptr;
-	const SkyInfo* sky_info_ = nullptr;
-	const CameraInfo* camera_info_ = nullptr;
 
 	cudaStream_t stream_{};
 	OptixDeviceContext context_ = nullptr;

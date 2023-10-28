@@ -1,14 +1,11 @@
 #pragma once
-#include "../common/Color.hpp"
-
-#include "../info/RenderInfo.hpp"
-#include "../info/WorldInfo.hpp"
 #include "../abstract/IRenderer.hpp"
+#include "../common/World.hpp"
 
 class CudaRenderer final : public IRenderer
 {
 public:
-	CudaRenderer(const RenderInfo* render_info, WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info);
+	CudaRenderer(const RenderInfo* render_info, const WorldInfo* world_info, const SkyInfo* sky_info, const CameraInfo* camera_info);
 	~CudaRenderer() override;
 
 	CudaRenderer(const CudaRenderer&) = delete;
@@ -28,11 +25,6 @@ public:
 	void deallocate_world() override;
 
 private:
-	const RenderInfo* render_info_ = nullptr;
-	WorldInfo* world_info_ = nullptr;
-	const SkyInfo* sky_info_ = nullptr;
-	const CameraInfo* camera_info_ = nullptr;
-
 	dim3 blocks_;
 	dim3 threads_;
 
