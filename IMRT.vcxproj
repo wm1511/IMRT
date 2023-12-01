@@ -121,7 +121,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>%VULKAN_SDK%\include;C:\ProgramData\NVIDIA Corporation\OptiX SDK 7.7.0\include;$(SolutionDir)lib;$(SolutionDir)lib\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%VULKAN_SDK%\include;C:\ProgramData\NVIDIA Corporation\OptiX SDK 8.0.0\include;$(SolutionDir)lib;$(SolutionDir)lib\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <OpenMPSupport>true</OpenMPSupport>
@@ -192,7 +192,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>%VULKAN_SDK%\include;C:\ProgramData\NVIDIA Corporation\OptiX SDK 7.7.0\include;$(SolutionDir)lib;$(SolutionDir)lib\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%VULKAN_SDK%\include;C:\ProgramData\NVIDIA Corporation\OptiX SDK 8.0.0\include;$(SolutionDir)lib;$(SolutionDir)lib\glfw-3.3.7.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PreprocessorDefinitions>ImTextureID=ImU64;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>

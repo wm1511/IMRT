@@ -16,7 +16,7 @@ struct Solid
 	__host__ Solid(const float3 albedo)
 		: albedo(albedo) {}
 
-	__inline__ __host__ __device__ float3 color(const float2) const
+	__inline__ __host__ __device__ float3 color() const
 	{
 		return albedo;
 	}
@@ -79,7 +79,7 @@ struct Texture
 	__inline__ __host__ __device__ float3 color(const float2 uv) const
 	{
 		if (type == TextureType::SOLID)
-			return solid.color(uv);
+			return solid.color();
 		if (type == TextureType::IMAGE)
 			return image.color(uv);
 		if (type == TextureType::CHECKER)

@@ -2,10 +2,6 @@
 #include "Frame.hpp"
 #include "../abstract/IDrawable.hpp"
 #include "../abstract/IRenderer.hpp"
-#include "../info/RenderInfo.hpp"
-#include "../info/WorldInfo.hpp"
-#include "../info/SkyInfo.hpp"
-#include "../info/CameraInfo.hpp"
 
 class RtInterface final : public IDrawable
 {

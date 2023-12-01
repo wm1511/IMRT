@@ -1,9 +1,6 @@
 #pragma once
 #include "../abstract/IDrawable.hpp"
 
-#include <GLFW/glfw3.h>
-#include <vulkan/vulkan.h>
-
 struct AppInfo
 {
 	std::string name = "Default window name";

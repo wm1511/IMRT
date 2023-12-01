@@ -139,7 +139,7 @@ void RtInterface::draw()
 			{
 				frame_ = std::make_unique<Frame>(render_info_.width, render_info_.height);
 
-				render_info_.frame_handle = frame_->get_image_memory_handle();
+				render_info_.frame_handle = frame_->get_frame_memory_handle();
 				render_info_.frame_size = sizeof(float) * 4 * render_info_.height * render_info_.width;
 				delete[] render_info_.frame_data;
 				render_info_.frame_data = new float[render_info_.frame_size];
@@ -912,7 +912,7 @@ void RtInterface::save_image()
 		if (ImGui::Button("Save", {ImGui::GetContentRegionAvail().x, 0}))
 		{
 			if (is_rendering_ && render_device_ != RenderDevice::CPU)
-				render_info_.frame_handle = frame_->get_image_memory_handle();
+				render_info_.frame_handle = frame_->get_frame_memory_handle();
 				renderer_->map_frame_memory();
 
 			if (render_info_.frame_data)

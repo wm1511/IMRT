@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Frame.hpp"
+#include "App.hpp"
 
 namespace
 {
@@ -223,7 +224,7 @@ void Frame::set_data(const void* data)
 	App::flush_command_buffer(command_buffer);
 }
 
-void* Frame::get_image_memory_handle() const
+void* Frame::get_frame_memory_handle() const
 {
 	const VkDevice device = App::get_device();
 
