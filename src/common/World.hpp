@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 #pragma once
 #include "../common/Texture.hpp"
 #include "../common/Material.hpp"
@@ -9,6 +10,7 @@ public:
 	__host__ __device__ World(Object* object, Material* material, Texture* texture, const int32_t object_count)
 		: objects_(object), materials_(material), textures_(texture), object_count_(object_count) {}
 
+	// Checking intersection for all objects in CPU and CUDA renderers
 	__host__ __device__ bool intersect(const Ray& ray, Intersection& intersection) const
 	{
 		Intersection temp_intersection{};

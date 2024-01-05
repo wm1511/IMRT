@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 #pragma once
 #include "Frame.hpp"
 #include "../abstract/IDrawable.hpp"

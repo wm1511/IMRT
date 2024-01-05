@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 #pragma once
 extern "C"
 {
@@ -27,6 +28,7 @@ struct SkyInfo
 		h_hdr_data = nullptr;
 	}
 
+	// Sky model initialization suggested in "An Analytic Model for Full Spectral Sky-Dome Radiance"
 	void create_sky(const float turbidity = 2.5f, const float albedo_x = 0.5f, const float albedo_y = 0.5f, const float albedo_z = 0.5f, const float elevation = 1.25f)
 	{
 		ArHosekSkyModelState* local_state_x = arhosek_rgb_skymodelstate_alloc_init(turbidity, albedo_x, elevation);

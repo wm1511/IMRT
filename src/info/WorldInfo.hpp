@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 #pragma once
 #include "../common/Texture.hpp"
 #include "../common/Material.hpp"

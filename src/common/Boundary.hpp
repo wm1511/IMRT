@@ -1,6 +1,8 @@
+// Copyright Wiktor Merta 2023
 #pragma once
 #include "Ray.hpp"
 
+// Class representing a box encapsulating scene objects
 class Boundary
 {
 public:
@@ -10,7 +12,7 @@ public:
 		: min_(make_float3(fminf(p1.x, p2.x), fminf(p1.y, p2.y), fminf(p1.z, p2.z))),
           max_(make_float3(fmaxf(p1.x, p2.x), fmaxf(p1.y, p2.y), fmaxf(p1.z, p2.z))) {}
 
-	//A Ray-Box Intersection Algorithm and Efficient Dynamic Voxel Rendering
+	// Using an algorithm from article "A Ray-Box Intersection Algorithm and Efficient Dynamic Voxel Rendering"
 	__host__ __device__ [[nodiscard]] bool intersect(const Ray& ray) const
 	{
 		const float3 inverse_direction = 1.0f / ray.direction_;
@@ -29,11 +31,13 @@ public:
 	float3 min_, max_;
 };
 
+// Merge two boundaries
 inline __host__ __device__ Boundary unite(const Boundary& b1, const Boundary& b2)
 {
 	return {fminf(b1.min_, b2.min_), fmaxf(b1.max_, b2.max_)};
 }
 
+// Merge a boundary and a point
 inline __host__ __device__ Boundary unite(const Boundary& b1, const float3& v)
 {
 	return {fminf(b1.min_, v), fmaxf(b1.max_, v)};

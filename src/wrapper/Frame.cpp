@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 #include "stdafx.h"
 #include "Frame.hpp"
 #include "App.hpp"
@@ -135,6 +136,7 @@ void Frame::release_memory()
 	staging_buffer_memory_ = nullptr;
 }
 
+// Used by CPU renderer
 void Frame::set_data(const void* data)
 {
 	const VkDevice device = App::get_device();

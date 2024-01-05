@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 #include "stdafx.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION

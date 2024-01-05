@@ -1,3 +1,5 @@
+// Copyright Wiktor Merta 2023
+// Most of the functions based on NVIDIA helper_math.h from CUDA samples repository
 #pragma once
 #include <cuda_runtime.h>
 #include <cstdint>
@@ -638,6 +640,7 @@ __inline__ __host__ __device__ float3 transform_point(float3 v, const float3 t, 
 	return v;
 }
 
+// Fill matrix for usage with Optix instances
 __inline__ __host__ __device__ void fill_matrix(float matrix[12], const float3 t, const float3 s, const float3 r)
 {
 	const float sa = sin(r.z);
@@ -667,7 +670,7 @@ __inline__ __host__ __device__ uint32_t rotl(const uint32_t x, const int k)
 	return (x << k) | (x >> (32 - k));
 }
 
-// pcg_rxs_m_xs
+// pcg_rxs_m_xs from "PCG: A Family of Simple Fast Space-Efficient Statistically Good Algorithms for Random Number Generation"
 __inline__ __host__ __device__ float pcg(uint32_t* random_state)
 {
 	uint32_t state = *random_state;
@@ -676,7 +679,7 @@ __inline__ __host__ __device__ float pcg(uint32_t* random_state)
 	return (float)(((word >> 22u) ^ word) >> 8) * (1.0f / (UINT32_C(1) << 24));
 }
 
-// xoshiro128+
+// xoshiro128+ by David Blackman and Sebastiano Vigna, 2018
 __inline__ __host__ __device__ uint32_t xoshiro(uint4* random_state)
 {
 	const uint32_t result = random_state->x + random_state->w;

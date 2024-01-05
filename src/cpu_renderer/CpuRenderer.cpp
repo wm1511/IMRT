@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 #include "stdafx.h"
 #include "CpuRenderer.hpp"
 #include "../common/Color.hpp"
@@ -38,6 +39,7 @@ void CpuRenderer::render_static() const
 	const auto height = static_cast<int32_t>(render_info_->height);
 	float* frame_data = render_info_->frame_data;
 
+	// Main rendering loop
 #ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
 #endif
@@ -70,6 +72,7 @@ void CpuRenderer::render_progressive() const
 	const auto height = static_cast<int32_t>(render_info_->height);
 	float* frame_data = render_info_->frame_data;
 
+	// Main rendering loop
 #ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
 #endif

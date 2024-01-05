@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 #pragma once
 #include "../info/RenderInfo.hpp"
 #include "../info/WorldInfo.hpp"
@@ -6,6 +7,7 @@
 
 #include <cstdint>
 
+// Abstract class representing an engine implementation using common functions and members
 class IRenderer
 {
 public:

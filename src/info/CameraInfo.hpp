@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 #pragma once
 #include "../common/Math.hpp"
 
@@ -6,6 +7,7 @@
 
 struct CameraInfo
 {
+	// Recalculate camera parameters
 	void update(const float width, const float height)
 	{
 		aspect_ratio = width / height;

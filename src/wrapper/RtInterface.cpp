@@ -1,3 +1,5 @@
+// Copyright Wiktor Merta 2023
+// File contains ImGui interface definition and connected actions
 #include "stdafx.h"
 #include "RtInterface.hpp"
 #include "../cpu_renderer/CpuRenderer.hpp"
@@ -13,6 +15,7 @@ namespace
 	const char* material_types[]{"Unknown Material", "Diffuse", "Specular", "Refractive", "Isotropic"};
 	const char* texture_types[]{"Unknown Texture", "Solid", "Image", "Checker"};
 
+	// Drawing hoverable symbol showing feature description
 	void draw_help(const char* text)
 	{
 		ImGui::SameLine();
@@ -25,6 +28,7 @@ namespace
 	    }
 	}
 
+	// Drawing list of files in given directory
 	void draw_files(std::filesystem::path& selected_file, const char* id, const char* directory)
 	{
 		ImGui::BeginChild(id, {ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() * 6}, true,
@@ -40,6 +44,7 @@ namespace
 		ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "Loading large files will take a while");
 	}
 
+	// Drawing popup with given message
 	void draw_modal(const char* id, const char* message)
 	{
 		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
@@ -68,8 +73,6 @@ RtInterface::~RtInterface()
 
 void RtInterface::draw()
 {
-	//ImGui::ShowDemoWindow();
-
 	{
 		ImGui::Begin("Render settings");
 

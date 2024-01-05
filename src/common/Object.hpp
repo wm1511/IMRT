@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 #pragma once
 #include "../common/Boundary.hpp"
 #include "../common/Intersection.hpp"
@@ -257,15 +258,16 @@ struct Object
 {
 	__host__ __device__ Object() {}
 
-	__host__ Object(Sphere&& object, const int32_t texture, const int32_t material)
+	__host__ Object(const Sphere& object, const int32_t texture, const int32_t material)
 		: type(ObjectType::SPHERE), texture_id(texture), material_id(material), sphere(object) {}
 
-	__host__ Object(Cylinder&& object, const int32_t texture, const int32_t material)
+	__host__ Object(const Cylinder& object, const int32_t texture, const int32_t material)
 		: type(ObjectType::CYLINDER), texture_id(texture), material_id(material), cylinder(object) {}
 
-	__host__ Object(Model&& object, const int32_t texture, const int32_t material)
+	__host__ Object(const Model& object, const int32_t texture, const int32_t material)
 		: type(ObjectType::MODEL), texture_id(texture), material_id(material), model(object) {}
 
+	// Finding if given ray intersects the object. Intersection data is stored within passed structure
 	__inline__ __host__ __device__ bool intersect(const Ray& ray, Intersection& intersection) const
 	{
 		if (type == ObjectType::SPHERE)

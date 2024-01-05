@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 // Mainly based on ImGui GLFW + Vulkan example
 #include "stdafx.h"
 #include "App.hpp"

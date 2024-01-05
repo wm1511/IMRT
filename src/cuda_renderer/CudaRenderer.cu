@@ -1,4 +1,4 @@
-// ReSharper disable once CppPrecompiledHeaderIsNotIncluded
+// Copyright Wiktor Merta 2023
 #include "CudaRenderer.cuh"
 #include "CudaKernels.cuh"
 
@@ -18,6 +18,7 @@ CudaRenderer::CudaRenderer(const RenderInfo* render_info, const WorldInfo* world
 	blocks_ = dim3((width + thread_x - 1) / thread_x, (height + thread_y - 1) / thread_y);
 	threads_ = dim3(thread_x, thread_y);
 
+	// Not using shared memory
 	cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
 	CCE(cudaMalloc(reinterpret_cast<void**>(&accumulation_buffer_), sizeof(float4) * width * height));

@@ -1,4 +1,4 @@
-// ReSharper disable once CppPrecompiledHeaderIsNotIncluded
+// Copyright Wiktor Merta 2023
 #include "CudaKernels.cuh"
 
 #include <device_launch_parameters.h>

@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 #pragma once
 #include "../abstract/IDrawable.hpp"
 
@@ -17,6 +18,7 @@ public:
 
 	void run() const;
 
+	// Choosing interface to be drawn
 	template <typename T>
 	void set_interface()
 	{

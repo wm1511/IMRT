@@ -1,6 +1,8 @@
+// Copyright Wiktor Merta 2023
 #include "stdafx.h"
 #include "WorldInfo.hpp"
 
+// Default scene setup
 WorldInfo::WorldInfo()
 {
 	textures_[0] = Texture(Checker(make_float3(0.0f, 0.0f, 0.0f), make_float3(1.0f, 1.0f, 1.0f), 0.05f));
@@ -27,6 +29,7 @@ WorldInfo::WorldInfo()
 	object_names_[3] = "DemoSphereBottom";
 }
 
+// Scene cleanup
 WorldInfo::~WorldInfo()
 {
 	for (const auto& object : objects_)
@@ -47,6 +50,7 @@ WorldInfo::~WorldInfo()
 	}
 }
 
+// Loading 3D models
 void WorldInfo::load_model(const std::string& model_path, std::vector<float3>& vertices, std::vector<uint3>& indices,
 	std::vector<float3>& normals, std::vector<float2>& uv) const
 {

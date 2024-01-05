@@ -1,4 +1,4 @@
-// ReSharper disable once CppPrecompiledHeaderIsNotIncluded
+// Copyright Wiktor Merta 2023
 #include "LaunchParams.hpp"
 
 #include "../common/Math.hpp"
@@ -44,7 +44,7 @@ static __forceinline__ __device__ void trace(float3& origin, float3& direction, 
 	depth = u9;
 }
 
-
+// Custom intersector, the same as in CUDA and CPU renderers
 extern "C" __global__ void __intersection__cylinder()
 {
 	const HitGroupData* sbt_data = (HitGroupData*)optixGetSbtDataPointer();
@@ -128,7 +128,7 @@ extern "C" __global__ void __closesthit__sphere()
 	const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * optixGetWorldRayDirection();
 	const float3 normal = normalize((position - sphere.center) / sphere.radius);
 	const float2 uv = make_float2((atan2(normal.z, normal.x) + kPi) * kInv2Pi, acos(normal.y) * kInvPi);
-	float3 direction = optixGetWorldRayDirection();
+	float3 direction = make_float3(__uint_as_float(optixGetPayload_3()), __uint_as_float(optixGetPayload_4()), __uint_as_float(optixGetPayload_5()));
 	float3 color = make_float3(__uint_as_float(optixGetPayload_6()), __uint_as_float(optixGetPayload_7()), __uint_as_float(optixGetPayload_8()));
 	const uint3 index = optixGetLaunchIndex();
 	uint32_t random_state = xoshiro(&launch_params.xoshiro_state[index.x + index.y * launch_params.width]);
@@ -143,18 +143,16 @@ extern "C" __global__ void __closesthit__sphere()
 		optixSetPayload_3(__float_as_uint(direction.x));
 		optixSetPayload_4(__float_as_uint(direction.y));
 		optixSetPayload_5(__float_as_uint(direction.z));
-		optixSetPayload_6(__float_as_uint(color.x));
-		optixSetPayload_7(__float_as_uint(color.y));
-		optixSetPayload_8(__float_as_uint(color.z));
 		optixSetPayload_9(optixGetPayload_9() - 1);
     }
     else
     {
-		optixSetPayload_6(__float_as_uint(0.0f));
-		optixSetPayload_7(__float_as_uint(0.0f));
-		optixSetPayload_8(__float_as_uint(0.0f));
         optixSetPayload_9(0);
     }
+
+	optixSetPayload_6(__float_as_uint(color.x));
+	optixSetPayload_7(__float_as_uint(color.y));
+	optixSetPayload_8(__float_as_uint(color.z));
 }
 
 extern "C" __global__ void __closesthit__cylinder()
@@ -179,18 +177,16 @@ extern "C" __global__ void __closesthit__cylinder()
 		optixSetPayload_3(__float_as_uint(direction.x));
 		optixSetPayload_4(__float_as_uint(direction.y));
 		optixSetPayload_5(__float_as_uint(direction.z));
-		optixSetPayload_6(__float_as_uint(color.x));
-		optixSetPayload_7(__float_as_uint(color.y));
-		optixSetPayload_8(__float_as_uint(color.z));
 		optixSetPayload_9(optixGetPayload_9() - 1);
     }
     else
     {
-		optixSetPayload_6(__float_as_uint(0.0f));
-		optixSetPayload_7(__float_as_uint(0.0f));
-		optixSetPayload_8(__float_as_uint(0.0f));
         optixSetPayload_9(0);
     }
+
+	optixSetPayload_6(__float_as_uint(color.x));
+	optixSetPayload_7(__float_as_uint(color.y));
+	optixSetPayload_8(__float_as_uint(color.z));
 }
 
 extern "C" __global__ void __closesthit__triangle()
@@ -235,18 +231,16 @@ extern "C" __global__ void __closesthit__triangle()
 		optixSetPayload_3(__float_as_uint(direction.x));
 		optixSetPayload_4(__float_as_uint(direction.y));
 		optixSetPayload_5(__float_as_uint(direction.z));
-		optixSetPayload_6(__float_as_uint(color.x));
-		optixSetPayload_7(__float_as_uint(color.y));
-		optixSetPayload_8(__float_as_uint(color.z));
 		optixSetPayload_9(optixGetPayload_9() - 1);
     }
     else
     {
-		optixSetPayload_6(__float_as_uint(0.0f));
-		optixSetPayload_7(__float_as_uint(0.0f));
-		optixSetPayload_8(__float_as_uint(0.0f));
-        optixSetPayload_9(0);
+	    optixSetPayload_9(0);
     }
+
+	optixSetPayload_6(__float_as_uint(color.x));
+	optixSetPayload_7(__float_as_uint(color.y));
+	optixSetPayload_8(__float_as_uint(color.z));
 }
 
 extern "C" __global__ void __miss__hdr()
@@ -273,6 +267,7 @@ extern "C" __global__ void __miss__sky()
 	optixSetPayload_9(0);
 }
 
+// Rendering one pixel
 extern "C" __global__ void __raygen__render()
 {
 	const uint3 index = optixGetLaunchIndex();
@@ -290,11 +285,10 @@ extern "C" __global__ void __raygen__render()
 	cast_ray(origin, direction, &random_state, u, v, launch_params.camera_info);
 	const uint32_t miss_sbt_index = launch_params.sky_info.d_hdr_data ? 0 : 1;
 
-	do
+	while (depth_remaining > 0)
 	{
 		trace(origin, direction, pixel_color, depth_remaining, miss_sbt_index);
-		
-	} while (depth_remaining > 0);
+	}
 
 	launch_params.accumulation_buffer[pixel_index] += make_float4(pixel_color, 1.0f);
 	launch_params.frame_buffer[pixel_index] = sqrt(launch_params.accumulation_buffer[pixel_index] / (float)launch_params.sampling_denominator);

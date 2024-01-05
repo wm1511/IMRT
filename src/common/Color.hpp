@@ -1,8 +1,10 @@
+// Copyright Wiktor Merta 2023
 #pragma once
 #include "../info/SkyInfo.hpp"
 #include "../info/CameraInfo.hpp"
 #include "World.hpp"
 
+// Mapping screen coordinates to ray, including lens simulation
 __host__ __device__ __forceinline__ Ray cast_ray(uint32_t* random_state, const float screen_x, const float screen_y, const CameraInfo& camera_info)
 {
 	const float2 random_on_lens = camera_info.lens_radius * disk_random(random_state);
@@ -11,6 +13,7 @@ __host__ __device__ __forceinline__ Ray cast_ray(uint32_t* random_state, const f
 		camera_info.starting_point + screen_x * camera_info.horizontal_map + screen_y * camera_info.vertical_map - camera_info.position - ray_offset};
 }
 
+// Same as above, returning by arguments
 __host__ __device__ __forceinline__ void cast_ray(float3& origin, float3& direction, uint32_t* random_state, const float screen_x, const float screen_y, const CameraInfo& camera_info)
 {
 	const float2 random_on_lens = camera_info.lens_radius * disk_random(random_state);
@@ -19,6 +22,7 @@ __host__ __device__ __forceinline__ void cast_ray(float3& origin, float3& direct
 	direction = camera_info.starting_point + screen_x * camera_info.horizontal_map + screen_y * camera_info.vertical_map - camera_info.position - ray_offset;
 }
 
+// Sampling HDR image using spherical projection
 __host__ __device__ __forceinline__ float3 sample_hdr(const float3 direction, const SkyInfo& sky_info)
 {
 	const float3 ray_direction = normalize(direction);
@@ -39,6 +43,7 @@ __host__ __device__ __forceinline__ float3 sample_hdr(const float3 direction, co
     return clamp(sky_info.d_hdr_data[hdr_texel_index], 0.0f, 1.0f);
 }
 
+// Sampling sky model, rewritten from "An Analytic Model for Full Spectral Sky-Dome Radiance" for GPU execution
 __host__ __device__ __forceinline__ float3 sample_sky(const float3 direction, const SkyInfo& sky_info)
 {
 	const float3 ray_direction = normalize(direction);
@@ -66,6 +71,7 @@ __host__ __device__ __forceinline__ float3 sample_sky(const float3 direction, co
     return make_float3(result) * sky_info.sun_radiance * 0.05f;
 }
 
+// Main path tracing loop used in CPU and CUDA renderers
 __host__ __device__ __forceinline__ float3 calculate_color(const Ray& ray, const World* world, const SkyInfo& sky_info, const int32_t max_depth, uint32_t* random_state)
 {
 	Ray current_ray = ray;
@@ -83,7 +89,7 @@ __host__ __device__ __forceinline__ float3 calculate_color(const Ray& ray, const
         	}
             else
             {
-	            return make_float3(0.0f);
+	            return current_absorption;
             }
 
         	current_absorption *= intersection.texture->color(intersection.uv);
@@ -96,5 +102,5 @@ __host__ __device__ __forceinline__ float3 calculate_color(const Ray& ray, const
         	return current_absorption * sample_sky(current_ray.direction_, sky_info); 
         }
     }
-	return make_float3(0.0f);
+	return current_absorption;
 }

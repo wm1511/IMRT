@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 #pragma once
 #include "../common/Math.hpp"
 
@@ -67,15 +68,16 @@ struct Texture
 {
 	__host__ __device__ Texture() {}
 
-	explicit __host__ Texture(Solid&& texture)
+	explicit __host__ Texture(const Solid& texture)
 		: type(TextureType::SOLID), solid(texture) {}
 
-	explicit __host__ Texture(Image&& texture)
+	explicit __host__ Texture(const Image& texture)
 		: type(TextureType::IMAGE), image(texture) {}
 
-	explicit __host__ Texture(Checker&& texture)
+	explicit __host__ Texture(const Checker& texture)
 		: type(TextureType::CHECKER), checker(texture) {}
 
+	// Sampling texture at given coordinates
 	__inline__ __host__ __device__ float3 color(const float2 uv) const
 	{
 		if (type == TextureType::SOLID)

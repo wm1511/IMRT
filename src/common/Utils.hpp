@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 #pragma once
 #include <filesystem>
 #include <cstdint>
@@ -6,6 +7,7 @@
 #define CCE(val) check_result<cudaError_t>( "CUDA", (val), #val, __FILE__, __LINE__ )
 #define COE(val) check_result<OptixResult>( "OPTIX", (val), #val, __FILE__, __LINE__ )
 
+// Helper function writing potential error message
 template <typename T>
 __host__ void check_result(const char* library, const T result, char const* const func, const char* const file, int const line)
 {
@@ -17,6 +19,7 @@ __host__ void check_result(const char* library, const T result, char const* cons
 	}
 }
 
+// Getting frame buffer and passing it to CUDA
 inline __host__ void* fetch_external_memory(void* memory_handle, const uint64_t memory_size)
 {
 	void* buffer;
@@ -43,6 +46,7 @@ inline __host__ void* fetch_external_memory(void* memory_handle, const uint64_t 
 	return buffer;
 }
 
+// Reading CUDA/Optix program code
 inline __host__ std::string read_shader(const std::string& program_name)
 {
 #ifdef _DEBUG

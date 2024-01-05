@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 #pragma once
 #include "../common/Math.hpp"
 
@@ -117,18 +118,19 @@ struct Material
 {
 	__host__ __device__ Material() {}
 
-	explicit __host__ Material(Diffuse&& material)
+	explicit __host__ Material(const Diffuse& material)
 		: type(MaterialType::DIFFUSE), diffuse(material) {}
 
-	explicit __host__ Material(Specular&& material)
+	explicit __host__ Material(const Specular& material)
 		: type(MaterialType::SPECULAR), specular(material) {}
 
-	explicit __host__ Material(Refractive&& material)
+	explicit __host__ Material(const Refractive& material)
 		: type(MaterialType::REFRACTIVE), refractive(material) {}
 
-	explicit __host__ Material(Isotropic&& material)
+	explicit __host__ Material(const Isotropic& material)
 		: type(MaterialType::ISOTROPIC), isotropic(material) {}
 
+	// Calculating new direction based on current material
 	__inline__ __host__ __device__ bool scatter(float3& direction, const float3& normal, uint32_t* random_state) const
 	{
 		if (type == MaterialType::DIFFUSE)

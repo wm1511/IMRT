@@ -1,4 +1,4 @@
-// ReSharper disable once CppPrecompiledHeaderIsNotIncluded
+// Copyright Wiktor Merta 2023
 #include "OptixRenderer.cuh"
 
 #include "../common/Utils.hpp"

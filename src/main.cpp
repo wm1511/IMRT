@@ -1,3 +1,4 @@
+// Copyright Wiktor Merta 2023
 #include "stdafx.h"
 #include "wrapper/RtInterface.hpp"
 #include "wrapper/App.hpp"
