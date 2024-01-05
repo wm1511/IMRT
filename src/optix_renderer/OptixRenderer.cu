@@ -337,11 +337,7 @@ void OptixRenderer::create_modules()
 	pipeline_compile_options_.usesMotionBlur = false;
 	pipeline_compile_options_.numPayloadValues = 10;
 	pipeline_compile_options_.numAttributeValues = 5;
-#ifdef _DEBUG
-	pipeline_compile_options_.exceptionFlags = OPTIX_EXCEPTION_FLAG_DEBUG;
-#else
 	pipeline_compile_options_.exceptionFlags = OPTIX_EXCEPTION_FLAG_NONE;
-#endif
 	pipeline_compile_options_.pipelineLaunchParamsVariableName = "launch_params";
 
 	const std::string shader = read_shader("OptixPrograms.optixir");

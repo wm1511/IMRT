@@ -1,0 +1,7 @@
+je_gray_park_8k.hdr - https://polyhaven.com/a/je_gray_park
+earthmap.jpg - https://github.com/RayTracing/raytracing.github.io/blob/release/images/earthmap.jpg
+Penguin Diffuse Color.png, PenguinBaseMesh.obj - https://free3d.com/3d-model/emperor-penguin-601811.html
+Gold_pickaxe.obj - https://www.cgtrader.com/free-3d-models/various/various-models/low-poly-gold-pickaxe-from-minecraft
+MaleMesh.obj - https://sketchfab.com/3d-models/male-character-b7e99c69c7e4425dba7d92665cbec409
+stanford-dragon.obj - https://graphics.stanford.edu/data/3Dscanrep/
+OpenSans-Regular.ttf - https://fonts.google.com/specimen/Open+Sans
