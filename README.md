@@ -20,7 +20,7 @@ scene defined by the user. Rendering is performed by one of 3 available engines:
 ## UML Class Diagram
 ![Klasy](https://github.com/wm1511/IMRT/assets/72276813/4f8317cb-10b9-4a2e-ba67-ed1f5370ac8e)
 ## Performance
-The scenes in the image above were generated using available engines. The number of generated frames for each engine is 100. Not all scenes were generated using each engine due to excessive rendering time.
+The scenes in the image below were generated using available engines. The number of generated frames for each engine is 100. Not all scenes were generated using each engine due to excessive rendering time.
 ![Sceny](https://github.com/wm1511/IMRT/assets/72276813/1300cc6f-0980-4678-b63a-4a3f602951ec)
 **Render time depending on used scene and engine**
 |         | CPU Engine | CUDA Engine | OPTIX Engine |
